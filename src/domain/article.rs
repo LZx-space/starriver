@@ -1,11 +1,11 @@
 use chrono::{DateTime, Local};
 use sea_orm::prelude::async_trait::async_trait;
-use sea_orm::{DatabaseConnection, DbErr};
+use sea_orm::DbErr;
 use uuid::Uuid;
 
 use crate::domain::tag::Tag;
-use crate::infrastructure::article_page_item::ArticlePageItem;
-use crate::infrastructure::page::{PageQuery, PageResult};
+use crate::infrastructure::model::article_page_item::ArticlePageItem;
+use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 /// 文章
 #[derive(Debug)]
@@ -21,6 +21,7 @@ pub struct Article {
 
 impl Article {
     /// 验证数据
+    #[allow(unused)]
     pub fn valid(&self) -> Result<bool, String> {
         println!("标题-{}", self.title);
         Ok(true)

@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use crate::adapter::repository::article_po;
 use crate::domain::article::{Article, ArticleRepository};
-use crate::infrastructure::article_page_item::ArticlePageItem;
-use crate::infrastructure::page::{PageQuery, PageResult};
+use crate::infrastructure::model::article_page_item::ArticlePageItem;
+use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 pub struct ArticleRepositoryImpl<'a> {
     pub conn: &'a DatabaseConnection,

@@ -1,15 +1,19 @@
 use uuid::Uuid;
 
 use crate::domain::article::{Article, ArticleRepository};
-use crate::infrastructure::article_page_item::ArticlePageItem;
-use crate::infrastructure::err::BizErr;
-use crate::infrastructure::page::{PageQuery, PageResult};
+use crate::infrastructure::model::article_page_item::ArticlePageItem;
+use crate::infrastructure::model::err::BizErr;
+use crate::infrastructure::model::page::{PageQuery, PageResult};
 
-pub struct ArticleApplication<T: ArticleRepository> {
+pub struct ArticleApplication<T> {
     pub repo: T,
 }
 
-impl<T: ArticleRepository> ArticleApplication<T> {
+impl<T> ArticleApplication<T>
+where
+    T: ArticleRepository,
+{
+    /// 新建
     pub fn new(repo: T) -> ArticleApplication<T> {
         ArticleApplication { repo }
     }

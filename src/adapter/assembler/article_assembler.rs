@@ -1,15 +1,15 @@
-use crate::adapter::api::blog_model::ArticleCmd;
-use crate::adapter::repository::article_po::Model as ArticlePo;
-use crate::domain::article::Article;
 use chrono::Local;
 use sea_orm::prelude::Uuid;
+use sea_orm::DatabaseConnection;
 
-pub fn from_entity(entity: Article) -> Result<ArticlePo, &'static str> {
-    Err("123")
-}
+use crate::adapter::api::blog_model::ArticleCmd;
+use crate::adapter::repository::article_repository::ArticleRepositoryImpl;
+use crate::application::article_service::ArticleApplication;
+use crate::domain::article::Article;
 
-pub fn form_po(po: ArticlePo) -> Result<Article, &'static str> {
-    Err("222")
+pub fn article_application(conn: &DatabaseConnection) -> ArticleApplication<ArticleRepositoryImpl> {
+    let repository_impl = ArticleRepositoryImpl { conn };
+    ArticleApplication::new(repository_impl)
 }
 
 pub fn cmd_2_new_entity(cmd: ArticleCmd, creator_id: String) -> Article {

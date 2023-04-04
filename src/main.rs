@@ -1,9 +1,12 @@
 use std::io::{stdout, BufWriter};
 
+use actix_session::storage::CookieSessionStore;
+use actix_web::cookie::Key;
 use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
 use sea_orm::{Database, DatabaseConnection};
 
+use crate::adapter::api::authentication_api;
 use adapter::api::blog_api;
 
 mod adapter;
@@ -32,7 +35,22 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Logger::default())
+            .wrap(middleware::ErrorHandlers::new())
+            .wrap(
+                actix_session::SessionMiddleware::builder(
+                    CookieSessionStore::default(),
+                    Key::from(&[0; 64]),
+                )
+                .cookie_secure(false)
+                .build(),
+            )
             .app_data(web::Data::new(app_state.clone()))
+            .service(
+                actix_files::Files::new("/static", ".")
+                    .show_files_listing()
+                    .use_last_modified(true),
+            )
+            .service(authentication_api::login_in)
             .service(blog_api::page)
             .service(blog_api::find_one)
             .service(blog_api::insert)

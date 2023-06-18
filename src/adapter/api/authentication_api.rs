@@ -1,9 +1,9 @@
-use crate::infrastructure::model::page::PageQuery;
-// use crate::infrastructure::security::authentication::actix_web_adapter::UsernamePasswordAuthenticator;
-use crate::infrastructure::security::authentication::core::ClientDetails;
 use actix_session::Session;
 use actix_web::web::{Json, Query};
 use actix_web::{get, post, web, Handler, Responder};
+
+use crate::infrastructure::model::page::PageQuery;
+use crate::infrastructure::security::authentication::principal::ClientDetails;
 
 #[get("/sessions")]
 pub async fn login_in(mut session: Session, params: Query<PageQuery>) -> impl Responder {

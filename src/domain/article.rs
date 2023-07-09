@@ -4,7 +4,7 @@ use sea_orm::DbErr;
 use uuid::Uuid;
 
 use crate::domain::tag::Tag;
-use crate::infrastructure::model::article_page_item::ArticlePageItem;
+use crate::infrastructure::model::article_page_item::ArticleSummary;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 /// 文章
@@ -14,16 +14,24 @@ pub struct Article {
     pub title: String,
     pub body: String,
     pub tags: Vec<Tag>,
-    pub creator_id: String,
-    pub create_time: DateTime<Local>,
+    pub author_id: String,
+    pub create_at: DateTime<Local>,
     pub modified_records: Vec<ModifiedRecord>,
 }
 
 impl Article {
     /// 验证数据
     #[allow(unused)]
-    pub fn valid(&self) -> Result<bool, String> {
-        println!("标题-{}", self.title);
+    pub fn valid(&self) -> Result<bool, &str> {
+        if self.title.trim().len() == 0 {
+            return Err("标题不能为空");
+        }
+        if self.body.trim().len() == 0 {
+            return Err("正文不能为空");
+        }
+        if self.tags.is_empty() {
+            return Err("文章必须至少有一个标签");
+        }
         Ok(true)
     }
 }
@@ -32,7 +40,7 @@ impl Article {
 #[derive(Debug)]
 pub struct ModifiedRecord {
     pub id: Uuid,
-    pub datetime: DateTime<Local>,
+    pub create_at: DateTime<Local>,
     pub modifier_id: String,
 }
 
@@ -40,7 +48,7 @@ pub struct ModifiedRecord {
 #[async_trait]
 pub trait ArticleRepository {
     /// 查询一页数据
-    async fn find_page(&self, query: PageQuery) -> Result<PageResult<ArticlePageItem>, DbErr>;
+    async fn find_page(&self, query: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr>;
 
     /// 按ID查找
     async fn find_one(&self, id: Uuid) -> Result<Option<Article>, DbErr>;

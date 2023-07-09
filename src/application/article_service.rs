@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::domain::article::{Article, ArticleRepository};
-use crate::infrastructure::model::article_page_item::ArticlePageItem;
+use crate::infrastructure::model::article_page_item::ArticleSummary;
 use crate::infrastructure::model::err::BizErr;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
@@ -18,7 +18,7 @@ where
         ArticleApplication { repo }
     }
 
-    pub async fn page(&self, q: PageQuery) -> Result<PageResult<ArticlePageItem>, BizErr> {
+    pub async fn page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, BizErr> {
         let page = self.repo.find_page(q).await;
         page.map_err(|_err| BizErr::new(_err.to_string()))
     }

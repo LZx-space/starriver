@@ -12,26 +12,26 @@ pub fn article_application(conn: &DatabaseConnection) -> ArticleApplication<Arti
     ArticleApplication::new(repository_impl)
 }
 
-pub fn cmd_2_new_entity(cmd: ArticleCmd, creator_id: String) -> Article {
+pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
     Article {
         id: Uuid::new_v4(),
         title: cmd.title,
         body: cmd.body,
         tags: Default::default(),
-        creator_id,
-        create_time: Local::now(),
+        author_id,
+        create_at: Local::now(),
         modified_records: vec![],
     }
 }
 
-pub fn cmd_2_update_entity(cmd: ArticleCmd, id: Uuid, creator_id: String) -> Article {
+pub fn cmd_2_update_entity(cmd: ArticleCmd, id: Uuid, author_id: String) -> Article {
     Article {
         id,
         title: cmd.title,
         body: cmd.body,
         tags: Default::default(),
-        creator_id,
-        create_time: Default::default(),
+        author_id,
+        create_at: Default::default(),
         modified_records: vec![],
     }
 }

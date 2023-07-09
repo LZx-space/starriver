@@ -18,4 +18,6 @@ pub struct ArticleVo {
 }
 
 #[derive(Serialize)]
-pub struct TagVo {}
+pub struct TagVo {
+    pub name: String,
+}

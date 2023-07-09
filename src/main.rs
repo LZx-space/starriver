@@ -6,8 +6,9 @@ use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
 use sea_orm::{Database, DatabaseConnection};
 
-use crate::adapter::api::authentication_api;
 use adapter::api::blog_api;
+
+use crate::adapter::api::authentication_api;
 
 mod adapter;
 mod application;
@@ -23,11 +24,13 @@ fn say_hello() {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_test_writer()
+        .init();
     say_hello();
     const URL: &str =
-        "postgresql://postgres:123456@localhost:5432/stariver?serverTimezone=Asia/Shanghai\
+        "postgresql://postgres:postgres@localhost:5432/stariver?serverTimezone=Asia/Shanghai\
     &autoReconnect=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&\
     zeroDateTimeBehavior=convertToNull&useSSL=false";
     let conn = Database::connect(URL).await.unwrap();

@@ -1,12 +1,16 @@
 use chrono::Local;
 use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait};
+use sea_orm::{
+    ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, PaginatorTrait,
+};
 use uuid::Uuid;
 
-use crate::adapter::repository::article_po;
+use crate::adapter::repository::article_po::{ActiveModel, Entity};
+use crate::adapter::repository::tag_po::Entity as RTag;
 use crate::domain::article::{Article, ArticleRepository};
-use crate::infrastructure::model::article_page_item::ArticlePageItem;
+use crate::domain::tag::Tag;
+use crate::infrastructure::model::article_page_item::ArticleSummary;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 pub struct ArticleRepositoryImpl<'a> {
@@ -15,72 +19,87 @@ pub struct ArticleRepositoryImpl<'a> {
 
 #[async_trait]
 impl<'a> ArticleRepository for ArticleRepositoryImpl<'a> {
-    async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticlePageItem>, DbErr> {
-        let select = article_po::Entity::find()
-            .paginate(self.conn, q.page_size)
-            .fetch_page(q.page)
-            .await?;
-        let mut articles = vec![];
-        for x in select {
-            let article = ArticlePageItem {
-                id: x.id,
-                title: x.title,
-                release_date: "".to_string(),
-                tags: vec![],
-            };
-            articles.push(article);
-        }
+    async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr> {
+        let paginate = Entity::find()
+            .find_also_related(RTag)
+            .paginate(self.conn, q.page_size);
+        let articles = paginate
+            .fetch()
+            .await?
+            .iter()
+            .map(|e| {
+                let article = &e.0;
+                let tag = &e.1;
+                println!("{:?}", tag);
+                ArticleSummary {
+                    id: article.id,
+                    title: article.title.clone(),
+                    release_date: article.create_at.to_string(),
+                    tags: vec![],
+                }
+            })
+            .collect();
+        let record_total = paginate.num_items().await?;
         Ok(PageResult {
-            page: 0,
-            page_size: 0,
-            record_total: 0,
+            page: q.page as u8,
+            page_size: q.page_size as u8,
+            record_total: record_total as u8,
             records: articles,
         })
     }
 
     async fn find_one(&self, id: Uuid) -> Result<Option<Article>, DbErr> {
-        let x = article_po::Entity::find_by_id(id).one(self.conn).await?;
-        Ok(x.map(|x| Article {
+        let x = Entity::find_by_id(id).one(self.conn).await?.unwrap();
+        let tag: Vec<Tag> = x
+            .find_related(RTag)
+            .all(self.conn)
+            .await?
+            .iter()
+            .map(|e| Tag {
+                id: e.id,
+                name: e.name.clone(),
+            })
+            .collect();
+        println!("---------->{:?}", tag.len());
+        Ok(Some(Article {
             id,
             title: x.title,
             body: x.body,
-            tags: vec![],
-            creator_id: x.creator_id,
-            create_time: x.create_time,
+            tags: tag,
+            author_id: x.author_id,
+            create_at: x.create_at,
             modified_records: vec![],
         }))
     }
 
     async fn add(&self, e: Article) -> Result<bool, DbErr> {
-        let model = article_po::ActiveModel {
+        let model = ActiveModel {
             id: Set(e.id),
             title: Set(e.title),
             body: Set(e.body),
-            creator_id: Set(e.creator_id),
-            create_time: Set(Local::now()),
-            tag_ids: Default::default(),
+            author_id: Set(e.author_id),
+            create_at: Set(Local::now()),
         };
         model.insert(self.conn).await?;
         Ok(true)
     }
 
     async fn delete(&self, id: Uuid) -> Result<bool, DbErr> {
-        let result = article_po::Entity::delete_by_id(id).exec(self.conn).await?;
+        let result = Entity::delete_by_id(id).exec(self.conn).await?;
         Ok(result.rows_affected > 0)
     }
 
     async fn update(&self, e: Article) -> Result<bool, DbErr> {
-        let exist_one = article_po::Entity::find_by_id(e.id)
+        let exist_one = Entity::find_by_id(e.id)
             .one(self.conn)
             .await?
             .expect("记录不存在");
-        let model = article_po::ActiveModel {
+        let model = ActiveModel {
             id: Set(exist_one.id),
             title: Set(e.title),
             body: Set(e.body),
-            creator_id: Set(exist_one.creator_id),
-            create_time: Set(exist_one.create_time),
-            tag_ids: Set(exist_one.tag_ids),
+            author_id: Set(exist_one.author_id),
+            create_at: Set(exist_one.create_at),
         };
         model.update(self.conn).await?;
         Ok(true)

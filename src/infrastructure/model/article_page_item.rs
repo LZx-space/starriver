@@ -2,7 +2,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 #[derive(Serialize)]
-pub struct ArticlePageItem {
+pub struct ArticleSummary {
     pub id: Uuid,
 
     pub title: String,

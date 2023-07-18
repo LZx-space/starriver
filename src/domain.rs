@@ -1,3 +1,2 @@
-pub mod article;
-pub mod modified_record;
-pub mod tag;
+pub mod blog;
+pub mod dictionary;

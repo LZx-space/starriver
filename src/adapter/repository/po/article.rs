@@ -4,8 +4,8 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "article")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id: Uuid,
+    #[sea_orm(primary_key, auto_increment = true)]
+    pub id: i64,
 
     pub title: String,
 
@@ -19,17 +19,17 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::tag_po::Entity")]
+    #[sea_orm(has_many = "super::tag::Entity")]
     Tag,
 }
 
-impl Related<super::tag_po::Entity> for Entity {
+impl Related<super::tag::Entity> for Entity {
     fn to() -> RelationDef {
-        super::article_tag_po::Relation::Tag.def()
+        super::article_tag::Relation::Tag.def()
     }
 
     fn via() -> Option<RelationDef> {
-        Some(super::article_tag_po::Relation::Article.def().rev())
+        Some(super::article_tag::Relation::Article.def().rev())
     }
 }
 

@@ -1,20 +1,18 @@
-use std::ops::Deref;
-
-use crate::infrastructure::security::authentication::credentials::Credentials;
+use crate::infrastructure::security::authentication::core::credentials::Credentials;
 
 /// 认证主体
-pub struct Principal {
+pub struct Principal<T: Credentials> {
     authenticated: bool,
     client_details: ClientDetails,
-    credentials: Box<dyn Credentials>,
+    credentials: T,
 }
 
-impl Principal {
+impl<T: Credentials> Principal<T> {
     /// create instance with [`credentials`] and [`client_details`]
     ///
-    /// [`credentials`]: Credentials
+    /// [`credentials`]: T
     /// [`client_details`]: ClientDetails
-    pub fn new(credentials: Box<dyn Credentials>, client_details: ClientDetails) -> Principal {
+    pub fn new(credentials: T, client_details: ClientDetails) -> Principal<T> {
         Principal {
             authenticated: false,
             client_details,
@@ -30,8 +28,8 @@ impl Principal {
         &self.client_details
     }
 
-    pub fn credentials(&self) -> &dyn Credentials {
-        self.credentials.deref()
+    pub fn credentials(&self) -> &T {
+        &self.credentials
     }
 }
 

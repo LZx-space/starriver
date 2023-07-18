@@ -1,7 +1,5 @@
-use uuid::Uuid;
-
-use crate::domain::article::{Article, ArticleRepository};
-use crate::infrastructure::model::article_page_item::ArticleSummary;
+use crate::adapter::api::blog_model::ArticleSummary;
+use crate::domain::blog::article::{Article, ArticleRepository};
 use crate::infrastructure::model::err::BizErr;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
@@ -23,7 +21,7 @@ where
         page.map_err(|_err| BizErr::new(_err.to_string()))
     }
 
-    pub async fn find_one(&self, id: Uuid) -> Result<Option<Article>, BizErr> {
+    pub async fn find_one(&self, id: i64) -> Result<Option<Article>, BizErr> {
         let result = self.repo.find_one(id).await;
         result.map_err(|_err| BizErr::new(_err.to_string()))
     }
@@ -33,7 +31,7 @@ where
         result.map_err(|_err| BizErr::new(_err.to_string()))
     }
 
-    pub async fn delete(&self, id: Uuid) -> Result<bool, BizErr> {
+    pub async fn delete(&self, id: i64) -> Result<bool, BizErr> {
         let result = self.repo.delete(id).await;
         result.map_err(|_err| BizErr::new(_err.to_string()))
     }

@@ -1,7 +1,6 @@
 use actix_web::http::StatusCode;
 use actix_web::web::{Json, Path, Query};
 use actix_web::{delete, get, post, put, web, Responder};
-use sea_orm::prelude::Uuid;
 
 use crate::adapter::api::blog_model::{ArticleCmd, ArticleVo, TagVo};
 use crate::adapter::assembler::article_assembler::{
@@ -18,7 +17,7 @@ pub async fn page(state: web::Data<AppState>, params: Query<PageQuery>) -> impl 
 }
 
 #[get("/blogs/{id}")]
-pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Responder {
+pub async fn find_one(state: web::Data<AppState>, id: Path<i64>) -> impl Responder {
     let result = article_application(&state.conn)
         .find_one(id.into_inner())
         .await;
@@ -49,7 +48,7 @@ pub async fn insert(state: web::Data<AppState>, cmd: Json<ArticleCmd>) -> impl R
 #[put("/blogs/{id}")]
 pub async fn update(
     state: web::Data<AppState>,
-    id: Path<Uuid>,
+    id: Path<i64>,
     cmd: Json<ArticleCmd>,
 ) -> impl Responder {
     let cmd = cmd.into_inner();
@@ -60,7 +59,7 @@ pub async fn update(
 }
 
 #[delete("/blogs/{id}")]
-pub async fn delete(state: web::Data<AppState>, id: Path<Uuid>) -> impl Responder {
+pub async fn delete(state: web::Data<AppState>, id: Path<i64>) -> impl Responder {
     article_application(&state.conn)
         .delete(id.into_inner())
         .await

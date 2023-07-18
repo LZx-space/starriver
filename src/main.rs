@@ -29,10 +29,7 @@ async fn main() -> std::io::Result<()> {
         .with_test_writer()
         .init();
     say_hello();
-    const URL: &str =
-        "postgresql://postgres:postgres@localhost:5432/stariver?serverTimezone=Asia/Shanghai\
-    &autoReconnect=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&\
-    zeroDateTimeBehavior=convertToNull&useSSL=false";
+    const URL: &str = "postgresql://postgres:postgres@localhost:5432/stariver";
     let conn = Database::connect(URL).await.unwrap();
     let app_state = AppState { conn };
     HttpServer::new(move || {

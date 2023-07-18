@@ -16,9 +16,9 @@ struct AuthorizeEndpoint {
 }
 
 enum GrantTypes {
-    Authorization_code,
-    client_credentials,
-    refresh_token,
+    AuthorizationCode,
+    ClientCredentials,
+    RefreshToken,
 }
 // todo 认证失败处理器，多阶段trait公用
 // todo 认证成功处理器，多阶段trait公用

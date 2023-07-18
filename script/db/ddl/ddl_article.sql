@@ -5,7 +5,7 @@
 -- DROP TABLE public.article;
 
 CREATE TABLE public.article (
-	id uuid NOT NULL,
+	id bigint NOT NULL,
 	title varchar NULL,
 	body text NULL,
 	author_id varchar NULL,

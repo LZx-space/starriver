@@ -1,17 +1,15 @@
 use chrono::Local;
 use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{
-    ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait, PaginatorTrait,
-};
-use uuid::Uuid;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait};
 
-use crate::adapter::repository::article_po::{ActiveModel, Entity};
-use crate::adapter::repository::tag_po::Entity as RTag;
-use crate::domain::article::{Article, ArticleRepository};
-use crate::domain::tag::Tag;
-use crate::infrastructure::model::article_page_item::ArticleSummary;
+use crate::adapter::api::blog_model::ArticleSummary;
+use crate::domain::blog::article::{Article, ArticleRepository};
 use crate::infrastructure::model::page::{PageQuery, PageResult};
+
+pub use super::po::article::ActiveModel as ArticleModel;
+pub use super::po::article::Entity as ArticlePo;
+pub use super::po::tag::Entity as TagPo;
 
 pub struct ArticleRepositoryImpl<'a> {
     pub conn: &'a DatabaseConnection,
@@ -20,8 +18,8 @@ pub struct ArticleRepositoryImpl<'a> {
 #[async_trait]
 impl<'a> ArticleRepository for ArticleRepositoryImpl<'a> {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr> {
-        let paginate = Entity::find()
-            .find_also_related(RTag)
+        let paginate = ArticlePo::find()
+            .find_also_related(TagPo)
             .paginate(self.conn, q.page_size);
         let articles = paginate
             .fetch()
@@ -48,32 +46,21 @@ impl<'a> ArticleRepository for ArticleRepositoryImpl<'a> {
         })
     }
 
-    async fn find_one(&self, id: Uuid) -> Result<Option<Article>, DbErr> {
-        let x = Entity::find_by_id(id).one(self.conn).await?.unwrap();
-        let tag: Vec<Tag> = x
-            .find_related(RTag)
-            .all(self.conn)
-            .await?
-            .iter()
-            .map(|e| Tag {
-                id: e.id,
-                name: e.name.clone(),
-            })
-            .collect();
-        println!("---------->{:?}", tag.len());
-        Ok(Some(Article {
-            id,
-            title: x.title,
-            body: x.body,
-            tags: tag,
-            author_id: x.author_id,
-            create_at: x.create_at,
-            modified_records: vec![],
-        }))
+    async fn find_one(&self, id: i64) -> Result<Option<Article>, DbErr> {
+        // Ok(Some(Article {
+        //     id,
+        //     title: po.title,
+        //     body: po.body,
+        //     tags: vec![],
+        //     author_id: po.author_id,
+        //     create_at: po.create_at,
+        //     modified_records: vec![],
+        // }))
+        todo!()
     }
 
     async fn add(&self, e: Article) -> Result<bool, DbErr> {
-        let model = ActiveModel {
+        let model = ArticleModel {
             id: Set(e.id),
             title: Set(e.title),
             body: Set(e.body),
@@ -84,24 +71,24 @@ impl<'a> ArticleRepository for ArticleRepositoryImpl<'a> {
         Ok(true)
     }
 
-    async fn delete(&self, id: Uuid) -> Result<bool, DbErr> {
-        let result = Entity::delete_by_id(id).exec(self.conn).await?;
+    async fn delete(&self, id: i64) -> Result<bool, DbErr> {
+        let result = ArticlePo::delete_by_id(id).exec(self.conn).await?;
         Ok(result.rows_affected > 0)
     }
 
     async fn update(&self, e: Article) -> Result<bool, DbErr> {
-        let exist_one = Entity::find_by_id(e.id)
-            .one(self.conn)
-            .await?
-            .expect("记录不存在");
-        let model = ActiveModel {
-            id: Set(exist_one.id),
-            title: Set(e.title),
-            body: Set(e.body),
-            author_id: Set(exist_one.author_id),
-            create_at: Set(exist_one.create_at),
-        };
-        model.update(self.conn).await?;
-        Ok(true)
+        //     let exist_one = ArticlePo::find_by_id(e.id)
+        //         .one(self.conn)
+        //         .await?
+        //         .map_or_else(Some(false), |p| ArticleModel {
+        //             id: Set(p.id),
+        //             title: Set(p.title),
+        //             body: Set(p.body),
+        //             author_id: Set(p.author_id),
+        //             create_at: Set(p.create_at),
+        //         });
+        //     model.update(self.conn).await?;
+        //     Ok(true)
+        todo!()
     }
 }

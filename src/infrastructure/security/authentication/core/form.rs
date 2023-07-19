@@ -33,7 +33,7 @@ impl CredentialsRepository for UserCredentialsRepository {
 
     fn find_by_id(&self, credentials_id: &Self::ID) -> Option<Box<Self::CredentialsType>> {
         let credentials = UsernamePasswordCredentials {
-            username: "user".to_string(),
+            username: credentials_id.clone(),
             password: "password".to_string(),
         };
         Some(Box::new(credentials))

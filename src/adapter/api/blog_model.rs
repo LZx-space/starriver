@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct ArticleCmd {
     pub title: String,
     pub body: String,
-    pub tags: Vec<i64>,
+    pub tags: Vec<Uuid>,
 }
 
 #[derive(Serialize)]
@@ -23,7 +24,7 @@ pub struct TagVo {
 
 #[derive(Serialize)]
 pub struct ArticleSummary {
-    pub id: i64,
+    pub id: Uuid,
 
     pub title: String,
 

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Local};
 use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::DbErr;
+use uuid::Uuid;
 
 use crate::adapter::api::blog_model::ArticleSummary;
 use crate::domain::blog::tag::Tag;
@@ -9,7 +10,7 @@ use crate::infrastructure::model::page::{PageQuery, PageResult};
 /// 文章
 #[derive(Debug)]
 pub struct Article {
-    pub id: i64,
+    pub id: Uuid,
     pub title: String,
     pub body: String,
     pub tags: Vec<Tag>,
@@ -39,7 +40,7 @@ impl Article {
 /// 修改记录
 #[derive(Debug)]
 pub struct ModifiedRecord {
-    pub id: u64,
+    pub id: Uuid,
     pub create_at: DateTime<Local>,
     pub modifier_id: String,
 }
@@ -51,13 +52,13 @@ pub trait ArticleRepository {
     async fn find_page(&self, query: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr>;
 
     /// 按ID查找
-    async fn find_one(&self, id: i64) -> Result<Option<Article>, DbErr>;
+    async fn find_one(&self, id: Uuid) -> Result<Option<Article>, DbErr>;
 
     /// 新增
     async fn add(&self, e: Article) -> Result<bool, DbErr>;
 
     /// 删除
-    async fn delete(&self, id: i64) -> Result<bool, DbErr>;
+    async fn delete(&self, id: Uuid) -> Result<bool, DbErr>;
 
     /// 修改
     async fn update(&self, e: Article) -> Result<bool, DbErr>;

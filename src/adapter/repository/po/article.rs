@@ -4,8 +4,8 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "article")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = true)]
-    pub id: i64,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: Uuid,
 
     pub title: String,
 
@@ -15,6 +15,8 @@ pub struct Model {
     pub author_id: String,
 
     pub create_at: DateTimeLocal,
+
+    pub update_at: Option<DateTimeLocal>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

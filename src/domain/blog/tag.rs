@@ -1,6 +1,8 @@
+use uuid::Uuid;
+
 /// 标签
 #[derive(Debug)]
 pub struct Tag {
-    pub id: i64,
+    pub id: Uuid,
     pub name: String,
 }

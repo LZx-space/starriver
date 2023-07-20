@@ -1,6 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 use crate::infrastructure::security::authentication::core::credentials::Credentials;
 
 /// 认证主体
+#[derive(Serialize, Deserialize)]
 pub struct Principal<T: Credentials> {
     authenticated: bool,
     client_details: ClientDetails,
@@ -34,4 +37,5 @@ impl<T: Credentials> Principal<T> {
 }
 
 /// 认证请求的客户端的详情，记录HTTP协议中的其它信息
+#[derive(Serialize, Deserialize)]
 pub struct ClientDetails {}

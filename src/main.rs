@@ -51,6 +51,7 @@ async fn main() -> std::io::Result<()> {
                     .use_last_modified(true),
             )
             .service(authentication_api::login_in)
+            .service(authentication_api::validate_authenticated)
             .service(blog_api::page)
             .service(blog_api::find_one)
             .service(blog_api::insert)

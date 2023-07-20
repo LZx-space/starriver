@@ -26,6 +26,6 @@ impl Error for AuthenticationError {}
 
 impl Display for AuthenticationError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "authenticate error - {}", self)
     }
 }

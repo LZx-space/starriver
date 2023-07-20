@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 use crate::infrastructure::security::authentication::core::authenticator::{
@@ -8,7 +9,7 @@ use crate::infrastructure::security::authentication::core::credentials_repositor
 use crate::infrastructure::security::authentication::core::principal::Principal;
 
 /// 用户名密码类型的凭证
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UsernamePasswordCredentials {
     username: String,
     password: String,
@@ -19,7 +20,7 @@ impl UsernamePasswordCredentials {
     }
 
     pub fn username(&self) -> &str {
-        self.username.as_str()
+        &self.username
     }
 }
 

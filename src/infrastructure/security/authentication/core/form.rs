@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+
+use serde::{Deserialize, Serialize};
 
 use crate::infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
@@ -14,6 +15,7 @@ pub struct UsernamePasswordCredentials {
     username: String,
     password: String,
 }
+
 impl UsernamePasswordCredentials {
     pub fn new(username: String, password: String) -> Self {
         UsernamePasswordCredentials { username, password }
@@ -28,29 +30,23 @@ impl Credentials for UsernamePasswordCredentials {}
 
 pub struct UserCredentialsRepository {}
 
-impl CredentialsRepository for UserCredentialsRepository {
-    type ID = String;
-    type CredentialsType = UsernamePasswordCredentials;
-
-    fn find_by_id(&self, credentials_id: &Self::ID) -> Option<Box<Self::CredentialsType>> {
+impl CredentialsRepository<String, UsernamePasswordCredentials> for UserCredentialsRepository {
+    fn find_by_id(&self, credentials_id: &String) -> Option<UsernamePasswordCredentials> {
         let credentials = UsernamePasswordCredentials {
             username: credentials_id.clone(),
             password: "password".to_string(),
         };
-        Some(Box::new(credentials))
+        Some(credentials)
     }
 }
 
 pub struct UsernamePasswordCredentialsAuthenticator {
-    credentials_repository:
-        Box<dyn CredentialsRepository<ID = String, CredentialsType = UsernamePasswordCredentials>>,
+    credentials_repository: Box<dyn CredentialsRepository<String, UsernamePasswordCredentials>>,
 }
 
 impl UsernamePasswordCredentialsAuthenticator {
     pub fn new(
-        repo: Box<
-            dyn CredentialsRepository<ID = String, CredentialsType = UsernamePasswordCredentials>,
-        >,
+        repo: Box<dyn CredentialsRepository<String, UsernamePasswordCredentials>>,
     ) -> UsernamePasswordCredentialsAuthenticator {
         UsernamePasswordCredentialsAuthenticator {
             credentials_repository: repo,

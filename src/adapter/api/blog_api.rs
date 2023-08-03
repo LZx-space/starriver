@@ -14,7 +14,7 @@ use crate::AppState;
 pub async fn page(state: web::Data<AppState>, params: Query<PageQuery>) -> impl Responder {
     let page_query = params.into_inner();
     let result = article_application(&state.conn).page(page_query).await;
-    Json(result.unwrap())
+    result.map(|u| Json(u))
 }
 
 #[get("/blogs/{id}")]

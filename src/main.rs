@@ -9,6 +9,7 @@ use sea_orm::{Database, DatabaseConnection};
 use adapter::api::blog_api;
 
 use crate::adapter::api::authentication_api;
+use crate::infrastructure::security::authentication::core::form::AuthenticateStateTransform;
 
 mod adapter;
 mod application;
@@ -44,6 +45,7 @@ async fn main() -> std::io::Result<()> {
                 .cookie_secure(false)
                 .build(),
             )
+            .wrap(AuthenticateStateTransform {})
             .app_data(web::Data::new(app_state.clone()))
             .service(
                 actix_files::Files::new("/static", ".")

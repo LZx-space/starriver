@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
 use actix_web::http::StatusCode;
+use actix_web::ResponseError;
 
 #[derive(Debug)]
 pub struct CodedErr {
@@ -65,3 +66,10 @@ impl Display for CodedErr {
 impl Error for CodedErr {}
 
 pub trait CodedErrData: Display + Debug {}
+
+///
+impl ResponseError for CodedErr {
+    fn status_code(&self) -> StatusCode {
+        self.determine_http_status()
+    }
+}

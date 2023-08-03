@@ -9,7 +9,7 @@ use sea_orm::{Database, DatabaseConnection};
 use adapter::api::blog_api;
 
 use crate::adapter::api::authentication_api;
-use crate::infrastructure::security::authentication::core::form::AuthenticateStateTransform;
+use crate::infrastructure::security::authentication::web::actix::middleware::AuthenticateStateTransform;
 
 mod adapter;
 mod application;

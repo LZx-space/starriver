@@ -1,7 +1,5 @@
 use std::fmt::Debug;
 
-use actix_web::body::MessageBody;
-use actix_web::dev::{Service, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::infrastructure::security::authentication::core::authenticator::{

@@ -1,44 +1,46 @@
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::http::StatusCode;
-use actix_web::HttpResponse;
 use std::future::{ready, Ready};
 use std::task::{Context, Poll};
+
+use actix_web::body::{BoxBody, EitherBody, MessageBody};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::Error;
 
 pub struct AuthenticateStatusService<S> {
     service: S,
 }
 
-impl<S: Service<ServiceRequest>> Service<ServiceRequest> for AuthenticateStatusService<S> {
-    type Response = S::Response;
+impl<S, B> Service<ServiceRequest> for AuthenticateStatusService<S>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S::Future: 'static,
+    B: MessageBody + 'static,
+{
+    type Response = ServiceResponse<EitherBody<B>>;
     type Error = S::Error;
-    type Future = S::Future;
+    type Future = Ready<Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&self, _ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
+    fn poll_ready(&self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(ctx)
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        match req.cookie("id") {
-            None => {
-                println!("--> no session cookie");
-                let response = HttpResponse::new(StatusCode::UNAUTHORIZED);
-
-                let service_response = ServiceResponse::new(req.request().clone(), response);
-                // ready(service_response)
-                todo!()
-            }
-            Some(val) => {
-                println!("--> with session cookie {:#?}", val);
-                self.service.call(req)
-            }
-        }
+        println!("----------");
+        async {
+            let map = self.service.call(req).await;
+        };
+        todo!()
     }
 }
 
 pub struct AuthenticateStateTransform {}
 
-impl<S: Service<ServiceRequest>> Transform<S, ServiceRequest> for AuthenticateStateTransform {
-    type Response = S::Response;
+impl<S, B> Transform<S, ServiceRequest> for AuthenticateStateTransform
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S::Future: 'static,
+    B: MessageBody + 'static,
+{
+    type Response = ServiceResponse<EitherBody<B>>;
     type Error = S::Error;
     type Transform = AuthenticateStatusService<S>;
     type InitError = ();

@@ -56,7 +56,7 @@ impl<T> ChildrenNode<Node2<T>> for Node2<T> {
 
 #[test]
 pub fn tree_test() {
-    let mut node2 = Node1 {
+    let node2 = Node1 {
         id: 2,
         name: "".to_string(),
         children: vec![],
@@ -71,18 +71,17 @@ pub fn tree_test() {
     node1.id = 3;
     node1.children = vec![];
     let vec = node1.children();
-    for mut x in vec {
+    for x in vec {
         println!("{}", x.id());
     }
-    let mut t2 = T2 {
+    let t2 = T2 {
         id: "".to_string(),
         t_vec: vec![],
     };
     let vec1 = t2.try_1();
-    let mut vec2 = t2.try_1();
+    let vec2 = t2.try_1();
     println!("{:?}", vec1);
     println!("{:?}", vec2);
-    vec2[0] = "";
 }
 
 pub struct T2 {
@@ -91,10 +90,6 @@ pub struct T2 {
 }
 
 impl T2 {
-    pub fn t_1(&self) -> &String {
-        &self.id
-    }
-
     pub fn try_1(&self) -> Vec<&str> {
         self.t_vec.iter().map(|e| e.as_str()).collect()
     }

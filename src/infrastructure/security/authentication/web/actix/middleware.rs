@@ -1,7 +1,7 @@
 use std::future::{ready, Ready};
 use std::task::{Context, Poll};
 
-use actix_web::body::{BoxBody, EitherBody, MessageBody};
+use actix_web::body::{EitherBody, MessageBody};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::Error;
 

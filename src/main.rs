@@ -47,11 +47,6 @@ async fn main() -> std::io::Result<()> {
             )
             .wrap(AuthenticateStateTransform {})
             .app_data(web::Data::new(app_state.clone()))
-            .service(
-                actix_files::Files::new("/static", ".")
-                    .show_files_listing()
-                    .use_last_modified(true),
-            )
             .service(authentication_api::login_in)
             .service(authentication_api::validate_authenticated)
             .service(blog_api::page)

@@ -1,3 +1,4 @@
+use std::env;
 use std::io::{stdout, BufWriter};
 
 use actix_session::storage::CookieSessionStore;
@@ -25,13 +26,14 @@ fn say_hello() {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    say_hello();
+    dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .with_test_writer()
         .init();
-    say_hello();
-    const URL: &str = "postgresql://postgres:postgres@localhost:5432/stariver";
-    let conn = Database::connect(URL).await.unwrap();
+    let db_url = env::var("DB_URL").unwrap();
+    let conn = Database::connect(db_url).await.unwrap();
     let app_state = AppState { conn };
     HttpServer::new(move || {
         App::new()

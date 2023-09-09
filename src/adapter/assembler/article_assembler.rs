@@ -1,16 +1,8 @@
 use chrono::Local;
-use sea_orm::DatabaseConnection;
 use uuid::Uuid;
 
 use crate::adapter::api::blog_model::ArticleCmd;
-use crate::adapter::repository::article_repository::ArticleRepositoryImpl;
-use crate::application::article_service::ArticleApplication;
 use crate::domain::blog::article::Article;
-
-pub fn article_application(conn: &DatabaseConnection) -> ArticleApplication<ArticleRepositoryImpl> {
-    let repository_impl = ArticleRepositoryImpl { conn };
-    ArticleApplication::new(repository_impl)
-}
 
 pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
     Article {

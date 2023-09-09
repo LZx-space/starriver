@@ -16,12 +16,12 @@ pub use super::po::article::ActiveModel as ArticleModel;
 pub use super::po::article::Entity as ArticlePo;
 pub use super::po::tag::Entity as TagPo;
 
-pub struct ArticleRepositoryImpl<'a> {
-    pub conn: &'a DatabaseConnection,
+pub struct ArticleRepositoryImpl {
+    pub conn: &'static DatabaseConnection,
 }
 
 #[async_trait]
-impl<'a> ArticleRepository for ArticleRepositoryImpl<'a> {
+impl ArticleRepository for ArticleRepositoryImpl {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr> {
         let articles = ArticlePo::find()
             .find_with_related(TagPo)

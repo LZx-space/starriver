@@ -4,24 +4,20 @@ use actix_web::{delete, get, post, put, web, Responder};
 use uuid::Uuid;
 
 use crate::adapter::api::blog_model::{ArticleCmd, ArticleVo, TagVo};
-use crate::adapter::assembler::article_assembler::{
-    article_application, cmd_2_new_entity, cmd_2_update_entity,
-};
+use crate::adapter::assembler::article_assembler::{cmd_2_new_entity, cmd_2_update_entity};
 use crate::infrastructure::model::page::PageQuery;
 use crate::AppState;
 
 #[get("/blogs")]
 pub async fn page(state: web::Data<AppState>, params: Query<PageQuery>) -> impl Responder {
     let page_query = params.into_inner();
-    let result = article_application(&state.conn).page(page_query).await;
+    let result = state.article_application.page(page_query).await;
     result.map(|u| Json(u))
 }
 
 #[get("/blogs/{id}")]
 pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Responder {
-    let result = article_application(&state.conn)
-        .find_one(id.into_inner())
-        .await;
+    let result = state.article_application.find_one(id.into_inner()).await;
     let option = result.unwrap();
     let article = option.expect("记录不存在");
     let vo = ArticleVo {
@@ -42,7 +38,7 @@ pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Respon
 pub async fn insert(state: web::Data<AppState>, cmd: Json<ArticleCmd>) -> impl Responder {
     let cmd = cmd.into_inner();
     let article = cmd_2_new_entity(cmd, "LZx".to_string());
-    let result = article_application(&state.conn).add(article).await;
+    let result = state.article_application.add(article).await;
     Json(result.unwrap())
 }
 
@@ -55,13 +51,14 @@ pub async fn update(
     let cmd = cmd.into_inner();
     let id = id.into_inner();
     let article = cmd_2_update_entity(cmd, id, "LZx".to_string());
-    let result = article_application(&state.conn).update(article).await;
+    let result = state.article_application.update(article).await;
     Json(result.unwrap())
 }
 
 #[delete("/blogs/{id}")]
 pub async fn delete(state: web::Data<AppState>, id: Path<Uuid>) -> impl Responder {
-    article_application(&state.conn)
+    state
+        .article_application
         .delete(id.into_inner())
         .await
         .expect("TODO: panic message");

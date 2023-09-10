@@ -1,10 +1,10 @@
-use crate::infrastructure::model::err::CodedErr;
 use actix_session::Session;
 use actix_web::http::StatusCode;
 use actix_web::web::{Form, Json};
 use actix_web::{get, post, Responder};
 use serde::Deserialize;
 
+use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::Authenticator;
 use crate::infrastructure::security::authentication::core::form::{
     UserCredentialsRepository, UsernamePasswordCredentials,

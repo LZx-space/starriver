@@ -1,12 +1,12 @@
 use std::env;
 use std::io::{stdout, BufWriter};
+use std::net::IpAddr;
 
 use actix_session::storage::CookieSessionStore;
 use actix_web::cookie::Key;
 use actix_web::{middleware, web, App, HttpServer};
-use async_static::async_static;
 use ferris_says::say;
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::DatabaseConnection;
 
 use adapter::api::blog_api;
 
@@ -14,6 +14,7 @@ use crate::adapter::api::authentication_api;
 use crate::adapter::repository::article_repository::ArticleRepositoryImpl;
 use crate::application::article_service::ArticleApplication;
 use crate::infrastructure::security::authentication::web::actix::middleware::AuthenticateStateTransform;
+use crate::infrastructure::util::db::db_conn;
 
 mod adapter;
 mod application;
@@ -28,8 +29,8 @@ async fn main() -> std::io::Result<()> {
         .with_max_level(tracing::Level::DEBUG)
         .with_test_writer()
         .init();
-
-    let conn = CONN.await;
+    let conn = db_conn().await;
+    let addrs = http_server_bind_addrs();
     HttpServer::new(move || {
         let app_state = AppState::new(conn);
         App::new()
@@ -52,30 +53,31 @@ async fn main() -> std::io::Result<()> {
             .service(blog_api::insert)
             .service(blog_api::delete)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(addrs)?
     .run()
     .await
 }
 
 fn say_hello() {
-    let out = "Hello, world!";
+    let out = "Hello, World!";
     let width = out.len();
     let mut writer = BufWriter::new(stdout());
     say(out, width, &mut writer).unwrap()
 }
 
-async_static! {
-    static ref CONN: DatabaseConnection = init_db_conn().await;
-}
-
-async fn init_db_conn() -> DatabaseConnection {
-    let db_url = env::var("DB_URL").expect("DB_URL environment variable not set");
-    Database::connect(db_url)
-        .await
-        .expect("create a DatabaseConnection failed")
+fn http_server_bind_addrs() -> (IpAddr, u16) {
+    let http_server_ip =
+        env::var("HTTP_SERVER_IP").expect("HTTP_SERVER_IP environment variable not set");
+    let http_server_port =
+        env::var("HTTP_SERVER_PORT").expect("HTTP_SERVER_PORT environment variable not set");
+    (
+        http_server_ip.parse().unwrap(),
+        http_server_port.parse().unwrap(),
+    )
 }
 
 /// 应用的各个状态
+///
 pub struct AppState {
     article_application: ArticleApplication<ArticleRepositoryImpl>,
 }

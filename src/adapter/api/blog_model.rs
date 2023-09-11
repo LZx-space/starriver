@@ -29,6 +29,4 @@ pub struct ArticleSummary {
     pub title: String,
 
     pub release_date: String,
-
-    pub tags: Vec<String>,
 }

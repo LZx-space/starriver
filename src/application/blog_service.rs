@@ -1,8 +1,10 @@
+use uuid::Uuid;
+
 use crate::adapter::api::blog_model::ArticleSummary;
-use crate::domain::blog::aggregate::{Article, ArticleRepository};
+use crate::domain::blog::aggregate::Article;
+use crate::domain::blog::repository::ArticleRepository;
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
-use uuid::Uuid;
 
 pub struct ArticleApplication<T> {
     pub repo: T,

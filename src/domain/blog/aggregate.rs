@@ -4,7 +4,7 @@ use sea_orm::DbErr;
 use uuid::Uuid;
 
 use crate::adapter::api::blog_model::ArticleSummary;
-use crate::domain::blog::tag::Tag;
+use crate::domain::blog::value_object::Tag;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 /// 文章

@@ -1,1 +1,1 @@
-mod configurable_dictionary;
+mod aggregate;

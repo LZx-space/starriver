@@ -21,12 +21,3 @@ pub struct ArticleVo {
 pub struct TagVo {
     pub name: String,
 }
-
-#[derive(Serialize)]
-pub struct ArticleSummary {
-    pub id: Uuid,
-
-    pub title: String,
-
-    pub release_date: String,
-}

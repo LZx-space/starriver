@@ -3,13 +3,12 @@ use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QuerySelect,
-    SelectColumns,
 };
 use uuid::Uuid;
 
-use crate::adapter::api::blog_model::ArticleSummary;
 use crate::domain::blog::aggregate::Article;
 use crate::domain::blog::repository::ArticleRepository;
+use crate::infrastructure::model::blog::ArticleSummary;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 pub use super::po::article::ActiveModel as ArticleModel;
@@ -24,17 +23,13 @@ pub struct ArticleRepositoryImpl {
 impl ArticleRepository for ArticleRepositoryImpl {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr> {
         let articles = ArticlePo::find()
+            .select_only()
+            .columns([Column::Id, Column::Title, Column::CreateAt])
             .offset(q.page * q.page_size)
             .limit(q.page_size)
+            .into_model::<ArticleSummary>()
             .all(self.conn)
-            .await?
-            .iter()
-            .map(|e| ArticleSummary {
-                id: e.id,
-                title: e.title.clone(),
-                release_date: e.create_at.to_string(),
-            })
-            .collect();
+            .await?;
         let record_total = ArticlePo::find()
             .select_only()
             .column(Column::Id)

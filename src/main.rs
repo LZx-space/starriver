@@ -11,7 +11,7 @@ use sea_orm::DatabaseConnection;
 use adapter::api::blog_api;
 
 use crate::adapter::api::authentication_api;
-use crate::adapter::repository::blog_repository::ArticleRepositoryImpl;
+use crate::adapter::repository::blog::blog_repository::ArticleRepositoryImpl;
 use crate::application::blog_service::ArticleApplication;
 use crate::infrastructure::security::authentication::web::actix::middleware::AuthenticateStateTransform;
 use crate::infrastructure::util::db::db_conn;

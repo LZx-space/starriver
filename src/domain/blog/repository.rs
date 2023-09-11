@@ -1,5 +1,5 @@
-use crate::adapter::api::blog_model::ArticleSummary;
 use crate::domain::blog::aggregate::Article;
+use crate::infrastructure::model::blog::ArticleSummary;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 use sea_orm::error::DbErr;
 use sea_orm::prelude::async_trait::async_trait;

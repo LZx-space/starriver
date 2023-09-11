@@ -1,2 +1,2 @@
-pub mod blog_repository;
-pub mod po;
+pub mod blog;
+pub mod tag;

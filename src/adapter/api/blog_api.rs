@@ -3,7 +3,7 @@ use actix_web::web::{Json, Path, Query};
 use actix_web::{delete, get, post, put, web, Responder};
 use uuid::Uuid;
 
-use crate::adapter::api::blog_model::{ArticleCmd, ArticleVo, TagVo};
+use crate::adapter::api::blog_model::{ArticleCmd, ArticleVo};
 use crate::adapter::assembler::article_assembler::{cmd_2_new_entity, cmd_2_update_entity};
 use crate::infrastructure::model::page::PageQuery;
 use crate::AppState;
@@ -23,13 +23,7 @@ pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Respon
     let vo = ArticleVo {
         title: article.title,
         body: article.body,
-        tags: article
-            .tags
-            .iter()
-            .map(|e| TagVo {
-                name: e.name.clone(),
-            })
-            .collect(),
+        tags: vec![],
     };
     Json(vo)
 }

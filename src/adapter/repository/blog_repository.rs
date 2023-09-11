@@ -3,18 +3,18 @@ use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QuerySelect,
+    SelectColumns,
 };
 use uuid::Uuid;
 
 use crate::adapter::api::blog_model::ArticleSummary;
-use crate::adapter::repository::po::article::Column::Id as ArticleId;
-use crate::domain::blog::aggregate::{Article, ArticleRepository};
-use crate::domain::blog::value_object::Tag;
+use crate::domain::blog::aggregate::Article;
+use crate::domain::blog::repository::ArticleRepository;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 pub use super::po::article::ActiveModel as ArticleModel;
+pub use super::po::article::Column;
 pub use super::po::article::Entity as ArticlePo;
-pub use super::po::tag::Entity as TagPo;
 
 pub struct ArticleRepositoryImpl {
     pub conn: &'static DatabaseConnection,
@@ -24,26 +24,20 @@ pub struct ArticleRepositoryImpl {
 impl ArticleRepository for ArticleRepositoryImpl {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr> {
         let articles = ArticlePo::find()
-            .find_with_related(TagPo)
             .offset(q.page * q.page_size)
             .limit(q.page_size)
             .all(self.conn)
             .await?
             .iter()
-            .map(|e| {
-                let article = &e.0;
-                let tag: Vec<String> = e.1.iter().map(|t| t.name.to_string()).collect();
-                ArticleSummary {
-                    id: article.id,
-                    title: article.title.clone(),
-                    release_date: article.create_at.to_string(),
-                    tags: tag,
-                }
+            .map(|e| ArticleSummary {
+                id: e.id,
+                title: e.title.clone(),
+                release_date: e.create_at.to_string(),
             })
             .collect();
         let record_total = ArticlePo::find()
             .select_only()
-            .column(ArticleId)
+            .column(Column::Id)
             .count(self.conn)
             .await?;
         Ok(PageResult {
@@ -55,33 +49,18 @@ impl ArticleRepository for ArticleRepositoryImpl {
     }
 
     async fn find_one(&self, id: Uuid) -> Result<Option<Article>, DbErr> {
-        let option = ArticlePo::find_by_id(id)
-            .find_with_related(TagPo)
-            .all(self.conn)
-            .await?;
-        if option.is_empty() {
-            Ok(None)
-        } else {
-            Ok(option.first().map(|e| {
-                let article_model = &e.0;
-                let tags: Vec<Tag> =
-                    e.1.iter()
-                        .map(|t| Tag {
-                            id: t.id,
-                            name: t.name.to_string(),
-                        })
-                        .collect();
-                Article {
-                    id,
-                    title: article_model.title.clone(),
-                    body: article_model.body.clone(),
-                    tags,
-                    author_id: article_model.author_id.clone(),
-                    create_at: article_model.create_at.clone(),
-                    modified_records: vec![],
-                }
-            }))
-        }
+        let article = ArticlePo::find_by_id(id)
+            .one(self.conn)
+            .await?
+            .map(|e| Article {
+                id,
+                title: e.title.clone(),
+                body: e.body.clone(),
+                author_id: e.author_id.clone(),
+                create_at: e.create_at.clone(),
+                modified_records: vec![],
+            });
+        Ok(article)
     }
 
     async fn add(&self, e: Article) -> Result<bool, DbErr> {

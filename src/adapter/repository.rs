@@ -1,2 +1,2 @@
-pub mod article_repository;
+pub mod blog_repository;
 pub mod po;

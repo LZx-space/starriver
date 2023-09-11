@@ -12,7 +12,7 @@ use adapter::api::blog_api;
 
 use crate::adapter::api::authentication_api;
 use crate::adapter::repository::article_repository::ArticleRepositoryImpl;
-use crate::application::article_service::ArticleApplication;
+use crate::application::blog_service::ArticleApplication;
 use crate::infrastructure::security::authentication::web::actix::middleware::AuthenticateStateTransform;
 use crate::infrastructure::util::db::db_conn;
 

@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::adapter::api::blog_model::ArticleSummary;
 use crate::adapter::repository::po::article::Column::Id as ArticleId;
-use crate::domain::blog::article::{Article, ArticleRepository};
-use crate::domain::blog::tag::Tag;
+use crate::domain::blog::aggregate::{Article, ArticleRepository};
+use crate::domain::blog::value_object::Tag;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 pub use super::po::article::ActiveModel as ArticleModel;

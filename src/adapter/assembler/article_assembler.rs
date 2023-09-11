@@ -2,7 +2,7 @@ use chrono::Local;
 use uuid::Uuid;
 
 use crate::adapter::api::blog_model::ArticleCmd;
-use crate::domain::blog::article::Article;
+use crate::domain::blog::aggregate::Article;
 
 pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
     Article {

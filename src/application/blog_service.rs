@@ -1,5 +1,5 @@
 use crate::adapter::api::blog_model::ArticleSummary;
-use crate::domain::blog::article::{Article, ArticleRepository};
+use crate::domain::blog::aggregate::{Article, ArticleRepository};
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 use uuid::Uuid;

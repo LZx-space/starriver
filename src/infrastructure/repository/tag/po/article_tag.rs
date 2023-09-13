@@ -16,9 +16,9 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "crate::adapter::repository::blog::po::article::Entity",
+        belongs_to = "crate::infrastructure::repository::blog::po::article::Entity",
         from = "Column::ArticleId",
-        to = "crate::adapter::repository::blog::po::article::Column::Id"
+        to = "crate::infrastructure::repository::blog::po::article::Column::Id"
     )]
     Article,
 

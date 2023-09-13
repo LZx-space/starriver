@@ -1,5 +1,5 @@
 use crate::adapter::api::blog_model::TagVo;
-use crate::adapter::repository::tag::po::tag::Model as Tag;
+use crate::domain::tag::aggregate::Tag;
 
 pub fn po_2_vo(tag: Tag) -> TagVo {
     TagVo { name: tag.name }

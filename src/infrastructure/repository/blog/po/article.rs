@@ -21,18 +21,18 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "crate::adapter::repository::tag::po::tag::Entity")]
+    #[sea_orm(has_many = "crate::infrastructure::repository::tag::po::tag::Entity")]
     Tag,
 }
 
-impl Related<crate::adapter::repository::tag::po::tag::Entity> for Entity {
+impl Related<crate::infrastructure::repository::tag::po::tag::Entity> for Entity {
     fn to() -> RelationDef {
-        crate::adapter::repository::tag::po::article_tag::Relation::Tag.def()
+        crate::infrastructure::repository::tag::po::article_tag::Relation::Tag.def()
     }
 
     fn via() -> Option<RelationDef> {
         Some(
-            crate::adapter::repository::tag::po::article_tag::Relation::Article
+            crate::infrastructure::repository::tag::po::article_tag::Relation::Article
                 .def()
                 .rev(),
         )

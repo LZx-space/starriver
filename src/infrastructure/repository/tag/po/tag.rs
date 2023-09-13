@@ -14,11 +14,11 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "crate::adapter::repository::blog::po::article::Entity")]
+    #[sea_orm(has_many = "crate::infrastructure::repository::blog::po::article::Entity")]
     Article,
 }
 
-impl Related<crate::adapter::repository::blog::po::article::Entity> for Entity {
+impl Related<crate::infrastructure::repository::blog::po::article::Entity> for Entity {
     fn to() -> RelationDef {
         super::article_tag::Relation::Article.def()
     }

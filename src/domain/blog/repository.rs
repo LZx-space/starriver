@@ -12,7 +12,7 @@ pub trait ArticleRepository {
     async fn find_page(&self, query: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr>;
 
     /// 按ID查找
-    async fn find_one(&self, id: Uuid) -> Result<Option<Article>, DbErr>;
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, DbErr>;
 
     /// 新增
     async fn add(&self, e: Article) -> Result<bool, DbErr>;

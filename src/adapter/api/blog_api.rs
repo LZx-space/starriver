@@ -17,12 +17,13 @@ pub async fn page(state: web::Data<AppState>, params: Query<PageQuery>) -> impl 
 
 #[get("/blogs/{id}")]
 pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Responder {
-    let result = state.article_application.find_one(id.into_inner()).await;
+    let result = state.article_application.find_by_id(id.into_inner()).await;
     let option = result.unwrap();
     let article = option.expect("记录不存在");
     let vo = ArticleVo {
         title: article.title,
         body: article.body,
+        state: article.state.to_string(),
         tags: vec![],
     };
     Json(vo)
@@ -44,7 +45,11 @@ pub async fn update(
 ) -> impl Responder {
     let cmd = cmd.into_inner();
     let id = id.into_inner();
-    let article = cmd_2_update_entity(cmd, id, "LZx".to_string());
+    let to_update = state.article_application.find_by_id(id).await.expect("");
+    if to_update.is_none() {
+        ()
+    }
+    let article = cmd_2_update_entity(cmd, to_update.unwrap());
     let result = state.article_application.update(article).await;
     Json(result.unwrap())
 }

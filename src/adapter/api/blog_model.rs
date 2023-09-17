@@ -14,6 +14,8 @@ pub struct ArticleVo {
 
     pub body: String,
 
+    pub state: String,
+
     pub tags: Vec<TagVo>,
 }
 

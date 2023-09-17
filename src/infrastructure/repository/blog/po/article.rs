@@ -1,7 +1,9 @@
 use sea_orm::entity::prelude::*;
 
+use crate::infrastructure::repository::blog::po::state::ArticleState;
+
 /// 文章
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "article")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -11,6 +13,8 @@ pub struct Model {
 
     #[sea_orm(column_type = "Text")]
     pub body: String,
+
+    pub state: ArticleState,
 
     pub author_id: String,
 

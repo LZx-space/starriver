@@ -8,13 +8,12 @@ use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
 use sea_orm::DatabaseConnection;
 
+use adapter::api::authentication_api;
 use adapter::api::blog_api;
-
-use crate::adapter::api::authentication_api;
-use crate::application::blog_service::ArticleApplication;
-use crate::infrastructure::repository::blog::blog_repository::ArticleRepositoryImpl;
-use crate::infrastructure::security::authentication::web::actix::middleware::AuthenticateStateTransform;
-use crate::infrastructure::util::db::db_conn;
+use application::blog_service::ArticleApplication;
+use infrastructure::repository::blog::blog_repository::ArticleRepositoryImpl;
+use infrastructure::security::authentication::web::actix::middleware::AuthenticateStateTransform;
+use infrastructure::util::db::db_conn;
 
 mod adapter;
 mod application;
@@ -77,9 +76,8 @@ fn http_server_bind_addrs() -> (IpAddr, u16) {
 }
 
 /// 应用的各个状态
-///
 pub struct AppState {
-    article_application: ArticleApplication<ArticleRepositoryImpl>,
+    pub(crate) article_application: ArticleApplication<ArticleRepositoryImpl>,
 }
 
 impl AppState {

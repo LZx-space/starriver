@@ -43,7 +43,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
         })
     }
 
-    async fn find_one(&self, id: Uuid) -> Result<Option<Article>, DbErr> {
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, DbErr> {
         let article = ArticlePo::find_by_id(id)
             .one(self.conn)
             .await?
@@ -51,6 +51,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
                 id,
                 title: e.title.clone(),
                 body: e.body.clone(),
+                state: e.state.into(),
                 author_id: e.author_id.clone(),
                 create_at: e.create_at.clone(),
                 modified_records: vec![],
@@ -63,6 +64,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
             id: Set(e.id),
             title: Set(e.title),
             body: Set(e.body),
+            state: Set(Default::default()),
             author_id: Set(e.author_id),
             create_at: Set(Local::now()),
             update_at: Set(None),
@@ -80,13 +82,14 @@ impl ArticleRepository for ArticleRepositoryImpl {
         let exist_one = ArticlePo::find_by_id(e.id)
             .one(self.conn)
             .await?
-            .map(|p| ArticleModel {
-                id: Set(p.id),
-                title: Set(p.title),
-                body: Set(p.body),
-                author_id: Set(p.author_id),
-                create_at: Set(p.create_at),
-                update_at: Set(p.update_at),
+            .map(|model| ArticleModel {
+                id: Set(model.id),
+                title: Set(model.title),
+                body: Set(model.body),
+                state: Default::default(),
+                author_id: Set(model.author_id),
+                create_at: Set(model.create_at),
+                update_at: Set(Some(Local::now())),
             });
         match exist_one {
             None => Ok(false),

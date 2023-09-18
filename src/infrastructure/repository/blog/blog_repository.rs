@@ -73,7 +73,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
         Ok(true)
     }
 
-    async fn delete(&self, id: Uuid) -> Result<bool, DbErr> {
+    async fn delete_by_id(&self, id: Uuid) -> Result<bool, DbErr> {
         let result = ArticlePo::delete_by_id(id).exec(self.conn).await?;
         Ok(result.rows_affected > 0)
     }

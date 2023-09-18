@@ -18,7 +18,7 @@ pub trait ArticleRepository {
     async fn add(&self, e: Article) -> Result<bool, DbErr>;
 
     /// 删除
-    async fn delete(&self, id: Uuid) -> Result<bool, DbErr>;
+    async fn delete_by_id(&self, id: Uuid) -> Result<bool, DbErr>;
 
     /// 修改
     async fn update(&self, e: Article) -> Result<bool, DbErr>;

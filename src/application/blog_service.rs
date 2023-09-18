@@ -34,8 +34,8 @@ where
         result.map_err(|_err| CodedErr::new("B0000".to_string(), _err.to_string()))
     }
 
-    pub async fn delete(&self, id: Uuid) -> Result<bool, CodedErr> {
-        let result = self.repo.delete(id).await;
+    pub async fn delete_by_id(&self, id: Uuid) -> Result<bool, CodedErr> {
+        let result = self.repo.delete_by_id(id).await;
         result.map_err(|_err| CodedErr::new("B0000".to_string(), _err.to_string()))
     }
 

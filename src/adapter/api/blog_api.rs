@@ -58,7 +58,7 @@ pub async fn update(
 pub async fn delete(state: web::Data<AppState>, id: Path<Uuid>) -> impl Responder {
     state
         .article_application
-        .delete(id.into_inner())
+        .delete_by_id(id.into_inner())
         .await
         .expect("TODO: panic message");
     (Json("1"), StatusCode::UNAUTHORIZED)

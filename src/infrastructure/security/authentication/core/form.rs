@@ -1,38 +1,67 @@
-use std::fmt::Debug;
-
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 use crate::infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
-use crate::infrastructure::security::authentication::core::credentials::Credentials;
-use crate::infrastructure::security::authentication::core::credentials_repository::CredentialsRepository;
-use crate::infrastructure::security::authentication::core::principal::Principal;
+use crate::infrastructure::security::authentication::core::principal::{
+    Principal, SimpleAuthority,
+};
+use crate::infrastructure::security::authentication::core::proof::{Proof, RequestDetails};
 
-/// 用户名密码类型的凭证
-#[derive(Debug, Serialize, Deserialize)]
-pub struct UsernamePasswordCredentials {
+pub struct UsernamePasswordProof {
     username: String,
     password: String,
 }
 
-impl UsernamePasswordCredentials {
-    pub fn new(username: String, password: String) -> Self {
-        UsernamePasswordCredentials { username, password }
+impl Proof for UsernamePasswordProof {
+    type Id = String;
+
+    fn id(&self) -> &Self::Id {
+        &self.username
     }
 
-    pub fn username(&self) -> &str {
-        &self.username
+    fn request_details() -> RequestDetails {
+        RequestDetails {}
     }
 }
 
-impl Credentials for UsernamePasswordCredentials {}
+impl UsernamePasswordProof {
+    pub fn new(username: String, password: String) -> Self {
+        UsernamePasswordProof { username, password }
+    }
+}
 
-pub struct UserCredentialsRepository {}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UsernamePasswordPrincipal {
+    username: String,
+    password: String,
+}
 
-impl CredentialsRepository<String, UsernamePasswordCredentials> for UserCredentialsRepository {
-    fn find_by_id(&self, credentials_id: &String) -> Option<UsernamePasswordCredentials> {
-        let credentials = UsernamePasswordCredentials {
+impl Principal for UsernamePasswordPrincipal {
+    type Id = String;
+    type Authority = SimpleAuthority;
+
+    fn id(&self) -> &Self::Id {
+        &self.username
+    }
+
+    fn authorities(&self) -> Vec<&Self::Authority> {
+        vec![]
+    }
+}
+
+impl UsernamePasswordPrincipal {
+    fn password(&self) -> &String {
+        &self.password
+    }
+}
+
+pub struct UserPrincipalRepository {}
+
+impl UserPrincipalRepository {
+    fn find_by_id(&self, credentials_id: &String) -> Option<UsernamePasswordPrincipal> {
+        let credentials = UsernamePasswordPrincipal {
             username: credentials_id.clone(),
             password: "password".to_string(),
         };
@@ -40,35 +69,30 @@ impl CredentialsRepository<String, UsernamePasswordCredentials> for UserCredenti
     }
 }
 
-pub struct UsernamePasswordCredentialsAuthenticator {
-    credentials_repository: Box<dyn CredentialsRepository<String, UsernamePasswordCredentials>>,
+pub struct UsernamePasswordPrincipalAuthenticator {
+    principal_repository: UserPrincipalRepository,
 }
 
-impl UsernamePasswordCredentialsAuthenticator {
-    pub fn new(
-        repo: Box<dyn CredentialsRepository<String, UsernamePasswordCredentials>>,
-    ) -> UsernamePasswordCredentialsAuthenticator {
-        UsernamePasswordCredentialsAuthenticator {
-            credentials_repository: repo,
+impl UsernamePasswordPrincipalAuthenticator {
+    pub fn new(repo: UserPrincipalRepository) -> UsernamePasswordPrincipalAuthenticator {
+        UsernamePasswordPrincipalAuthenticator {
+            principal_repository: repo,
         }
     }
 }
 
-impl Authenticator<UsernamePasswordCredentials> for UsernamePasswordCredentialsAuthenticator {
-    fn authenticate(
-        &self,
-        principal: &mut Principal<UsernamePasswordCredentials>,
-    ) -> Result<(), AuthenticationError> {
-        let credentials = principal.credentials();
-        let credentials_in_repo = self
-            .credentials_repository
-            .find_by_id(&credentials.username);
-        match credentials_in_repo {
+impl Authenticator for UsernamePasswordPrincipalAuthenticator {
+    type Proof = UsernamePasswordProof;
+    type Principal = UsernamePasswordPrincipal;
+
+    fn prove(&self, proof: &Self::Proof) -> Result<Self::Principal, AuthenticationError> {
+        let username = proof.id();
+        let option = self.principal_repository.find_by_id(username);
+        match option {
             None => Err(AuthenticationError::UsernameNotFound),
-            Some(credentials_in_repo) => {
-                if credentials_in_repo.password == credentials.password {
-                    principal.set_authenticated();
-                    Ok(())
+            Some(principal) => {
+                if proof.password == principal.password {
+                    Ok(principal)
                 } else {
                     Err(AuthenticationError::BadPassword)
                 }

@@ -7,22 +7,19 @@ use serde::Deserialize;
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::Authenticator;
 use crate::infrastructure::security::authentication::core::form::{
-    UserCredentialsRepository, UsernamePasswordCredentials,
-    UsernamePasswordCredentialsAuthenticator,
+    UserPrincipalRepository, UsernamePasswordPrincipal, UsernamePasswordPrincipalAuthenticator,
+    UsernamePasswordProof,
 };
-use crate::infrastructure::security::authentication::core::principal::{ClientDetails, Principal};
+use crate::infrastructure::security::authentication::core::principal::Principal;
 
 #[post("/login")]
 pub async fn login_in(session: Session, params: Form<FormLoginCmd>) -> impl Responder {
     let login_params = params.into_inner();
-    let repository = UserCredentialsRepository {};
-    let authenticator = UsernamePasswordCredentialsAuthenticator::new(Box::new(repository));
-
-    let credentials =
-        UsernamePasswordCredentials::new(login_params.username, login_params.password);
-    let mut principal = Principal::new(credentials, ClientDetails {});
-    match authenticator.authenticate(&mut principal) {
-        Ok(_) => {
+    let proof = UsernamePasswordProof::new(login_params.username, login_params.password);
+    let repository = UserPrincipalRepository {};
+    let authenticator = UsernamePasswordPrincipalAuthenticator::new(repository);
+    match authenticator.authenticate(&proof) {
+        Ok(principal) => {
             session
                 .insert("authenticated_principal".to_string(), principal)
                 .expect("TODO: panic message");
@@ -38,11 +35,10 @@ pub async fn login_in(session: Session, params: Form<FormLoginCmd>) -> impl Resp
 
 #[get("/auth")]
 pub async fn validate_authenticated(session: Session) -> impl Responder {
-    match session.get::<Principal<UsernamePasswordCredentials>>("authenticated_principal") {
+    match session.get::<UsernamePasswordPrincipal>("authenticated_principal") {
         Ok(p) => match p {
             Some(principal) => {
-                let c = principal.credentials();
-                let x = c.username();
+                let x = principal.id();
                 Json(x.clone().to_string())
             }
             None => Json("false".to_string()),

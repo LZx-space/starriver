@@ -1,12 +1,21 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::infrastructure::security::authentication::core::credentials::Credentials;
 use crate::infrastructure::security::authentication::core::principal::Principal;
+use crate::infrastructure::security::authentication::core::proof::Proof;
 
-pub trait Authenticator<T: Credentials> {
+pub trait Authenticator {
+    type Proof: Proof;
+
+    type Principal: Principal;
+
     /// 认证
-    fn authenticate(&self, principal: &mut Principal<T>) -> Result<(), AuthenticationError>;
+    fn authenticate(&self, proof: &Self::Proof) -> Result<Self::Principal, AuthenticationError> {
+        // todo validate?
+        self.prove(proof)
+    }
+
+    fn prove(&self, proof: &Self::Proof) -> Result<Self::Principal, AuthenticationError>;
 }
 
 /// 认证错误
@@ -26,6 +35,6 @@ impl Error for AuthenticationError {}
 
 impl Display for AuthenticationError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "authenticate error - {}", self)
+        write!(f, "authenticate error-{}", self)
     }
 }

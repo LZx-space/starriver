@@ -1,33 +1,43 @@
-use std::any::{Any, TypeId};
+use std::any::Any;
 use std::fmt::Error;
 
+use serde::{Serialize, Serializer};
+
 pub struct Dictionary {
-    entry_vec: Vec<DictionaryEntry>,
+    // entry_vec: Vec<DictionaryEntry>,
 }
 
 impl Dictionary {}
 
-pub struct DictionaryEntry {
-    type_id: TypeId,
-    value: String,
+pub struct DictionaryEntry<T> {
+    id: String,
+    value: T,
+    comment: String,
 }
 
-impl DictionaryEntry {
-    pub fn new(type_id: TypeId, value: String) -> Result<Self, Error> {
-        // validate
-        Ok(DictionaryEntry { type_id, value })
-    }
-
-    fn parse(&self) -> Box<dyn Any> {
-        let i = self.value.parse::<i32>().expect("12313");
-        Box::new(i)
+impl<T: Serialize> DictionaryEntry<T> {
+    pub fn new(id: String, value: T, comment: String) -> Result<Self, Error> {
+        Ok(DictionaryEntry { id, value, comment })
     }
 }
 
 #[test]
 fn test_de() {
-    let entry = DictionaryEntry::new(TypeId::of::<bool>(), "0".to_string());
-    println!("------------------1");
-    let n = entry.expect("").parse();
-    println!("------------------{:?}", n);
+    #[derive(Serialize)]
+    struct A {
+        a: String,
+        b: u32,
+    }
+    let result = serde_json::to_string_pretty(&A {
+        a: "abc".to_string(),
+        b: 100,
+    })
+    .expect("");
+    println!("str->{}", result);
+    println!("0-{:?}", result.type_id());
+    println!("1-{:?}", 1.type_id());
+    println!("2-{:?}", 'a'.type_id());
+    println!("3-{:?}", "abc".to_string().type_id());
+    println!("4-{:?}", true.type_id());
+    println!("5-{:?}", 2f32.type_id());
 }

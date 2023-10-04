@@ -33,8 +33,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let app_state = AppState::new(conn);
         App::new()
-            .wrap(middleware::Logger::default())
-            .wrap(middleware::ErrorHandlers::new())
+            .wrap(AuthenticateStateTransform {})
             .wrap(
                 actix_session::SessionMiddleware::builder(
                     CookieSessionStore::default(),
@@ -43,7 +42,8 @@ async fn main() -> std::io::Result<()> {
                 .cookie_secure(false)
                 .build(),
             )
-            .wrap(AuthenticateStateTransform {})
+            .wrap(middleware::Logger::default())
+            .wrap(middleware::ErrorHandlers::new())
             .app_data(web::Data::new(app_state))
             .service(authentication_api::login_in)
             .service(authentication_api::validate_authenticated)

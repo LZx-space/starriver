@@ -6,18 +6,15 @@ use serde::Deserialize;
 
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::Authenticator;
-use crate::infrastructure::security::authentication::core::form::{
-    UserPrincipalRepository, UsernamePasswordPrincipal, UsernamePasswordPrincipalAuthenticator,
-    UsernamePasswordProof,
-};
 use crate::infrastructure::security::authentication::core::principal::Principal;
+use crate::infrastructure::security::authentication::user_principal::{User, UserAuthenticator, UserProof, UserRepository};
 
 #[post("/login")]
 pub async fn login_in(session: Session, params: Form<FormLoginCmd>) -> impl Responder {
     let login_params = params.into_inner();
-    let proof = UsernamePasswordProof::new(login_params.username, login_params.password);
-    let repository = UserPrincipalRepository {};
-    let authenticator = UsernamePasswordPrincipalAuthenticator::new(repository);
+    let proof = UserProof::new(login_params.username, login_params.password);
+    let repository = UserRepository {};
+    let authenticator = UserAuthenticator::new(repository);
     match authenticator.authenticate(&proof) {
         Ok(principal) => {
             session
@@ -35,7 +32,7 @@ pub async fn login_in(session: Session, params: Form<FormLoginCmd>) -> impl Resp
 
 #[get("/auth")]
 pub async fn validate_authenticated(session: Session) -> impl Responder {
-    match session.get::<UsernamePasswordPrincipal>("authenticated_principal") {
+    match session.get::<User>("authenticated_principal") {
         Ok(p) => match p {
             Some(principal) => {
                 let x = principal.id();

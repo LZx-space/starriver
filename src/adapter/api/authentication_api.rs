@@ -7,7 +7,9 @@ use serde::Deserialize;
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::Authenticator;
 use crate::infrastructure::security::authentication::core::principal::Principal;
-use crate::infrastructure::security::authentication::user_principal::{User, UserAuthenticator, UserProof, UserRepository};
+use crate::infrastructure::security::authentication::user_principal::{
+    User, UserAuthenticator, UserProof, UserRepository,
+};
 
 #[post("/login")]
 pub async fn login_in(session: Session, params: Form<FormLoginCmd>) -> impl Responder {

@@ -1,6 +1,31 @@
 use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHasher, PasswordVerifier};
+use argon2::{
+    password_hash::errors::Result, Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+};
 use std::time::SystemTime;
+
+pub struct PasswordUtils<'a> {
+    argon2: Argon2<'a>,
+}
+
+impl<'a> Default for PasswordUtils<'a> {
+    fn default() -> Self {
+        PasswordUtils {
+            argon2: Default::default(),
+        }
+    }
+}
+
+impl PasswordUtils {
+    pub fn hash(&self, salt: &str, password: &str) -> Result<PasswordHash> {
+        let salt_string = SaltString::encode_b64(salt.as_bytes());
+        self.argon2.hash_password(password.as_bytes(), &salt_string)
+    }
+
+    pub fn verify(&self, password: &str, hash: &PasswordHash<'_>) -> Result<()> {
+        self.argon2.verify_password(password.as_bytes(), &hash)
+    }
+}
 
 #[test]
 pub fn argon2_test() {

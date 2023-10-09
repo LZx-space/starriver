@@ -1,5 +1,8 @@
 use std::fmt::Debug;
+use std::str::FromStr;
 
+use argon2::password_hash::PasswordHashString;
+use argon2::PasswordVerifier;
 use serde::{Deserialize, Serialize};
 
 use crate::infrastructure::security::authentication::core::authenticator::{
@@ -9,6 +12,7 @@ use crate::infrastructure::security::authentication::core::principal::{
     Principal, SimpleAuthority,
 };
 use crate::infrastructure::security::authentication::core::proof::{Proof, RequestDetails};
+use crate::infrastructure::security::authentication::util::{hash_password, verify_password};
 
 pub struct UserProof {
     username: String,
@@ -62,11 +66,13 @@ pub struct UserRepository {}
 
 impl UserRepository {
     fn find_by_id(&self, user_id: &String) -> Option<User> {
-        let credentials = User {
-            username: user_id.clone(),
-            password: "password".to_string(),
-        };
-        Some(credentials)
+        match hash_password("password", "ABCDEFGH") {
+            Ok(hash_string) => Some(User {
+                username: user_id.clone(),
+                password: hash_string.to_string(),
+            }),
+            Err(_) => None,
+        }
     }
 }
 
@@ -88,14 +94,19 @@ impl Authenticator for UserAuthenticator {
 
     fn prove(&self, proof: &Self::Proof) -> Result<Self::Principal, AuthenticationError> {
         let username = proof.id();
-        let option = self.user_repository.find_by_id(username);
-        match option {
+        let user = self.user_repository.find_by_id(username);
+        match user {
             None => Err(AuthenticationError::UsernameNotFound),
             Some(user) => {
-                if proof.password == user.password {
-                    Ok(user)
-                } else {
-                    Err(AuthenticationError::BadPassword)
+                let password_hash_string = PasswordHashString::new(user.password().as_str())
+                    .map_err(|e| {
+                        println!("--->{}", e);
+                        AuthenticationError::BadPassword
+                    })?;
+                let result = verify_password(proof.password.as_str(), password_hash_string);
+                match result {
+                    Ok(_) => Ok(user),
+                    Err(_) => Err(AuthenticationError::BadPassword),
                 }
             }
         }

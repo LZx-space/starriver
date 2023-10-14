@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>stariver</title>
+    <link href="https://unpkg.com/trix@2.0.0/dist/trix.css" rel="stylesheet" type="text/css">
+    <script src="https://unpkg.com/trix@2.0.0/dist/trix.umd.min.js" type="text/javascript"></script>
 </head>
 <body>
-
+<form>
+    <input id="editor" name="content" type="hidden">
+    <trix-editor input="editor"></trix-editor>
+</form>
 </body>
 </html>

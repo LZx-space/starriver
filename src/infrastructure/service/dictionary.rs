@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::fmt::Error;
 
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 
 pub struct Dictionary {
     // entry_vec: Vec<DictionaryEntry>,
@@ -32,7 +32,7 @@ fn test_de() {
         a: "abc".to_string(),
         b: 100,
     })
-    .expect("");
+        .expect("");
     println!("str->{}", result);
     println!("0-{:?}", result.type_id());
     println!("1-{:?}", 1.type_id());

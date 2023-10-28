@@ -1,8 +1,5 @@
 use std::fmt::Debug;
-use std::str::FromStr;
 
-use argon2::password_hash::PasswordHashString;
-use argon2::PasswordVerifier;
 use serde::{Deserialize, Serialize};
 
 use crate::infrastructure::security::authentication::core::authenticator::{
@@ -12,7 +9,9 @@ use crate::infrastructure::security::authentication::core::principal::{
     Principal, SimpleAuthority,
 };
 use crate::infrastructure::security::authentication::core::proof::{Proof, RequestDetails};
-use crate::infrastructure::security::authentication::util::{hash_password, verify_password};
+use crate::infrastructure::security::authentication::util::{
+    hash_password, to_password_hash_string_struct, verify_password,
+};
 
 pub struct UserProof {
     username: String,
@@ -98,9 +97,9 @@ impl Authenticator for UserAuthenticator {
         match user {
             None => Err(AuthenticationError::UsernameNotFound),
             Some(user) => {
-                let password_hash_string = PasswordHashString::new(user.password().as_str())
-                    .map_err(|e| {
-                        println!("--->{}", e);
+                let password_hash_string =
+                    to_password_hash_string_struct(&user.password).map_err(|e| {
+                        println!("{}'s password was not hashed: {}", user.username, e);
                         AuthenticationError::BadPassword
                     })?;
                 let result = verify_password(proof.password.as_str(), password_hash_string);

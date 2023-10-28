@@ -2,6 +2,10 @@ use argon2::password_hash::{PasswordHashString, SaltString};
 use argon2::{password_hash, Argon2, PasswordHasher, PasswordVerifier};
 use password_hash::errors::Result;
 
+pub fn to_password_hash_string_struct(hashed_password: &String) -> Result<PasswordHashString> {
+    PasswordHashString::new(hashed_password.as_str())
+}
+
 pub fn hash_password(password: &str, salt: &str) -> Result<PasswordHashString> {
     let argon2 = Argon2::default();
     let salt_string = SaltString::encode_b64(salt.as_bytes())?;

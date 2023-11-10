@@ -56,7 +56,11 @@ impl Principal for User {
 }
 
 impl User {
-    fn password(&self) -> &String {
+    pub fn username(&self) -> &String {
+        &self.username
+    }
+
+    pub fn password(&self) -> &String {
         &self.password
     }
 }
@@ -97,9 +101,9 @@ impl Authenticator for UserAuthenticator {
         match user {
             None => Err(AuthenticationError::UsernameNotFound),
             Some(user) => {
-                let password_hash_string =
-                    to_password_hash_string_struct(&user.password).map_err(|e| {
-                        println!("{}'s password was not hashed: {}", user.username, e);
+                let password_hash_string = to_password_hash_string_struct(user.password())
+                    .map_err(|e| {
+                        println!("{}'s password was not hashed: {}", user.username(), e);
                         AuthenticationError::BadPassword
                     })?;
                 let result = verify_password(proof.password.as_str(), password_hash_string);

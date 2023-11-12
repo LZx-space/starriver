@@ -37,7 +37,7 @@ pub trait RowQuery {
 pub trait ResultHandler {
     type Row: Row;
 
-    type Result: Result;
+    type Result: Result<Row = Self::Row>;
     fn handle(&self, default_rows: Vec<Self::Row>) -> Self::Result;
 }
 

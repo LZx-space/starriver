@@ -1,5 +1,6 @@
 pub trait Proof {
     type Id;
+
     fn id(&self) -> &Self::Id;
 
     /// 请求的详情，有时候需要用其来辅助认证的过程

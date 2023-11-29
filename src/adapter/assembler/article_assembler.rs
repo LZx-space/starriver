@@ -1,5 +1,5 @@
 use chrono::Local;
-use uuid::Uuid;
+use uuid::{NoContext, Timestamp, Uuid};
 
 use crate::adapter::api::blog_model::ArticleCmd;
 use crate::domain::blog::aggregate::Article;
@@ -7,7 +7,7 @@ use crate::domain::blog::value_object::State::Draft;
 
 pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
     Article {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v7(Timestamp::now(NoContext)),
         title: cmd.title,
         body: cmd.body,
         state: Draft,

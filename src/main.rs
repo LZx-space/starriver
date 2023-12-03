@@ -12,7 +12,7 @@ use adapter::api::authentication_api;
 use adapter::api::blog_api;
 use application::blog_service::ArticleApplication;
 use infrastructure::repository::blog::blog_repository::ArticleRepositoryImpl;
-use infrastructure::security::authentication::web::actix::middleware::AuthenticateStateTransform;
+use infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use infrastructure::util::db::db_conn;
 
 mod adapter;
@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let app_state = AppState::new(conn);
         App::new()
-            .wrap(AuthenticateStateTransform {})
+            .wrap(AuthenticationTransform {})
             .wrap(
                 actix_session::SessionMiddleware::builder(
                     CookieSessionStore::default(),
@@ -45,7 +45,6 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             .wrap(middleware::ErrorHandlers::new())
             .app_data(web::Data::new(app_state))
-            .service(authentication_api::login_in)
             .service(authentication_api::validate_authenticated)
             .service(blog_api::page)
             .service(blog_api::find_one)

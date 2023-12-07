@@ -38,26 +38,21 @@ impl<S> Service<ServiceRequest> for AuthenticationService<S>
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let service = Rc::clone(&self.service);
         Box::pin(async move {
-            if is_login_request(&mut req) {
-                let form_login_cmd = extract_params(&mut req).await;
-                return match form_login_cmd {
-                    Ok(cmd) => {
-                        let proof = UserProof::new(cmd.username.clone(), cmd.password.clone());
-                        let repository = UserRepository {};
-                        let authenticator = UserAuthenticator::new(repository);
-                        match authenticator.authenticate(&proof) {
-                            Ok(principal) => success_handle(&mut req, principal),
-                            Err(e) => failure_handle(&mut req, e),
-                        }
-                    }
-                    Err(err) => Err(err),
+            if is_login_request(&req) {
+                let form_login_cmd = extract_params(&mut req).await?;
+                let proof = UserProof::new(
+                    form_login_cmd.username.clone(),
+                    form_login_cmd.password.clone(),
+                );
+                let repository = UserRepository {};
+                let authenticator = UserAuthenticator::new(repository);
+                return match authenticator.authenticate(&proof) {
+                    Ok(principal) => success_handle(&req, principal),
+                    Err(e) => failure_handle(&req, e),
                 };
             }
-            if !is_principal_authenticated(&mut req) {
-                return Ok(ServiceResponse::from_err(
-                    ErrUnauthorized {},
-                    req.request().to_owned(),
-                ));
+            if !is_principal_authenticated(&req) {
+                return un_authenticated_handle(&req);
             }
             service.call(req).await
         })
@@ -89,7 +84,7 @@ pub struct FormLoginCmd {
     pub password: String,
 }
 
-fn is_login_request(req: &mut ServiceRequest) -> bool {
+fn is_login_request(req: &ServiceRequest) -> bool {
     req.uri().path().eq("/login") && req.method().eq(&Method::POST)
 }
 
@@ -99,28 +94,29 @@ async fn extract_params(req: &mut ServiceRequest) -> Result<Form<FormLoginCmd>, 
     Form::<FormLoginCmd>::from_request(&http_req, payload).await
 }
 
-fn is_principal_authenticated(req: &mut ServiceRequest) -> bool {
+fn is_principal_authenticated(req: &ServiceRequest) -> bool {
     req.cookie("id").is_some()
 }
 
-fn success_handle(req: &mut ServiceRequest, principal: User) -> Result<ServiceResponse, Error> {
-    return match req.get_session()
+fn un_authenticated_handle(req: &ServiceRequest) -> Result<ServiceResponse, Error> {
+    Ok(ServiceResponse::from_err(
+        ErrUnauthorized {},
+        req.request().to_owned(),
+    ))
+}
+
+fn success_handle(req: &ServiceRequest, principal: User) -> Result<ServiceResponse, Error> {
+    req.get_session()
         .insert("authenticated_principal".to_string(), principal)
-        .map_err(|e| { Error::from(e) }) {
-        Ok(_) => {
-            Ok(ServiceResponse::new(
-                req.request().to_owned(),
-                HttpResponse::new(StatusCode::OK),
-            ))
-        }
-        Err(e) => {
-            Err(Error::from(e))
-        }
-    };
+        .map_err(|e| Error::from(e))?;
+    Ok(ServiceResponse::new(
+        req.request().to_owned(),
+        HttpResponse::new(StatusCode::OK),
+    ))
 }
 
 fn failure_handle(
-    req: &mut ServiceRequest,
+    req: &ServiceRequest,
     e: AuthenticationError,
 ) -> Result<ServiceResponse, Error> {
     let err = CodedErr::new("A00001".to_string(), e.to_string());

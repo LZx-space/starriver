@@ -1,12 +1,11 @@
 use actix_session::Session;
-use actix_web::web::Json;
 use actix_web::{get, Responder};
+use actix_web::web::Json;
 
-use crate::infrastructure::security::authentication::core::authenticator::Authenticator;
 use crate::infrastructure::security::authentication::core::principal::Principal;
 use crate::infrastructure::security::authentication::user_principal::User;
 
-#[get("/auth")]
+#[get("/session/user")]
 pub async fn validate_authenticated(session: Session) -> impl Responder {
     match session.get::<User>("authenticated_principal") {
         Ok(p) => match p {

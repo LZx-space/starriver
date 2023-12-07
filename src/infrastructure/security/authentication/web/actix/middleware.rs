@@ -1,13 +1,13 @@
-use std::future::{ready, Future, Ready};
+use std::future::{Future, ready, Ready};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use actix_session::SessionExt;
+use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
-use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use serde::Deserialize;
 
 use crate::infrastructure::model::err::CodedErr;
@@ -24,12 +24,12 @@ pub struct AuthenticationService<S> {
 }
 
 impl<S> Service<ServiceRequest> for AuthenticationService<S>
-where
-    S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
+    where
+        S: Service<ServiceRequest, Response=ServiceResponse, Error=Error> + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Future = Pin<Box<dyn Future<Output=Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)
@@ -53,7 +53,7 @@ where
                     Err(err) => Err(err),
                 };
             }
-            if is_principal_authenticated(&mut req) {
+            if !is_principal_authenticated(&mut req) {
                 return Ok(ServiceResponse::from_err(
                     ErrUnauthorized {},
                     req.request().to_owned(),
@@ -64,47 +64,11 @@ where
     }
 }
 
-fn is_login_request(mut req: &mut ServiceRequest) -> bool {
-    req.uri().path().eq("/login") && req.method().eq(&Method::POST)
-}
-
-async fn extract_params(req: &mut ServiceRequest) -> Result<Form<FormLoginCmd>, Error> {
-    let http_req = req.request().clone();
-    let payload = &mut req.take_payload();
-    Form::<FormLoginCmd>::from_request(&http_req, payload).await
-}
-
-fn is_principal_authenticated(mut req: &mut ServiceRequest) -> bool {
-    req.cookie("id").is_none()
-}
-
-fn success_handle(mut req: &mut ServiceRequest, principal: User) -> Result<ServiceResponse, Error> {
-    req.get_session()
-        .insert("authenticated_principal".to_string(), principal)
-        .expect("TODO: panic message");
-    Ok(ServiceResponse::new(
-        req.request().to_owned(),
-        HttpResponse::new(StatusCode::OK),
-    ))
-}
-
-fn failure_handle(
-    mut req: &mut ServiceRequest,
-    e: AuthenticationError,
-) -> Result<ServiceResponse, Error> {
-    let err = CodedErr::new("A00001".to_string(), e.to_string());
-    let status_code = err.determine_http_status();
-    Ok(ServiceResponse::new(
-        req.request().to_owned(),
-        HttpResponse::new(status_code),
-    ))
-}
-
 pub struct AuthenticationTransform {}
 
 impl<S> Transform<S, ServiceRequest> for AuthenticationTransform
-where
-    S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
+    where
+        S: Service<ServiceRequest, Response=ServiceResponse, Error=Error> + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
@@ -123,4 +87,46 @@ where
 pub struct FormLoginCmd {
     pub username: String,
     pub password: String,
+}
+
+fn is_login_request(req: &mut ServiceRequest) -> bool {
+    req.uri().path().eq("/login") && req.method().eq(&Method::POST)
+}
+
+async fn extract_params(req: &mut ServiceRequest) -> Result<Form<FormLoginCmd>, Error> {
+    let http_req = req.request().clone();
+    let payload = &mut req.take_payload();
+    Form::<FormLoginCmd>::from_request(&http_req, payload).await
+}
+
+fn is_principal_authenticated(req: &mut ServiceRequest) -> bool {
+    req.cookie("id").is_some()
+}
+
+fn success_handle(req: &mut ServiceRequest, principal: User) -> Result<ServiceResponse, Error> {
+    return match req.get_session()
+        .insert("authenticated_principal".to_string(), principal)
+        .map_err(|e| { Error::from(e) }) {
+        Ok(_) => {
+            Ok(ServiceResponse::new(
+                req.request().to_owned(),
+                HttpResponse::new(StatusCode::OK),
+            ))
+        }
+        Err(e) => {
+            Err(Error::from(e))
+        }
+    };
+}
+
+fn failure_handle(
+    req: &mut ServiceRequest,
+    e: AuthenticationError,
+) -> Result<ServiceResponse, Error> {
+    let err = CodedErr::new("A00001".to_string(), e.to_string());
+    let status_code = err.determine_http_status();
+    Ok(ServiceResponse::new(
+        req.request().to_owned(),
+        HttpResponse::new(status_code),
+    ))
 }

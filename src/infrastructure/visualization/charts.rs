@@ -1,6 +1,4 @@
-use std::fmt::{Debug, Display, Formatter};
 use std::marker::PhantomData;
-use std::ops::Add;
 
 pub struct Charts<Q, T, U> {
     result_handler: U,
@@ -53,6 +51,10 @@ pub trait ResultHandler {
 
 #[test]
 pub fn test() {
+    use std::fmt::Debug;
+    use std::fmt::Formatter;
+    use std::ops::Add;
+
     struct TestRow {
         label: String,
 

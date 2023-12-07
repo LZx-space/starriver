@@ -21,10 +21,6 @@ pub trait Authenticator {
 /// 认证错误
 #[derive(Debug)]
 pub enum AuthenticationError {
-    /// 用户名参数未发现
-    ParamUsernameNotFound,
-    /// 密码参数未发现
-    ParamPasswordNotFound,
     /// 用户名未发现
     UsernameNotFound,
     /// 凭证错误

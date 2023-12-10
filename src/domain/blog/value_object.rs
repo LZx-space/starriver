@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use crate::domain::blog::value_object::State::Draft;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -12,8 +13,8 @@ impl Default for State {
     }
 }
 
-impl ToString for State {
-    fn to_string(&self) -> String {
-        "aa".to_string()
+impl Display for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", "aa".to_string())
     }
 }

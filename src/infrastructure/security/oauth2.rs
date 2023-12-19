@@ -1,1 +1,2 @@
-pub mod oauth2_client;
+pub mod authorization_server;
+pub mod specification;

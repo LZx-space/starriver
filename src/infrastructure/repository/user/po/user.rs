@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
+use sea_orm::prelude::DateTimeLocal;
 use sea_orm::DerivePrimaryKey;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
-use sea_orm::prelude::DateTimeLocal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

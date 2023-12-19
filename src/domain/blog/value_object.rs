@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use crate::domain::blog::value_object::State::Draft;
+use std::fmt::Display;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum State {

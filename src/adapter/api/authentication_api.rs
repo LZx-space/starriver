@@ -1,6 +1,6 @@
 use actix_session::Session;
-use actix_web::{get, Responder};
 use actix_web::web::Json;
+use actix_web::{get, Responder};
 
 use crate::infrastructure::security::authentication::core::principal::Principal;
 use crate::infrastructure::security::authentication::user_principal::User;

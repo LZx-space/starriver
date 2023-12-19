@@ -1,13 +1,13 @@
-use std::future::{Future, ready, Ready};
+use std::future::{ready, Future, Ready};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use actix_session::SessionExt;
-use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
+use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use serde::Deserialize;
 
 use crate::infrastructure::model::err::CodedErr;
@@ -24,12 +24,12 @@ pub struct AuthenticationService<S> {
 }
 
 impl<S> Service<ServiceRequest> for AuthenticationService<S>
-    where
-        S: Service<ServiceRequest, Response=ServiceResponse, Error=Error> + 'static,
+where
+    S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
-    type Future = Pin<Box<dyn Future<Output=Result<Self::Response, Self::Error>>>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)
@@ -62,8 +62,8 @@ impl<S> Service<ServiceRequest> for AuthenticationService<S>
 pub struct AuthenticationTransform {}
 
 impl<S> Transform<S, ServiceRequest> for AuthenticationTransform
-    where
-        S: Service<ServiceRequest, Response=ServiceResponse, Error=Error> + 'static,
+where
+    S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
@@ -115,10 +115,7 @@ fn success_handle(req: &ServiceRequest, principal: User) -> Result<ServiceRespon
     ))
 }
 
-fn failure_handle(
-    req: &ServiceRequest,
-    e: AuthenticationError,
-) -> Result<ServiceResponse, Error> {
+fn failure_handle(req: &ServiceRequest, e: AuthenticationError) -> Result<ServiceResponse, Error> {
     let err = CodedErr::new("A00001".to_string(), e.to_string());
     let status_code = err.determine_http_status();
     Ok(ServiceResponse::new(

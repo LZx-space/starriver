@@ -1,7 +1,7 @@
 use std::fmt::Error;
 
-use sea_orm::DatabaseConnection;
 use sea_orm::prelude::async_trait::async_trait;
+use sea_orm::DatabaseConnection;
 
 use crate::domain::user::aggregate::User;
 use crate::domain::user::repository::UserRepository;

@@ -15,7 +15,7 @@ opt-level = 0
 
 [dependencies]
 ferris-says = "0.3.1"
-actix-web = "4.4.0"
+actix-web = "4.4.1"
 actix-web-httpauth = "0.8.1"
 actix-session = { version = "0.8.0", features = ["cookie-session"] }
 argon2 = "0.5.2"

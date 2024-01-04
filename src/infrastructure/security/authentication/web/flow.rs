@@ -13,11 +13,12 @@ pub trait AuthenticationFlow {
 
     type Principal: Principal;
 
-    type ProofOutput: Future<Output=Result<Self::Proof, AuthenticationError>>;
+    type ProofOutput: Future<Output = Result<Self::Proof, AuthenticationError>>;
 
     fn is_authenticated(&self, req: Self::Request) -> bool;
 
-    fn on_unauthenticated(&self, req: Self::Request) -> Result<Self::Response, AuthenticationError>;
+    fn on_unauthenticated(&self, req: Self::Request)
+        -> Result<Self::Response, AuthenticationError>;
 
     fn is_authenticate_request(&self, req: Self::Request) -> bool;
 

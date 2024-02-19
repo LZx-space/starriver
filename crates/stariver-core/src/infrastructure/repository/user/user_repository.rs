@@ -1,6 +1,5 @@
 use std::fmt::Error;
 
-use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 
 use crate::domain::user::aggregate::User;
@@ -11,7 +10,6 @@ pub struct UserRepositoryImpl {
     pub conn: &'static DatabaseConnection,
 }
 
-#[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn insert(&self, user: User) -> Result<bool, Error> {
         todo!()

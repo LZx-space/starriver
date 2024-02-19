@@ -1,5 +1,4 @@
 use chrono::Local;
-use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QuerySelect,
@@ -19,7 +18,6 @@ pub struct ArticleRepositoryImpl {
     pub conn: &'static DatabaseConnection,
 }
 
-#[async_trait]
 impl ArticleRepository for ArticleRepositoryImpl {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr> {
         let articles = ArticlePo::find()

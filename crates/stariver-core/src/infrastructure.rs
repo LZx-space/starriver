@@ -1,5 +1,5 @@
 pub mod model;
-pub mod repository;
+pub(crate) mod repository;
 pub mod security;
 pub mod service;
 pub mod util;

@@ -1,3 +1,4 @@
+use sea_orm::DatabaseConnection;
 use uuid::Uuid;
 
 use crate::domain::blog::aggregate::Article;
@@ -5,18 +6,18 @@ use crate::domain::blog::repository::ArticleRepository;
 use crate::infrastructure::model::blog::ArticleSummary;
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
+use crate::infrastructure::repository::blog::blog_repository::ArticleRepositoryImpl;
 
-pub struct ArticleApplication<T> {
-    pub repo: T,
+pub struct ArticleApplication {
+    pub repo: ArticleRepositoryImpl,
 }
 
-impl<T> ArticleApplication<T>
-where
-    T: ArticleRepository,
-{
+impl ArticleApplication {
     /// 新建
-    pub fn new(repo: T) -> ArticleApplication<T> {
-        ArticleApplication { repo }
+    pub fn new(conn: &'static DatabaseConnection) -> ArticleApplication {
+        ArticleApplication {
+            repo: ArticleRepositoryImpl { conn },
+        }
     }
 
     pub async fn page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, CodedErr> {

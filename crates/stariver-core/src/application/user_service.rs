@@ -1,18 +1,20 @@
+use sea_orm::DatabaseConnection;
+
 use crate::domain::user::aggregate::User;
 use crate::domain::user::repository::UserRepository;
 use crate::infrastructure::model::err::CodedErr;
+use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl;
 
-pub struct UserApplication<T> {
-    pub repo: T,
+pub struct UserApplication {
+    pub repo: UserRepositoryImpl,
 }
 
-impl<T> UserApplication<T>
-where
-    T: UserRepository,
-{
+impl UserApplication {
     /// 新建
-    pub fn new(repo: T) -> UserApplication<T> {
-        UserApplication { repo }
+    pub fn new(conn: &'static DatabaseConnection) -> UserApplication {
+        UserApplication {
+            repo: UserRepositoryImpl { conn },
+        }
     }
 
     pub async fn find_by_username(&self, username: &str) -> Result<Option<User>, CodedErr> {

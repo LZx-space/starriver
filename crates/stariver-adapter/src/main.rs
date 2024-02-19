@@ -10,15 +10,11 @@ use sea_orm::DatabaseConnection;
 
 use adapter::api::authentication_api;
 use adapter::api::blog_api;
-use application::blog_service::ArticleApplication;
-use infrastructure::repository::blog::blog_repository::ArticleRepositoryImpl;
-use infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
-use infrastructure::util::db::db_conn;
+use stariver_core::application::blog_service::ArticleApplication;
+use stariver_core::infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
+use stariver_core::infrastructure::util::db::db_conn;
 
 mod adapter;
-mod application;
-mod domain;
-mod infrastructure;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -76,12 +72,12 @@ fn http_server_bind_addrs() -> (IpAddr, u16) {
 
 /// 应用的各个状态
 pub struct AppState {
-    pub(crate) article_application: ArticleApplication<ArticleRepositoryImpl>,
+    pub(crate) article_application: ArticleApplication,
 }
 
 impl AppState {
     pub fn new(conn: &'static DatabaseConnection) -> Self {
-        let article_application = ArticleApplication::new(ArticleRepositoryImpl { conn });
+        let article_application = ArticleApplication::new(conn);
         AppState {
             article_application,
         }

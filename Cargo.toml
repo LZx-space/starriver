@@ -6,7 +6,6 @@ members = [
 ]
 
 [workspace.dependencies]
-ferris-says = "^0.3.1"
 
 [profile.dev]
 opt-level = 0

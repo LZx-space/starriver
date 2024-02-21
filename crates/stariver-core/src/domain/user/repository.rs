@@ -2,6 +2,7 @@ use std::fmt::Error;
 
 use crate::domain::user::aggregate::User;
 
+#[trait_variant::make(HttpService: Send)]
 pub trait UserRepository {
     async fn insert(&self, user: User) -> Result<bool, Error>;
 

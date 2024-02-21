@@ -5,6 +5,7 @@ use crate::domain::tag::aggregate::Tag;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 /// 仓库
+#[trait_variant::make(HttpService: Send)]
 pub trait TagRepository {
     /// 查询一页数据
     async fn find_page(&self, query: PageQuery) -> Result<PageResult<Tag>, DbErr>;

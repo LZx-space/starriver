@@ -46,6 +46,7 @@ pub trait ResultHandler {
     type Row: Row;
 
     type Result: Result<Row = Self::Row>;
+
     fn update(&self, initialized_rows: Vec<Self::Row>) -> Self::Result;
 }
 

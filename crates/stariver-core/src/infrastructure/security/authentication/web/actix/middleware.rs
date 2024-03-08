@@ -1,13 +1,13 @@
-use std::future::{ready, Future, Ready};
+use std::future::{Future, ready, Ready};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use actix_session::SessionExt;
+use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
-use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use serde::Deserialize;
 
 use crate::infrastructure::model::err::CodedErr;
@@ -15,7 +15,7 @@ use crate::infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
 use crate::infrastructure::security::authentication::user_principal::{
-    User, UserAuthenticator, UserProof, UserRepository,
+    User, UserAuthenticator, UserCredential, UserRepository,
 };
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
 
@@ -40,13 +40,13 @@ where
         Box::pin(async move {
             if is_login_request(&req) {
                 let form_login_cmd = extract_params(&mut req).await?;
-                let proof = UserProof::new(
+                let credential = UserCredential::new(
                     form_login_cmd.username.clone(),
                     form_login_cmd.password.clone(),
                 );
                 let repository = UserRepository {};
                 let authenticator = UserAuthenticator::new(repository);
-                return match authenticator.authenticate(&proof) {
+                return match authenticator.authenticate(&credential) {
                     Ok(principal) => success_handle(&req, principal),
                     Err(e) => failure_handle(&req, e),
                 };

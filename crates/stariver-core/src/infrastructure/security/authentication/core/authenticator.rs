@@ -1,21 +1,27 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::infrastructure::security::authentication::core::credential::Credential;
 use crate::infrastructure::security::authentication::core::principal::Principal;
-use crate::infrastructure::security::authentication::core::proof::Proof;
 
 pub trait Authenticator {
-    type Proof: Proof;
+    type Credential: Credential;
 
     type Principal: Principal;
 
     /// 认证
-    fn authenticate(&self, proof: &Self::Proof) -> Result<Self::Principal, AuthenticationError> {
+    fn authenticate(
+        &self,
+        credential: &Self::Credential,
+    ) -> Result<Self::Principal, AuthenticationError> {
         // todo validate?
-        self.prove(proof)
+        self.do_authenticate(credential)
     }
 
-    fn prove(&self, proof: &Self::Proof) -> Result<Self::Principal, AuthenticationError>;
+    fn do_authenticate(
+        &self,
+        credential: &Self::Credential,
+    ) -> Result<Self::Principal, AuthenticationError>;
 }
 
 /// 认证错误

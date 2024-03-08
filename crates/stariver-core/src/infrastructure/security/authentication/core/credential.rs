@@ -1,4 +1,6 @@
-pub trait Proof {
+/// 用户凭证<br>
+/// 典型的: 用户名&密码、OAuth2访问令牌
+pub trait Credential {
     type Id;
 
     fn id(&self) -> &Self::Id;

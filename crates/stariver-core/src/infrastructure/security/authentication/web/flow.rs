@@ -1,19 +1,19 @@
 use std::future::Future;
 
 use crate::infrastructure::security::authentication::core::authenticator::AuthenticationError;
+use crate::infrastructure::security::authentication::core::credential::Credential;
 use crate::infrastructure::security::authentication::core::principal::Principal;
-use crate::infrastructure::security::authentication::core::proof::Proof;
 
 pub trait AuthenticationFlow {
     type Request;
 
     type Response;
 
-    type Proof: Proof;
+    type Credential: Credential;
 
     type Principal: Principal;
 
-    type ProofOutput: Future<Output = Result<Self::Proof, AuthenticationError>>;
+    type CredentialOutput: Future<Output = Result<Self::Credential, AuthenticationError>>;
 
     fn is_authenticated(&self, req: Self::Request) -> bool;
 
@@ -22,9 +22,12 @@ pub trait AuthenticationFlow {
 
     fn is_authenticate_request(&self, req: Self::Request) -> bool;
 
-    fn extract_proof(&self) -> Self::ProofOutput;
+    fn extract_credential(&self) -> Self::CredentialOutput;
 
-    fn authenticate(&self, proof: &Self::Proof) -> Result<Self::Principal, AuthenticationError>;
+    fn authenticate(
+        &self,
+        credential: &Self::Credential,
+    ) -> Result<Self::Principal, AuthenticationError>;
 
     fn on_success(&self) -> Result<Self::Response, AuthenticationError>;
 

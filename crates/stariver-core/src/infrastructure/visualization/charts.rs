@@ -85,7 +85,7 @@ pub fn test() {
         type Row = TestRow;
 
         fn initialized_rows(&self) -> Vec<Self::Row> {
-            vec![TestRow::new("A"), TestRow::new("B")]
+            vec![TestRow::new("行A"), TestRow::new("行B")]
         }
     }
 

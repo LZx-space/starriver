@@ -81,7 +81,7 @@ impl DictionaryEntry {
         }
     }
 
-    pub fn value<T: FromStr>(self) -> Result<T, <T as FromStr>::Err> {
+    pub fn try_parse<T: FromStr>(self) -> Result<T, <T as FromStr>::Err> {
         self.value.parse::<T>()
     }
 }
@@ -151,6 +151,7 @@ fn test_de() {
     println!("2-{:?}", result);
     let result = DictionaryEntry::new("测试3".to_string(), "66".to_string(), DataType::BOOLEAN, "测试".to_string());
     println!("3-{:?}", result);
-    let result = DictionaryEntry::new("测试3".to_string(), "66".to_string(), DataType::I8, "测试".to_string());
+    let result = DictionaryEntry::new("测试3".to_string(), "127".to_string(), DataType::I8, "测试".to_string());
     println!("4-{:?}", result);
+    println!("4-parse-{:?}", result.unwrap().try_parse::<isize>());
 }

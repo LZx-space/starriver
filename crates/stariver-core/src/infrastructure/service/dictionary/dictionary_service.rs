@@ -3,8 +3,8 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use chrono::{DateTime, Local};
-use sea_orm::{ActiveModelBehavior, DbErr};
 use sea_orm::entity::prelude::*;
+use sea_orm::{ActiveModelBehavior, DbErr};
 use serde::{Serialize, Serializer};
 use uuid::Uuid;
 
@@ -107,15 +107,15 @@ pub enum DataType {
     STRING,
 }
 
-impl ToString for DataType {
-
-    fn to_string(&self) -> String {
-        match self {
+impl Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
             DataType::I8 => "I8".to_string(),
             DataType::I16 => "I16".to_string(),
             DataType::I32 => "I32".to_string(),
-            _ => "".to_string()
-        }
+            _ => "".to_string(),
+        };
+        write!(f, "{}", str)
     }
 }
 

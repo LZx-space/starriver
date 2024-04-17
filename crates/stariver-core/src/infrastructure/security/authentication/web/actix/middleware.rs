@@ -1,13 +1,13 @@
-use std::future::{Future, ready, Ready};
+use std::future::{ready, Future, Ready};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use actix_session::SessionExt;
-use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
+use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
 use serde::Deserialize;
 
 use crate::infrastructure::model::err::CodedErr;

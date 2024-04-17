@@ -1,10 +1,10 @@
 use std::env;
-use std::io::{BufWriter, stdout};
+use std::io::{stdout, BufWriter};
 use std::net::IpAddr;
 
 use actix_session::storage::CookieSessionStore;
-use actix_web::{App, HttpServer, middleware, web};
 use actix_web::cookie::Key;
+use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
 
 use stariver_adapter::api::authentication_api;

@@ -1,7 +1,7 @@
-use sea_orm::{ActiveModelBehavior, DatabaseConnection};
-use sea_orm::ActiveValue::Set;
 use sea_orm::entity::prelude::*;
 use sea_orm::prelude::DateTimeLocal;
+use sea_orm::ActiveValue::Set;
+use sea_orm::{ActiveModelBehavior, DatabaseConnection};
 use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
@@ -12,11 +12,8 @@ pub struct Repository {
 }
 
 impl Repository {
-
     pub fn new(conn: &'static DatabaseConnection) -> Self {
-        Repository {
-            conn
-        }
+        Repository { conn }
     }
 
     pub async fn paging(&self, query: PageQuery) -> Result<PageResult<DictionaryEntry>, DbErr> {

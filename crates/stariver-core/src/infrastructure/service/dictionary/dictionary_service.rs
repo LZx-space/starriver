@@ -1,83 +1,83 @@
 use std::any::Any;
+use std::fmt::Display;
 use std::str::FromStr;
 
+use chrono::{DateTime, Local};
+use sea_orm::entity::prelude::*;
+use sea_orm::{ActiveModelBehavior, DbErr};
 use serde::Serialize;
+use uuid::Uuid;
+
 use crate::infrastructure::model::page::{PageQuery, PageResult};
+use crate::infrastructure::service::dictionary::dictionary_repository::Repository;
 
 pub struct Dictionary {
-
+    repo: Repository,
 }
 
 impl Dictionary {
+    pub fn new(repo: Repository) -> Self {
+        Dictionary { repo }
+    }
 
-    pub fn page(query: PageQuery) -> PageResult<DictionaryEntry> {
+    pub async fn page(&self, query: PageQuery) -> Result<PageResult<DictionaryEntry>, DbErr> {
         todo!()
     }
 
+    pub async fn insert(&self, e: DictionaryEntry) -> Option<DbErr> {
+        self.repo.insert(e).await
+    }
+
+    pub async fn update(&self, e: DictionaryEntry) -> Option<DbErr> {
+        todo!()
+    }
+
+    pub async fn delete(&self, e: DictionaryEntry) -> Option<DbErr> {
+        todo!()
+    }
 }
 
-#[derive(Serialize, Debug)]
 pub struct DictionaryEntry {
-    id: String,
-    value: String,
-    data_type: DataType,
-    comment: String,
+    pub id: Uuid,
+    pub value: String,
+    pub data_type: DataType,
+    pub comment: String,
+    pub create_at: DateTime<Local>,
+    pub update_at: Option<DateTime<Local>>,
 }
 
 impl DictionaryEntry {
-    pub fn new(id: String, value: String, data_type: DataType, comment: String) -> Result<Self, String> {
+    pub fn new(value: String, data_type: DataType, comment: String) -> Result<Self, String> {
         match match data_type {
-            DataType::I8 => {
-                value.parse::<i8>().map_err(|e| e.to_string()).err()
-            }
-            DataType::I16 => {
-                value.parse::<i16>().map_err(|e| e.to_string()).err()
-            }
-            DataType::I32 => {
-                value.parse::<i32>().map_err(|e| e.to_string()).err()
-            }
-            DataType::I64 => {
-                value.parse::<i64>().map_err(|e| e.to_string()).err()
-            }
-            DataType::I128 => {
-                value.parse::<i128>().map_err(|e| e.to_string()).err()
-            }
-            DataType::ISIZE => {
-                value.parse::<isize>().map_err(|e| e.to_string()).err()
-            }
-            DataType::U8 => {
-                value.parse::<u8>().map_err(|e| e.to_string()).err()
-            }
-            DataType::U16 => {
-                value.parse::<u16>().map_err(|e| e.to_string()).err()
-            }
-            DataType::U32 => {
-                value.parse::<u32>().map_err(|e| e.to_string()).err()
-            }
-            DataType::U64 => {
-                value.parse::<u64>().map_err(|e| e.to_string()).err()
-            }
-            DataType::U128 => {
-                value.parse::<u128>().map_err(|e| e.to_string()).err()
-            }
-            DataType::USIZE => {
-                value.parse::<usize>().map_err(|e| e.to_string()).err()
-            }
-            DataType::F32 => {
-                value.parse::<f32>().map_err(|e| e.to_string()).err()
-            }
-            DataType::F64 => {
-                value.parse::<f64>().map_err(|e| e.to_string()).err()
-            }
-            DataType::BOOLEAN => {
-                value.parse::<bool>().map_err(|e| e.to_string()).err()
-            }
-            DataType::STRING => {
-                None
-            }
+            DataType::I8 => value.parse::<i8>().map_err(|e| e.to_string()).err(),
+            DataType::I16 => value.parse::<i16>().map_err(|e| e.to_string()).err(),
+            DataType::I32 => value.parse::<i32>().map_err(|e| e.to_string()).err(),
+            DataType::I64 => value.parse::<i64>().map_err(|e| e.to_string()).err(),
+            DataType::I128 => value.parse::<i128>().map_err(|e| e.to_string()).err(),
+            DataType::ISIZE => value.parse::<isize>().map_err(|e| e.to_string()).err(),
+            DataType::U8 => value.parse::<u8>().map_err(|e| e.to_string()).err(),
+            DataType::U16 => value.parse::<u16>().map_err(|e| e.to_string()).err(),
+            DataType::U32 => value.parse::<u32>().map_err(|e| e.to_string()).err(),
+            DataType::U64 => value.parse::<u64>().map_err(|e| e.to_string()).err(),
+            DataType::U128 => value.parse::<u128>().map_err(|e| e.to_string()).err(),
+            DataType::USIZE => value.parse::<usize>().map_err(|e| e.to_string()).err(),
+            DataType::F32 => value.parse::<f32>().map_err(|e| e.to_string()).err(),
+            DataType::F64 => value.parse::<f64>().map_err(|e| e.to_string()).err(),
+            DataType::BOOLEAN => value.parse::<bool>().map_err(|e| e.to_string()).err(),
+            DataType::STRING => None,
         } {
-            None => { Ok(DictionaryEntry { id, value, data_type, comment }) }
-            Some(err) => { Err(err) }
+            None => {
+                let id = Uuid::now_v7();
+                Ok(DictionaryEntry {
+                    id,
+                    value,
+                    data_type,
+                    comment,
+                    create_at: Default::default(),
+                    update_at: None,
+                })
+            }
+            Some(err) => Err(err),
         }
     }
 
@@ -86,7 +86,7 @@ impl DictionaryEntry {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DataType {
     I8,
     I16,
@@ -106,6 +106,12 @@ pub enum DataType {
     STRING,
 }
 
+impl Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 #[test]
 fn test_de() {
     #[derive(Serialize, Debug)]
@@ -117,8 +123,7 @@ fn test_de() {
         a: "abc".to_string(),
         b: 100,
     };
-    let result = serde_json::to_string_pretty(&obj)
-        .expect("");
+    let result = serde_json::to_string_pretty(&obj).expect("");
     println!("obj->{:?}", obj);
 
     println!("c-{:?}", 'a'.type_id());
@@ -141,17 +146,21 @@ fn test_de() {
     println!("a-{:?}", [1, 2, 3, 4, 5].type_id());
 
     match "u123".parse::<i8>() {
-        Ok(i) => { println!("parse to i8 {}", i); }
-        Err(err) => { println!("{}", err); }
+        Ok(i) => {
+            println!("parse to i8 {}", i);
+        }
+        Err(err) => {
+            println!("{}", err);
+        }
     }
 
-    let result = DictionaryEntry::new("测试1".to_string(), "55".to_string(), DataType::I8, "测试".to_string());
-    println!("1-{:?}", result);
-    let result = DictionaryEntry::new("测试2".to_string(), "a55".to_string(), DataType::I8, "测试".to_string());
-    println!("2-{:?}", result);
-    let result = DictionaryEntry::new("测试3".to_string(), "66".to_string(), DataType::BOOLEAN, "测试".to_string());
-    println!("3-{:?}", result);
-    let result = DictionaryEntry::new("测试3".to_string(), "127".to_string(), DataType::I8, "测试".to_string());
-    println!("4-{:?}", result);
+    let result = DictionaryEntry::new("55".to_string(), DataType::I8, "测试".to_string());
+    println!("{}", result.unwrap().value);
+    let result = DictionaryEntry::new("a55".to_string(), DataType::I8, "测试".to_string());
+    println!("{}", result.unwrap().value);
+    let result = DictionaryEntry::new("66".to_string(), DataType::BOOLEAN, "测试".to_string());
+    println!("{}", result.unwrap().value);
+    let result = DictionaryEntry::new("127".to_string(), DataType::I8, "测试".to_string());
+    println!("{}", result.unwrap().value);
     println!("4-parse-{:?}", result.unwrap().try_parse::<isize>());
 }

@@ -9,6 +9,7 @@ use ferris_says::say;
 
 use stariver_adapter::api::authentication_api;
 use stariver_adapter::api::blog_api;
+use stariver_adapter::api::dictionary_api;
 use stariver_adapter::state::app_state::AppState;
 use stariver_core::infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use stariver_core::infrastructure::util::db::db_conn;
@@ -43,6 +44,7 @@ async fn main() -> std::io::Result<()> {
             .service(blog_api::find_one)
             .service(blog_api::insert)
             .service(blog_api::delete)
+            .service(dictionary_api::add_dictionary_entry)
     })
     .bind(addrs)?
     .run()

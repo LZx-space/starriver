@@ -8,10 +8,17 @@ use crate::infrastructure::model::page::{PageQuery, PageResult};
 use crate::infrastructure::service::dictionary::dictionary_service::DictionaryEntry;
 
 pub struct Repository {
-    pub conn: &'static DatabaseConnection,
+    conn: &'static DatabaseConnection,
 }
 
 impl Repository {
+
+    pub fn new(conn: &'static DatabaseConnection) -> Self {
+        Repository {
+            conn
+        }
+    }
+
     pub async fn paging(&self, query: PageQuery) -> Result<PageResult<DictionaryEntry>, DbErr> {
         todo!()
     }

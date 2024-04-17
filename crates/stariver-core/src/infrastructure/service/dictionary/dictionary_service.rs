@@ -3,9 +3,9 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use chrono::{DateTime, Local};
-use sea_orm::entity::prelude::*;
 use sea_orm::{ActiveModelBehavior, DbErr};
-use serde::Serialize;
+use sea_orm::entity::prelude::*;
+use serde::{Serialize, Serializer};
 use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
@@ -16,7 +16,8 @@ pub struct Dictionary {
 }
 
 impl Dictionary {
-    pub fn new(repo: Repository) -> Self {
+    pub fn new(conn: &'static DatabaseConnection) -> Self {
+        let repo = Repository::new(conn);
         Dictionary { repo }
     }
 
@@ -73,7 +74,7 @@ impl DictionaryEntry {
                     value,
                     data_type,
                     comment,
-                    create_at: Default::default(),
+                    create_at: Local::now(),
                     update_at: None,
                 })
             }
@@ -86,7 +87,7 @@ impl DictionaryEntry {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub enum DataType {
     I8,
     I16,
@@ -106,9 +107,15 @@ pub enum DataType {
     STRING,
 }
 
-impl Display for DataType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
+impl ToString for DataType {
+
+    fn to_string(&self) -> String {
+        match self {
+            DataType::I8 => "I8".to_string(),
+            DataType::I16 => "I16".to_string(),
+            DataType::I32 => "I32".to_string(),
+            _ => "".to_string()
+        }
     }
 }
 

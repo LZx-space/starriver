@@ -1,10 +1,12 @@
 use sea_orm::entity::prelude::*;
 use sea_orm::prelude::DateTimeLocal;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelBehavior, DatabaseConnection};
+use sea_orm::{ActiveModelBehavior, DatabaseConnection, QueryOrder};
+use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
+use crate::infrastructure::service::dictionary::dictionary_service::DataType;
 use crate::infrastructure::service::dictionary::dictionary_service::DictionaryEntry;
 
 pub struct Repository {
@@ -17,7 +19,26 @@ impl Repository {
     }
 
     pub async fn paging(&self, query: PageQuery) -> Result<PageResult<DictionaryEntry>, DbErr> {
-        todo!()
+        let paginator = Entity::find()
+            .order_by_asc(Column::Id)
+            .paginate(self.conn, query.page_size);
+        let num_items = paginator.num_items().await?;
+
+        // Fetch paginated posts
+        paginator.fetch_page(query.page).await.map(|v| {
+            PageResult::new(
+                query.page,
+                query.page_size,
+                num_items,
+                v.iter()
+                    .map(|m| {
+                        let m = m.clone();
+                        let data_type = DataType::from_str(&m.data_type).expect("");
+                        DictionaryEntry::new(m.value, data_type, m.comment).expect("")
+                    })
+                    .collect(),
+            )
+        })
     }
 
     pub async fn insert(&self, e: DictionaryEntry) -> Option<DbErr> {

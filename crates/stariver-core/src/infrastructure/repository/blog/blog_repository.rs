@@ -33,12 +33,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
             .column(Column::Id)
             .count(self.conn)
             .await?;
-        Ok(PageResult {
-            page: q.page,
-            page_size: q.page_size,
-            record_total,
-            records: articles,
-        })
+        Ok(PageResult::new(q.page, q.page_size, record_total, articles))
     }
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, DbErr> {

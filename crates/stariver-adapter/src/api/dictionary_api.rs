@@ -1,11 +1,24 @@
-use actix_web::web::Json;
-use actix_web::{post, web, Responder};
+use actix_web::web::{Json, Query};
+use actix_web::{get, post, web, Responder};
+use stariver_core::infrastructure::model::err::CodedErr;
+use stariver_core::infrastructure::model::page::PageQuery;
 
 use stariver_core::infrastructure::service::dictionary::dictionary_service::{
     DataType, Dictionary, DictionaryEntry,
 };
 
 use crate::state::app_state::AppState;
+
+#[get("/dictionary-entries")]
+pub async fn list_dictionary_entry(
+    state: web::Data<AppState>,
+    query: Query<PageQuery>,
+) -> impl Responder {
+    let dictionary = Dictionary::new(state.conn);
+    let page = dictionary.page(query.into_inner()).await;
+    page.map(|u| Json(u))
+        .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
+}
 
 #[post("/dictionary-entries")]
 pub async fn add_dictionary_entry(state: web::Data<AppState>) -> impl Responder {

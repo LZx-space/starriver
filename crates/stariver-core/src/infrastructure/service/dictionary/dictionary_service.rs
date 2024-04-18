@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 use crate::infrastructure::service::dictionary::dictionary_repository::Repository;
+use crate::infrastructure::service::dictionary::dictionary_service::DataType::I8;
 
 pub struct Dictionary {
     repo: Repository,
@@ -22,7 +23,7 @@ impl Dictionary {
     }
 
     pub async fn page(&self, query: PageQuery) -> Result<PageResult<DictionaryEntry>, DbErr> {
-        todo!()
+        self.repo.paging(query).await
     }
 
     pub async fn insert(&self, e: DictionaryEntry) -> Option<DbErr> {
@@ -38,6 +39,7 @@ impl Dictionary {
     }
 }
 
+#[derive(Serialize)]
 pub struct DictionaryEntry {
     pub id: Uuid,
     pub value: String,
@@ -116,6 +118,17 @@ impl Display for DataType {
             _ => "".to_string(),
         };
         write!(f, "{}", str)
+    }
+}
+
+impl FromStr for DataType {
+    type Err = DbErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "I8" => Ok(I8),
+            _ => Err(DbErr::Custom("错误的数据类型".to_string())),
+        }
     }
 }
 

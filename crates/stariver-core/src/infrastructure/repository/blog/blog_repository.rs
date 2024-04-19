@@ -45,9 +45,9 @@ impl ArticleRepository for ArticleRepositoryImpl {
                 title: e.title.clone(),
                 body: e.body.clone(),
                 state: e.state.into(),
-                author_id: e.author_id.clone(),
-                create_at: e.create_at.clone(),
-                modified_records: vec![],
+                author_id: e.author_id,
+                create_at: e.create_at,
+                update_at: e.update_at,
             });
         Ok(article)
     }
@@ -86,7 +86,9 @@ impl ArticleRepository for ArticleRepositoryImpl {
             });
         match exist_one {
             None => Ok(false),
-            Some(model) => {
+            Some(mut model) => {
+                model.title = Set(e.title);
+                model.body = Set(e.body);
                 model.update(self.conn).await?;
                 Ok(true)
             }

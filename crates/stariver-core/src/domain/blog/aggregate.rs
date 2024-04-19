@@ -1,7 +1,6 @@
 use chrono::{DateTime, Local};
 use uuid::Uuid;
 
-use crate::domain::blog::entity::ModifiedRecord;
 use crate::domain::blog::value_object::State;
 use crate::domain::blog::value_object::State::{Draft, Released};
 
@@ -14,7 +13,7 @@ pub struct Article {
     pub state: State,
     pub author_id: String,
     pub create_at: DateTime<Local>,
-    pub modified_records: Vec<ModifiedRecord>,
+    pub update_at: Option<DateTime<Local>>,
 }
 
 impl Article {

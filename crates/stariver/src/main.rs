@@ -43,6 +43,7 @@ async fn main() -> std::io::Result<()> {
             .service(blog_api::page)
             .service(blog_api::find_one)
             .service(blog_api::insert)
+            .service(blog_api::update)
             .service(blog_api::delete)
             .service(dictionary_api::list_dictionary_entry)
             .service(dictionary_api::add_dictionary_entry)

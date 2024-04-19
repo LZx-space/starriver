@@ -24,23 +24,6 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "crate::infrastructure::repository::tag::po::tag::Entity")]
-    Tag,
-}
-
-impl Related<crate::infrastructure::repository::tag::po::tag::Entity> for Entity {
-    fn to() -> RelationDef {
-        crate::infrastructure::repository::tag::po::article_tag::Relation::Tag.def()
-    }
-
-    fn via() -> Option<RelationDef> {
-        Some(
-            crate::infrastructure::repository::tag::po::article_tag::Relation::Article
-                .def()
-                .rev(),
-        )
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}

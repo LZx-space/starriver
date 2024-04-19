@@ -25,7 +25,6 @@ pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Respon
         title: article.title,
         body: article.body,
         state: article.state.to_string(),
-        tags: vec![],
     };
     Json(vo)
 }

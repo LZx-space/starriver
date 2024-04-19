@@ -14,7 +14,7 @@ pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
         state: Draft,
         author_id,
         create_at: Local::now(),
-        modified_records: vec![],
+        update_at: None,
     }
 }
 

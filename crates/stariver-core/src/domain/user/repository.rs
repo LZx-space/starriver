@@ -8,5 +8,5 @@ pub trait UserRepository {
 
     async fn update(&self, user: User) -> Result<bool, Error>;
 
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, Error>;
+    async fn find_by_username(&self, username: &str) -> Result<User, Error>;
 }

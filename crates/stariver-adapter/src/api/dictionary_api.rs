@@ -1,13 +1,12 @@
 use actix_web::web::{Json, Query};
 use actix_web::{get, post, web, Responder};
+
 use stariver_core::infrastructure::model::err::CodedErr;
 use stariver_core::infrastructure::model::page::PageQuery;
-
 use stariver_core::infrastructure::service::dictionary::dictionary_service::{
     DataType, Dictionary, DictionaryEntry,
 };
-
-use crate::state::app_state::AppState;
+use stariver_core::infrastructure::web::app_state::AppState;
 
 #[get("/dictionary-entries")]
 pub async fn list_dictionary_entry(

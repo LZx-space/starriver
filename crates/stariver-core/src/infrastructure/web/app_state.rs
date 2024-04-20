@@ -1,6 +1,6 @@
 use sea_orm::DatabaseConnection;
 
-use stariver_core::application::blog_service::ArticleApplication;
+use crate::application::blog_service::ArticleApplication;
 
 /// 应用的各个状态
 pub struct AppState {

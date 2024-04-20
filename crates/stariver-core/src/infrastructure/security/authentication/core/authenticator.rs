@@ -10,15 +10,15 @@ pub trait Authenticator {
     type Principal: Principal;
 
     /// 认证
-    fn authenticate(
+    async fn authenticate(
         &self,
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError> {
         // todo validate?
-        self.do_authenticate(credential)
+        self.do_authenticate(credential).await
     }
 
-    fn do_authenticate(
+    async fn do_authenticate(
         &self,
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError>;

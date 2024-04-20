@@ -19,15 +19,15 @@ impl UserRepository for UserRepositoryImpl {
         todo!()
     }
 
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, Error> {
-        Ok(match hash_password("password", "ABCDEFGH") {
-            Ok(hash_string) => Some(User {
+    async fn find_by_username(&self, username: &str) -> Result<User, Error> {
+        match hash_password("password", "ABCDEFGH") {
+            Ok(hash_string) => Ok(User {
                 username: username.to_string(),
                 password: hash_string.to_string(),
                 phone: "".to_string(),
                 email: "".to_string(),
             }),
-            Err(_) => None,
-        })
+            Err(_) => Err(Error::default()),
+        }
     }
 }

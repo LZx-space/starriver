@@ -7,9 +7,9 @@ use actix_web::cookie::Key;
 use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
 
-use stariver_adapter::api::authentication_api;
-use stariver_adapter::api::blog_api;
-use stariver_adapter::api::dictionary_api;
+use stariver_adapter::api::authentication;
+use stariver_adapter::api::blog;
+use stariver_adapter::api::dictionary;
 use stariver_core::infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use stariver_core::infrastructure::util::db::db_conn;
 use stariver_core::infrastructure::web::app_state::AppState;
@@ -39,14 +39,14 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default())
             .wrap(middleware::ErrorHandlers::new())
             .app_data(web::Data::new(app_state))
-            .service(authentication_api::validate_authenticated)
-            .service(blog_api::page)
-            .service(blog_api::find_one)
-            .service(blog_api::insert)
-            .service(blog_api::update)
-            .service(blog_api::delete)
-            .service(dictionary_api::list_dictionary_entry)
-            .service(dictionary_api::add_dictionary_entry)
+            .service(authentication::validate_authenticated)
+            .service(blog::page)
+            .service(blog::find_one)
+            .service(blog::insert)
+            .service(blog::update)
+            .service(blog::delete)
+            .service(dictionary::list_dictionary_entry)
+            .service(dictionary::add_dictionary_entry)
     })
     .bind(addrs)?
     .run()

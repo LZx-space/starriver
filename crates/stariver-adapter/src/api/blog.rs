@@ -6,8 +6,8 @@ use uuid::Uuid;
 use stariver_core::infrastructure::model::page::PageQuery;
 use stariver_core::infrastructure::web::app_state::AppState;
 
-use crate::api::blog_model::{ArticleCmd, ArticleVo};
-use crate::assembler::article_assembler::{cmd_2_new_entity, cmd_2_update_entity};
+use crate::assembler::blog::{cmd_2_new_entity, cmd_2_update_entity};
+use crate::model::blog::{ArticleCmd, ArticleVo};
 
 #[get("/blogs")]
 pub async fn page(state: web::Data<AppState>, params: Query<PageQuery>) -> impl Responder {

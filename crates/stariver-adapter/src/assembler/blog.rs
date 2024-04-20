@@ -4,7 +4,7 @@ use uuid::Uuid;
 use stariver_core::domain::blog::aggregate::Article;
 use stariver_core::domain::blog::value_object::State::Draft;
 
-use crate::api::blog_model::ArticleCmd;
+use crate::model::blog::ArticleCmd;
 
 pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
     Article {

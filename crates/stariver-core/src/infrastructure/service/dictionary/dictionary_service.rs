@@ -1,11 +1,10 @@
-use std::any::Any;
 use std::fmt::Display;
 use std::str::FromStr;
 
 use chrono::{DateTime, Local};
 use sea_orm::entity::prelude::*;
-use sea_orm::{ActiveModelBehavior, DbErr};
-use serde::{Serialize, Serializer};
+use sea_orm::DbErr;
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
@@ -143,27 +142,7 @@ fn test_de() {
         a: "abc".to_string(),
         b: 100,
     };
-    let result = serde_json::to_string_pretty(&obj).expect("");
     println!("obj->{:?}", obj);
-
-    println!("c-{:?}", 'a'.type_id());
-
-    println!("s-{:?}", result.to_string().type_id());
-
-    println!("b-{:?}", true.type_id());
-
-    println!("i-{:?}", 1i8.type_id());
-    println!("i-{:?}", 1i16.type_id());
-    println!("i-{:?}", 1i32.type_id());
-    println!("i-{:?}", 1i64.type_id());
-    println!("i-{:?}", 1i128.type_id());
-    println!("i-{:?}", 1isize.type_id());
-
-    println!("f-{:?}", 1f32.type_id());
-    println!("f-{:?}", 1f64.type_id());
-
-    println!("t-{:?}", (500, 6.4, 1).type_id());
-    println!("a-{:?}", [1, 2, 3, 4, 5].type_id());
 
     match "u123".parse::<i8>() {
         Ok(i) => {

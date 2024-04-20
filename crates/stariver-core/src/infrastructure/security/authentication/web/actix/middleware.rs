@@ -8,19 +8,22 @@ use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
 use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
+use sea_orm::DatabaseConnection;
 use serde::Deserialize;
 
 use crate::infrastructure::model::err::CodedErr;
+use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl as DomainUserRepo;
 use crate::infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
 use crate::infrastructure::security::authentication::user_principal::{
-    User, UserAuthenticator, UserCredential, UserRepository,
+    User, UserAuthenticator, UserCredential, UserRepositoryImpl,
 };
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
 
 pub struct AuthenticationService<S> {
     service: Rc<S>,
+    conn: &'static DatabaseConnection,
 }
 
 impl<S> Service<ServiceRequest> for AuthenticationService<S>
@@ -37,6 +40,7 @@ where
 
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let service = Rc::clone(&self.service);
+        let conn = self.conn;
         Box::pin(async move {
             if is_login_request(&req) {
                 let form_login_cmd = extract_params(&mut req).await?;
@@ -44,22 +48,26 @@ where
                     form_login_cmd.username.clone(),
                     form_login_cmd.password.clone(),
                 );
-                let repository = UserRepository {};
+                let repository = UserRepositoryImpl {
+                    delegate: DomainUserRepo { conn },
+                };
                 let authenticator = UserAuthenticator::new(repository);
-                return match authenticator.authenticate(&credential) {
-                    Ok(principal) => success_handle(&req, principal),
-                    Err(e) => failure_handle(&req, e),
+                return match authenticator.authenticate(&credential).await {
+                    Ok(principal) => success_handle(&req, principal).await,
+                    Err(e) => failure_handle(&req, e).await,
                 };
             }
             if !is_principal_authenticated(&req) {
-                return un_authenticated_handle(&req);
+                return un_authenticated_handle(&req).await;
             }
             service.call(req).await
         })
     }
 }
 
-pub struct AuthenticationTransform {}
+pub struct AuthenticationTransform {
+    pub conn: &'static DatabaseConnection,
+}
 
 impl<S> Transform<S, ServiceRequest> for AuthenticationTransform
 where
@@ -74,6 +82,7 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthenticationService {
             service: Rc::new(service),
+            conn: self.conn,
         }))
     }
 }
@@ -98,14 +107,14 @@ fn is_principal_authenticated(req: &ServiceRequest) -> bool {
     req.cookie("id").is_some()
 }
 
-fn un_authenticated_handle(req: &ServiceRequest) -> Result<ServiceResponse, Error> {
+async fn un_authenticated_handle(req: &ServiceRequest) -> Result<ServiceResponse, Error> {
     Ok(ServiceResponse::from_err(
         ErrUnauthorized {},
         req.request().to_owned(),
     ))
 }
 
-fn success_handle(req: &ServiceRequest, principal: User) -> Result<ServiceResponse, Error> {
+async fn success_handle(req: &ServiceRequest, principal: User) -> Result<ServiceResponse, Error> {
     req.get_session()
         .insert("authenticated_principal".to_string(), principal)
         .map_err(|e| Error::from(e))?;
@@ -115,7 +124,10 @@ fn success_handle(req: &ServiceRequest, principal: User) -> Result<ServiceRespon
     ))
 }
 
-fn failure_handle(req: &ServiceRequest, e: AuthenticationError) -> Result<ServiceResponse, Error> {
+async fn failure_handle(
+    req: &ServiceRequest,
+    e: AuthenticationError,
+) -> Result<ServiceResponse, Error> {
     let err = CodedErr::new("A00001".to_string(), e.to_string());
     let status_code = err.determine_http_status();
     Ok(ServiceResponse::new(

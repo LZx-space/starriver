@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
+use crate::domain::user::repository::UserRepository as DomainUserRepository;
+use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl as DomainUserRepoImpl;
 use crate::infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
@@ -12,7 +14,7 @@ use crate::infrastructure::security::authentication::core::principal::{
     Principal, SimpleAuthority,
 };
 use crate::infrastructure::security::authentication::util::{
-    hash_password, to_password_hash_string_struct, verify_password,
+    to_password_hash_string_struct, verify_password,
 };
 
 pub struct UserCredential {
@@ -42,6 +44,7 @@ impl UserCredential {
 pub struct User {
     username: String,
     password: String,
+    authorities: Vec<SimpleAuthority>,
 }
 
 impl Principal for User {
@@ -67,26 +70,35 @@ impl User {
     }
 }
 
-pub struct UserRepository {}
+#[trait_variant::make(HttpService: Send)]
+pub trait UserRepository {
+    async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError>;
+}
 
-impl UserRepository {
-    fn find_by_id(&self, user_id: &String) -> Option<User> {
-        match hash_password("password", "ABCDEFGH") {
-            Ok(hash_string) => Some(User {
-                username: user_id.clone(),
-                password: hash_string.to_string(),
-            }),
-            Err(_) => None,
-        }
+pub struct UserRepositoryImpl {
+    pub(crate) delegate: DomainUserRepoImpl,
+}
+
+impl UserRepository for UserRepositoryImpl {
+    async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError> {
+        self.delegate
+            .find_by_username(user_id)
+            .await
+            .map(|u| User {
+                username: u.username,
+                password: u.password,
+                authorities: vec![],
+            })
+            .map_err(|e| AuthenticationError::UsernameNotFound)
     }
 }
 
 pub struct UserAuthenticator {
-    user_repository: UserRepository,
+    user_repository: UserRepositoryImpl,
 }
 
 impl UserAuthenticator {
-    pub fn new(repo: UserRepository) -> UserAuthenticator {
+    pub fn new(repo: UserRepositoryImpl) -> UserAuthenticator {
         UserAuthenticator {
             user_repository: repo,
         }
@@ -97,15 +109,14 @@ impl Authenticator for UserAuthenticator {
     type Credential = UserCredential;
     type Principal = User;
 
-    fn do_authenticate(
+    async fn do_authenticate(
         &self,
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError> {
         let username = credential.id();
-        let user = self.user_repository.find_by_id(username);
+        let user = self.user_repository.find_by_id(username).await;
         match user {
-            None => Err(AuthenticationError::UsernameNotFound),
-            Some(user) => {
+            Ok(user) => {
                 let password_hash_string = to_password_hash_string_struct(user.password())
                     .map_err(|e| {
                         println!("{}'s password was not hashed: {}", user.username(), e);
@@ -117,6 +128,7 @@ impl Authenticator for UserAuthenticator {
                     Err(_) => Err(AuthenticationError::BadPassword),
                 }
             }
+            Err(err) => Err(err),
         }
     }
 }

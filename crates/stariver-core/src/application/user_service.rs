@@ -17,7 +17,7 @@ impl UserApplication {
         }
     }
 
-    pub async fn find_by_username(&self, username: &str) -> Result<Option<User>, CodedErr> {
+    pub async fn find_by_username(&self, username: &str) -> Result<User, CodedErr> {
         let result = self.repo.find_by_username(username).await;
         result.map_err(|_err| CodedErr::new("B0000".to_string(), _err.to_string()))
     }

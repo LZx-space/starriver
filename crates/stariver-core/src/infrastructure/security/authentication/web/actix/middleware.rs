@@ -23,7 +23,7 @@ use crate::infrastructure::security::authentication::web::actix::error::ErrUnaut
 
 pub struct AuthenticationService<S> {
     service: Rc<S>,
-    conn: &'static DatabaseConnection,
+    authenticator: Rc<UserAuthenticator>,
 }
 
 impl<S> Service<ServiceRequest> for AuthenticationService<S>
@@ -40,7 +40,7 @@ where
 
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let service = Rc::clone(&self.service);
-        let conn = self.conn;
+        let authenticator = Rc::clone(&self.authenticator);
         Box::pin(async move {
             if is_login_request(&req) {
                 let form_login_cmd = extract_params(&mut req).await?;
@@ -48,10 +48,6 @@ where
                     form_login_cmd.username.clone(),
                     form_login_cmd.password.clone(),
                 );
-                let repository = UserRepositoryImpl {
-                    delegate: DomainUserRepo { conn },
-                };
-                let authenticator = UserAuthenticator::new(repository);
                 return match authenticator.authenticate(&credential).await {
                     Ok(principal) => success_handle(&req, principal).await,
                     Err(e) => failure_handle(&req, e).await,
@@ -80,14 +76,19 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
+        let repository = UserRepositoryImpl {
+            delegate: DomainUserRepo { conn: self.conn },
+        };
+        let authenticator = UserAuthenticator::new(repository);
+
         ready(Ok(AuthenticationService {
             service: Rc::new(service),
-            conn: self.conn,
+            authenticator: Rc::new(authenticator),
         }))
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct FormLoginCmd {
     pub username: String,
     pub password: String,
@@ -134,4 +135,17 @@ async fn failure_handle(
         req.request().to_owned(),
         HttpResponse::new(status_code),
     ))
+}
+
+#[test]
+pub fn test_mv() {
+    let i = FormLoginCmd {
+        username: "123".to_string(),
+        password: "456".to_string(),
+    };
+    #[warn(unused_must_use)]
+    move || {
+        println!("-in-{:?}", i);
+    };
+    // println!("-out-{:?}", i); // value moved, cant be compile
 }

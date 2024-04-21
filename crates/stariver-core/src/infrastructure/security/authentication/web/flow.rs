@@ -17,27 +17,27 @@ pub trait AuthenticationFlow {
 
     fn is_authenticated(&self, req: &Self::Request) -> bool;
 
-    fn on_unauthenticated(
+    async fn on_unauthenticated(
         &self,
         req: &Self::Request,
     ) -> Result<Self::Response, AuthenticationError>;
 
     fn is_authenticate_request(&self, req: &Self::Request) -> bool;
 
-    fn extract_credential(&self, req: Self::Request) -> Self::CredentialOutput;
+    async fn extract_credential(&self, req: Self::Request) -> Self::CredentialOutput;
 
-    fn authenticate(
+    async fn authenticate(
         &self,
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError>;
 
-    fn on_success(
+    async fn on_success(
         &self,
         req: &Self::Request,
         principal: Self::Principal,
     ) -> Result<Self::Response, AuthenticationError>;
 
-    fn on_failure(
+    async fn on_failure(
         &self,
         req: &Self::Request,
         e: AuthenticationError,

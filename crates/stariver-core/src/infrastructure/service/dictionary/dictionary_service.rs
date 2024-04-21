@@ -160,6 +160,5 @@ fn test_de() {
     let result = DictionaryEntry::new("66".to_string(), DataType::BOOLEAN, "测试".to_string());
     println!("{}", result.unwrap().value);
     let result = DictionaryEntry::new("127".to_string(), DataType::I8, "测试".to_string());
-    println!("{}", result.unwrap().value);
     println!("4-parse-{:?}", result.unwrap().try_parse::<isize>());
 }

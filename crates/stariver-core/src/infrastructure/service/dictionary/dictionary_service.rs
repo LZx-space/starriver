@@ -9,7 +9,6 @@ use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 use crate::infrastructure::service::dictionary::dictionary_repository::Repository;
-use crate::infrastructure::service::dictionary::dictionary_service::DataType::I8;
 
 pub struct Dictionary {
     repo: Repository,
@@ -125,7 +124,7 @@ impl FromStr for DataType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "I8" => Ok(I8),
+            "I8" => Ok(DataType::I8),
             _ => Err(DbErr::Custom("错误的数据类型".to_string())),
         }
     }

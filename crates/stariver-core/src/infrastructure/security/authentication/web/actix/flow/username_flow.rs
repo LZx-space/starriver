@@ -1,0 +1,84 @@
+use actix_session::SessionExt;
+use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::http::{Method, StatusCode};
+use actix_web::web::Form;
+use actix_web::{FromRequest, HttpMessage, HttpResponse};
+
+use crate::infrastructure::model::err::CodedErr;
+use crate::infrastructure::security::authentication::core::authenticator::AuthenticationError;
+use crate::infrastructure::security::authentication::user_principal::{
+    User, UserAuthenticator, UserCredential,
+};
+use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
+use crate::infrastructure::security::authentication::web::actix::middleware::FormLoginCmd;
+use crate::infrastructure::security::authentication::web::flow::AuthenticationFlow;
+
+struct UsernameFlow {}
+
+impl AuthenticationFlow for UsernameFlow {
+    type Request = ServiceRequest;
+    type Response = ServiceResponse;
+    type Credential = UserCredential;
+    type Principal = User;
+    type Authenticator = UserAuthenticator;
+
+    fn is_authenticated(&self, req: &Self::Request) -> bool {
+        req.cookie("id").is_some()
+    }
+
+    async fn on_unauthenticated(
+        &self,
+        req: &Self::Request,
+    ) -> Result<Self::Response, AuthenticationError> {
+        Ok(ServiceResponse::from_err(
+            ErrUnauthorized {},
+            req.request().to_owned(),
+        ))
+    }
+
+    fn is_authenticate_request(&self, req: &Self::Request) -> bool {
+        req.uri().path().eq("/login") && req.method().eq(&Method::POST)
+    }
+
+    async fn extract_credential(
+        &self,
+        req: &mut Self::Request,
+    ) -> Result<UserCredential, AuthenticationError> {
+        let http_req = req.request().clone();
+        let payload = &mut req.take_payload();
+        Form::<FormLoginCmd>::from_request(&http_req, payload)
+            .await
+            .map(|e| {
+                let cmd = e.into_inner();
+                UserCredential::new(cmd.username, cmd.password)
+            })
+            .map_err(|e| AuthenticationError::UsernameNotFound)
+    }
+
+    async fn on_success(
+        &self,
+        req: &Self::Request,
+        principal: User,
+    ) -> Result<Self::Response, AuthenticationError> {
+        req.get_session()
+            .insert("authenticated_principal".to_string(), principal)
+            .map_err(|e| AuthenticationError::UsernameNotFound)?;
+        Ok(ServiceResponse::new(
+            req.request().to_owned(),
+            HttpResponse::new(StatusCode::OK),
+        ))
+    }
+
+    async fn on_failure(
+        &self,
+        req: &Self::Request,
+        e: AuthenticationError,
+    ) -> Result<Self::Response, AuthenticationError> {
+        let err = CodedErr::new("A00001".to_string(), e.to_string());
+        let status_code = err.determine_http_status();
+        Ok(ServiceResponse::new(
+            req.request().to_owned(),
+            HttpResponse::new(status_code),
+        ))
+    }
+}

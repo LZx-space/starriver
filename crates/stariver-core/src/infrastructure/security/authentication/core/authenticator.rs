@@ -13,14 +13,6 @@ pub trait Authenticator {
     async fn authenticate(
         &self,
         credential: &Self::Credential,
-    ) -> Result<Self::Principal, AuthenticationError> {
-        // todo validate?
-        self.do_authenticate(credential).await
-    }
-
-    async fn do_authenticate(
-        &self,
-        credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError>;
 }
 

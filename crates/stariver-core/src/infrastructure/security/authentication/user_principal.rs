@@ -109,7 +109,7 @@ impl Authenticator for UserAuthenticator {
     type Credential = UserCredential;
     type Principal = User;
 
-    async fn do_authenticate(
+    async fn authenticate(
         &self,
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError> {

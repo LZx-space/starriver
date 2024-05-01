@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::user::repository::UserRepository as DomainUserRepository;
@@ -77,6 +78,14 @@ pub trait UserRepository {
 
 pub struct UserRepositoryImpl {
     pub(crate) delegate: DomainUserRepoImpl,
+}
+
+impl UserRepositoryImpl {
+    pub fn new(conn: &'static DatabaseConnection) -> Self {
+        UserRepositoryImpl {
+            delegate: DomainUserRepoImpl { conn },
+        }
+    }
 }
 
 impl UserRepository for UserRepositoryImpl {

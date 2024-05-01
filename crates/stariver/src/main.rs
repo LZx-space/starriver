@@ -10,6 +10,10 @@ use ferris_says::say;
 use stariver_adapter::api::authentication;
 use stariver_adapter::api::blog;
 use stariver_adapter::api::dictionary;
+use stariver_core::infrastructure::security::authentication::user_principal::{
+    UserAuthenticator, UserRepositoryImpl,
+};
+use stariver_core::infrastructure::security::authentication::web::actix::flow::username_flow::UsernameFlow;
 use stariver_core::infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use stariver_core::infrastructure::util::db::db_conn;
 use stariver_core::infrastructure::web::app_state::AppState;
@@ -27,7 +31,10 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let app_state = AppState::new(conn);
         App::new()
-            .wrap(AuthenticationTransform { conn })
+            .wrap(AuthenticationTransform::new(
+                UserAuthenticator::new(UserRepositoryImpl::new(conn)),
+                UsernameFlow {},
+            ))
             .wrap(
                 actix_session::SessionMiddleware::builder(
                     CookieSessionStore::default(),

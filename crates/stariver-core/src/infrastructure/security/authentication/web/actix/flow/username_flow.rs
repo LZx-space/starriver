@@ -3,6 +3,7 @@ use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
 use actix_web::{FromRequest, HttpMessage, HttpResponse};
+use serde::Deserialize;
 
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::AuthenticationError;
@@ -10,10 +11,9 @@ use crate::infrastructure::security::authentication::user_principal::{
     User, UserAuthenticator, UserCredential,
 };
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
-use crate::infrastructure::security::authentication::web::actix::middleware::FormLoginCmd;
 use crate::infrastructure::security::authentication::web::flow::AuthenticationFlow;
 
-struct UsernameFlow {}
+pub struct UsernameFlow {}
 
 impl AuthenticationFlow for UsernameFlow {
     type Request = ServiceRequest;
@@ -55,7 +55,7 @@ impl AuthenticationFlow for UsernameFlow {
             .map_err(|e| AuthenticationError::UsernameNotFound)
     }
 
-    async fn on_success(
+    async fn on_authenticate_success(
         &self,
         req: &Self::Request,
         principal: User,
@@ -69,7 +69,7 @@ impl AuthenticationFlow for UsernameFlow {
         ))
     }
 
-    async fn on_failure(
+    async fn on_authenticate_failure(
         &self,
         req: &Self::Request,
         e: AuthenticationError,
@@ -81,4 +81,10 @@ impl AuthenticationFlow for UsernameFlow {
             HttpResponse::new(status_code),
         ))
     }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct FormLoginCmd {
+    pub username: String,
+    pub password: String,
 }

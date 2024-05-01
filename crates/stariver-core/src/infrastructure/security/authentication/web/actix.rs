@@ -1,3 +1,3 @@
 pub mod error;
-mod flow;
+pub mod flow;
 pub mod middleware;

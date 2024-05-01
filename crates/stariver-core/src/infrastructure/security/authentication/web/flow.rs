@@ -31,21 +31,21 @@ pub trait AuthenticationFlow {
 
     async fn authenticate(
         &self,
-        authenticator: Self::Authenticator,
+        authenticator: &Self::Authenticator,
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError> {
         authenticator.authenticate(credential).await
     }
 
-    async fn on_success(
+    async fn on_authenticate_success(
         &self,
         req: &Self::Request,
         principal: Self::Principal,
     ) -> Result<Self::Response, AuthenticationError>;
 
-    async fn on_failure(
+    async fn on_authenticate_failure(
         &self,
         req: &Self::Request,
-        e: AuthenticationError,
+        err: AuthenticationError,
     ) -> Result<Self::Response, AuthenticationError>;
 }

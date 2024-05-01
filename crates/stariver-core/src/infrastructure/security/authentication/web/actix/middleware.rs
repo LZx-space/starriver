@@ -1,34 +1,82 @@
 use std::future::{ready, Future, Ready};
+use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
-use actix_session::SessionExt;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::http::{Method, StatusCode};
-use actix_web::web::Form;
-use actix_web::{Error, FromRequest, HttpMessage, HttpResponse};
-use sea_orm::DatabaseConnection;
-use serde::Deserialize;
+use actix_web::{Error, FromRequest};
 
 use crate::infrastructure::model::err::CodedErr;
-use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl as DomainUserRepo;
-use crate::infrastructure::security::authentication::core::authenticator::{
-    AuthenticationError, Authenticator,
-};
-use crate::infrastructure::security::authentication::user_principal::{
-    User, UserAuthenticator, UserCredential, UserRepositoryImpl,
-};
-use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
+use crate::infrastructure::security::authentication::core::authenticator::Authenticator;
+use crate::infrastructure::security::authentication::web::flow::AuthenticationFlow;
 
-pub struct AuthenticationService<S> {
-    service: Rc<S>,
-    authenticator: Rc<UserAuthenticator>,
+pub struct AuthenticationTransform<A, F, C, P> {
+    pub authenticator: Rc<A>,
+    pub authentication_flow: Rc<F>,
+    _c: PhantomData<C>,
+    _p: PhantomData<P>,
 }
 
-impl<S> Service<ServiceRequest> for AuthenticationService<S>
+impl<A, F, C, P> AuthenticationTransform<A, F, C, P> {
+    pub fn new(authenticator: A, authentication_flow: F) -> Self {
+        AuthenticationTransform {
+            authenticator: Rc::new(authenticator),
+            authentication_flow: Rc::new(authentication_flow),
+            _c: Default::default(),
+            _p: Default::default(),
+        }
+    }
+}
+
+impl<S, A, F, C, P> Transform<S, ServiceRequest> for AuthenticationTransform<A, F, C, P>
 where
     S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
+    A: Authenticator<Credential = C, Principal = P> + 'static,
+    F: AuthenticationFlow<
+            Request = ServiceRequest,
+            Response = ServiceResponse,
+            Credential = C,
+            Principal = P,
+            Authenticator = A,
+        > + 'static,
+{
+    type Response = ServiceResponse;
+    type Error = S::Error;
+    type Transform = AuthenticationService<S, A, F, C, P>; // 这个Transform的类型是S，不是本身，更好的命名是Service
+    type InitError = ();
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ready(Ok(AuthenticationService {
+            service: Rc::new(service),
+            authenticator: self.authenticator.clone(),
+            authentication_flow: self.authentication_flow.clone(),
+            _c: PhantomData::<C>::default(),
+            _p: PhantomData::<P>::default(),
+        }))
+    }
+}
+
+pub struct AuthenticationService<S, A, F, C, P> {
+    service: Rc<S>,
+    authenticator: Rc<A>,
+    authentication_flow: Rc<F>,
+    _c: PhantomData<C>,
+    _p: PhantomData<P>,
+}
+
+impl<S, A, F, C, P> Service<ServiceRequest> for AuthenticationService<S, A, F, C, P>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
+    A: Authenticator + 'static,
+    F: AuthenticationFlow<
+            Request = ServiceRequest,
+            Response = ServiceResponse,
+            Credential = C,
+            Principal = P,
+            Authenticator = A,
+        > + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
@@ -41,111 +89,44 @@ where
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let service = Rc::clone(&self.service);
         let authenticator = Rc::clone(&self.authenticator);
+        let authentication_flow = Rc::clone(&self.authentication_flow);
         Box::pin(async move {
-            if is_login_request(&req) {
-                let form_login_cmd = extract_params(&mut req).await?;
-                let credential = UserCredential::new(
-                    form_login_cmd.username.clone(),
-                    form_login_cmd.password.clone(),
-                );
-                return match authenticator.authenticate(&credential).await {
-                    Ok(principal) => success_handle(&req, principal).await,
-                    Err(e) => failure_handle(&req, e).await,
+            let authenticator = authenticator.as_ref();
+            let authentication_flow = authentication_flow.as_ref();
+            if authentication_flow.is_authenticate_request(&req) {
+                let credential = authentication_flow
+                    .extract_credential(&mut req)
+                    .await
+                    .map_err(|e| {
+                        Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
+                    })?;
+                return match authentication_flow
+                    .authenticate(authenticator, &credential)
+                    .await
+                {
+                    Ok(principal) => authentication_flow
+                        .on_authenticate_success(&req, principal)
+                        .await
+                        .map_err(|e| {
+                            Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
+                        }),
+                    Err(err) => authentication_flow
+                        .on_authenticate_failure(&req, err)
+                        .await
+                        .map_err(|e| {
+                            Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
+                        }),
                 };
             }
-            if !is_principal_authenticated(&req) {
-                return un_authenticated_handle(&req).await;
+            if !authentication_flow.is_authenticated(&req) {
+                return authentication_flow
+                    .on_unauthenticated(&req)
+                    .await
+                    .map_err(|e| {
+                        Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
+                    });
             }
             service.call(req).await
         })
     }
-}
-
-pub struct AuthenticationTransform {
-    pub conn: &'static DatabaseConnection,
-}
-
-impl<S> Transform<S, ServiceRequest> for AuthenticationTransform
-where
-    S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
-{
-    type Response = ServiceResponse;
-    type Error = S::Error;
-    type Transform = AuthenticationService<S>;
-    type InitError = ();
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
-
-    fn new_transform(&self, service: S) -> Self::Future {
-        let repository = UserRepositoryImpl {
-            delegate: DomainUserRepo { conn: self.conn },
-        };
-        let authenticator = UserAuthenticator::new(repository);
-
-        ready(Ok(AuthenticationService {
-            service: Rc::new(service),
-            authenticator: Rc::new(authenticator),
-        }))
-    }
-}
-
-#[derive(Deserialize, Debug)]
-pub struct FormLoginCmd {
-    pub username: String,
-    pub password: String,
-}
-
-fn is_login_request(req: &ServiceRequest) -> bool {
-    req.uri().path().eq("/login") && req.method().eq(&Method::POST)
-}
-
-async fn extract_params(req: &mut ServiceRequest) -> Result<Form<FormLoginCmd>, Error> {
-    let http_req = req.request().clone();
-    let payload = &mut req.take_payload();
-    Form::<FormLoginCmd>::from_request(&http_req, payload).await
-}
-
-fn is_principal_authenticated(req: &ServiceRequest) -> bool {
-    req.cookie("id").is_some()
-}
-
-async fn un_authenticated_handle(req: &ServiceRequest) -> Result<ServiceResponse, Error> {
-    Ok(ServiceResponse::from_err(
-        ErrUnauthorized {},
-        req.request().to_owned(),
-    ))
-}
-
-async fn success_handle(req: &ServiceRequest, principal: User) -> Result<ServiceResponse, Error> {
-    req.get_session()
-        .insert("authenticated_principal".to_string(), principal)
-        .map_err(|e| Error::from(e))?;
-    Ok(ServiceResponse::new(
-        req.request().to_owned(),
-        HttpResponse::new(StatusCode::OK),
-    ))
-}
-
-async fn failure_handle(
-    req: &ServiceRequest,
-    e: AuthenticationError,
-) -> Result<ServiceResponse, Error> {
-    let err = CodedErr::new("A00001".to_string(), e.to_string());
-    let status_code = err.determine_http_status();
-    Ok(ServiceResponse::new(
-        req.request().to_owned(),
-        HttpResponse::new(status_code),
-    ))
-}
-
-#[test]
-pub fn test_mv() {
-    let i = FormLoginCmd {
-        username: "123".to_string(),
-        password: "456".to_string(),
-    };
-    #[warn(unused_must_use)]
-    move || {
-        println!("-in-{:?}", i);
-    };
-    // println!("-out-{:?}", i); // value moved, cant be compile
 }

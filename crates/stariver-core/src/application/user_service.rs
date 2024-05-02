@@ -13,8 +13,20 @@ impl UserApplication {
     /// 新建
     pub fn new(conn: &'static DatabaseConnection) -> UserApplication {
         UserApplication {
-            repo: UserRepositoryImpl { conn },
+            repo: UserRepositoryImpl::new(conn),
         }
+    }
+
+    pub async fn insert(&self) -> Option<CodedErr> {
+        self.repo
+            .insert(User {
+                username: "".to_string(),
+                password: "".to_string(),
+                phone: "".to_string(),
+                email: "".to_string(),
+            })
+            .await
+            .map(|e| CodedErr::new("B0000".to_string(), e.to_string()))
     }
 
     pub async fn find_by_username(&self, username: &str) -> Result<User, CodedErr> {

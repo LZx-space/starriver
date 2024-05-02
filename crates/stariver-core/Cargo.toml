@@ -11,6 +11,7 @@ unsafe_code = "forbid"
 actix-web = { workspace = true }
 actix-web-httpauth = { workspace = true }
 actix-session = { workspace = true }
+anyhow = { workspace = true }
 
 argon2 = "^0"
 async_static = "^0"

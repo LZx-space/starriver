@@ -77,13 +77,13 @@ pub trait UserRepository {
 }
 
 pub struct UserRepositoryImpl {
-    pub(crate) delegate: DomainUserRepoImpl,
+    delegate: DomainUserRepoImpl,
 }
 
 impl UserRepositoryImpl {
     pub fn new(conn: &'static DatabaseConnection) -> Self {
         UserRepositoryImpl {
-            delegate: DomainUserRepoImpl { conn },
+            delegate: DomainUserRepoImpl::new(conn),
         }
     }
 }
@@ -98,7 +98,10 @@ impl UserRepository for UserRepositoryImpl {
                 password: u.password,
                 authorities: vec![],
             })
-            .map_err(|e| AuthenticationError::UsernameNotFound)
+            .map_err(|e| {
+                println!("--------->{}", e);
+                AuthenticationError::UsernameNotFound
+            })
     }
 }
 

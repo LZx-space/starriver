@@ -1,8 +1,7 @@
+use anyhow::Error;
 use chrono::Local;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{
-    ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QuerySelect,
-};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
 use uuid::Uuid;
 
 use crate::domain::blog::aggregate::Article;
@@ -19,7 +18,7 @@ pub struct ArticleRepositoryImpl {
 }
 
 impl ArticleRepository for ArticleRepositoryImpl {
-    async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, DbErr> {
+    async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, Error> {
         let articles = ArticlePo::find()
             .select_only()
             .columns([Column::Id, Column::Title, Column::CreateAt])
@@ -36,24 +35,26 @@ impl ArticleRepository for ArticleRepositoryImpl {
         Ok(PageResult::new(q.page, q.page_size, record_total, articles))
     }
 
-    async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, DbErr> {
-        let article = ArticlePo::find_by_id(id)
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, Error> {
+        ArticlePo::find_by_id(id)
             .one(self.conn)
-            .await?
-            .map(|e| Article {
-                id,
-                title: e.title.clone(),
-                body: e.body.clone(),
-                state: e.state.into(),
-                author_id: e.author_id,
-                create_at: e.create_at,
-                update_at: e.update_at,
-            });
-        Ok(article)
+            .await
+            .map(|op| {
+                op.map(|e| Article {
+                    id,
+                    title: e.title.clone(),
+                    body: e.body.clone(),
+                    state: e.state.into(),
+                    author_id: e.author_id,
+                    create_at: e.create_at,
+                    update_at: e.update_at,
+                })
+            })
+            .map_err(|e| Error::from(e))
     }
 
-    async fn add(&self, e: Article) -> Result<bool, DbErr> {
-        let model = ArticleModel {
+    async fn add(&self, e: Article) -> Result<Article, Error> {
+        ArticleModel {
             id: Set(e.id),
             title: Set(e.title),
             body: Set(e.body),
@@ -61,37 +62,62 @@ impl ArticleRepository for ArticleRepositoryImpl {
             author_id: Set(e.author_id),
             create_at: Set(Local::now()),
             update_at: Set(None),
-        };
-        model.insert(self.conn).await?;
-        Ok(true)
-    }
-
-    async fn delete_by_id(&self, id: Uuid) -> Result<bool, DbErr> {
-        let result = ArticlePo::delete_by_id(id).exec(self.conn).await?;
-        Ok(result.rows_affected > 0)
-    }
-
-    async fn update(&self, e: Article) -> Result<bool, DbErr> {
-        let exist_one = ArticlePo::find_by_id(e.id)
-            .one(self.conn)
-            .await?
-            .map(|model| ArticleModel {
-                id: Set(model.id),
-                title: Set(model.title),
-                body: Set(model.body),
-                state: Default::default(),
-                author_id: Set(model.author_id),
-                create_at: Set(model.create_at),
-                update_at: Set(Some(Local::now())),
-            });
-        match exist_one {
-            None => Ok(false),
-            Some(mut model) => {
-                model.title = Set(e.title);
-                model.body = Set(e.body);
-                model.update(self.conn).await?;
-                Ok(true)
-            }
         }
+        .insert(self.conn)
+        .await
+        .map(|e| Article {
+            id: e.id,
+            title: e.title,
+            body: e.body,
+            state: e.state.into(),
+            author_id: e.author_id,
+            create_at: e.create_at,
+            update_at: e.update_at,
+        })
+        .map_err(|e| Error::from(e))
+    }
+
+    async fn delete_by_id(&self, id: Uuid) -> Result<bool, Error> {
+        ArticlePo::delete_by_id(id)
+            .exec(self.conn)
+            .await
+            .map(|e| e.rows_affected > 0)
+            .map_err(|e| Error::from(e))
+    }
+
+    async fn update(&self, e: Article) -> Result<Option<Article>, Error> {
+        let result = ArticlePo::find_by_id(e.id).one(self.conn).await;
+        return match result {
+            Ok(op) => match op {
+                None => Ok(None),
+                Some(mut model) => {
+                    let active_model = ArticleModel {
+                        id: Set(model.id),
+                        title: Set(e.title),
+                        body: Set(e.body),
+                        state: Default::default(),
+                        author_id: Set(model.author_id),
+                        create_at: Set(model.create_at),
+                        update_at: Set(Some(Local::now())),
+                    };
+                    active_model
+                        .update(self.conn)
+                        .await
+                        .map(|e| {
+                            Some(Article {
+                                id: e.id,
+                                title: e.title,
+                                body: e.body,
+                                state: e.state.into(),
+                                author_id: e.author_id,
+                                create_at: e.create_at,
+                                update_at: e.update_at,
+                            })
+                        })
+                        .map_err(|e| Error::from(e))
+                }
+            },
+            Err(err) => Err(Error::from(err)),
+        };
     }
 }

@@ -23,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     say_hello();
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(tracing::Level::INFO)
         .with_test_writer()
         .init();
     let conn = db_conn().await;

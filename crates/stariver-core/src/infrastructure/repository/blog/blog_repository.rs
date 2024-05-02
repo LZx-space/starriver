@@ -90,13 +90,13 @@ impl ArticleRepository for ArticleRepositoryImpl {
         return match exist {
             Ok(op) => match op {
                 None => Ok(None),
-                Some(mut finded) => ActiveModel {
-                    id: Set(finded.id),
+                Some(found) => ActiveModel {
+                    id: Set(found.id),
                     title: Set(e.title),
                     body: Set(e.body),
                     state: Set(e.state.into()),
-                    author_id: Set(finded.author_id),
-                    create_at: Set(finded.create_at),
+                    author_id: Set(found.author_id),
+                    create_at: Set(found.create_at),
                     update_at: Set(Some(Local::now())),
                 }
                 .update(self.conn)

@@ -1,11 +1,12 @@
 use chrono::{DateTime, Local};
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::domain::blog::value_object::State;
 use crate::domain::blog::value_object::State::{Draft, Released};
 
 /// 文章
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Article {
     pub id: Uuid,
     pub title: String,

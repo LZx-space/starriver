@@ -12,29 +12,38 @@ use crate::model::blog::{ArticleCmd, ArticleVo};
 #[get("/blogs")]
 pub async fn page(state: web::Data<AppState>, params: Query<PageQuery>) -> impl Responder {
     let page_query = params.into_inner();
-    let result = state.article_application.page(page_query).await;
-    result.map(|u| Json(u))
+    state
+        .article_application
+        .page(page_query)
+        .await
+        .map(|e| Json(e))
 }
 
 #[get("/blogs/{id}")]
 pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Responder {
-    let result = state.article_application.find_by_id(id.into_inner()).await;
-    let option = result.unwrap();
-    let article = option.expect("记录不存在");
-    let vo = ArticleVo {
-        title: article.title,
-        body: article.body,
-        state: article.state.to_string(),
-    };
-    Json(vo)
+    state
+        .article_application
+        .find_by_id(id.into_inner())
+        .await
+        .map(|e| {
+            e.map(|a| ArticleVo {
+                title: a.title,
+                body: a.body,
+                state: a.state.to_string(),
+            })
+        })
+        .map(|e| Json(e))
 }
 
 #[post("/blogs")]
 pub async fn insert(state: web::Data<AppState>, cmd: Json<ArticleCmd>) -> impl Responder {
     let cmd = cmd.into_inner();
     let article = cmd_2_new_entity(cmd, "LZx".to_string());
-    let result = state.article_application.add(article).await;
-    Json(result.unwrap())
+    state
+        .article_application
+        .add(article)
+        .await
+        .map(|e| Json(e))
 }
 
 #[put("/blogs/{id}")]
@@ -50,8 +59,11 @@ pub async fn update(
         ()
     }
     let article = cmd_2_update_entity(cmd, to_update.unwrap());
-    let result = state.article_application.update(article).await;
-    Json(result.unwrap())
+    state
+        .article_application
+        .update(article)
+        .await
+        .map(|e| Json(e))
 }
 
 #[delete("/blogs/{id}")]

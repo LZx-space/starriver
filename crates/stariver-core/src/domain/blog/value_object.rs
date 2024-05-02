@@ -1,7 +1,10 @@
-use crate::domain::blog::value_object::State::Draft;
 use std::fmt::Display;
 
-#[derive(Debug, Eq, PartialEq)]
+use serde::Serialize;
+
+use crate::domain::blog::value_object::State::Draft;
+
+#[derive(Debug, Eq, PartialEq, Serialize)]
 pub enum State {
     Draft,
     Released,

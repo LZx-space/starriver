@@ -11,6 +11,7 @@ unsafe_code = "forbid"
 ferris-says = "^0"
 actix-web = { workspace = true }
 actix-session = { workspace = true }
+anyhow = { workspace = true }
 
 dotenvy = "^0"
 env_logger = "^0"

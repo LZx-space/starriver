@@ -1,7 +1,6 @@
-use crate::domain::blog::value_object::State;
 use sea_orm::{DeriveActiveEnum, EnumIter};
 
-use crate::infrastructure::repository::blog::po::state::ArticleState::Draft;
+use crate::domain::blog::value_object::State;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
@@ -14,16 +13,26 @@ pub enum ArticleState {
 
 impl Default for ArticleState {
     fn default() -> Self {
-        Draft
+        ArticleState::Draft
     }
 }
 
 impl Into<State> for ArticleState {
     fn into(self) -> State {
-        if self.eq(&Draft) {
+        if self.eq(&ArticleState::Draft) {
             State::Draft
         } else {
             State::Released
+        }
+    }
+}
+
+impl From<State> for ArticleState {
+    fn from(value: State) -> Self {
+        if value.eq(&State::Draft) {
+            ArticleState::Draft
+        } else {
+            ArticleState::Released
         }
     }
 }

@@ -4,6 +4,7 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::infrastructure::security::authentication::core::credential::Credential;
 use crate::infrastructure::security::authentication::core::principal::Principal;
 
+#[trait_variant::make(HttpService: Send)]
 pub trait Authenticator {
     type Credential: Credential;
 

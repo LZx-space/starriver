@@ -7,9 +7,9 @@ use actix_web::cookie::Key;
 use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
 
-use stariver_adapter::api::authentication;
 use stariver_adapter::api::blog;
 use stariver_adapter::api::dictionary;
+use stariver_adapter::api::{authentication, user};
 use stariver_core::infrastructure::security::authentication::user_principal::{
     UserAuthenticator, UserRepositoryImpl,
 };
@@ -47,6 +47,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::ErrorHandlers::new())
             .app_data(web::Data::new(app_state))
             .service(authentication::validate_authenticated)
+            .service(user::insert)
             .service(blog::page)
             .service(blog::find_one)
             .service(blog::insert)

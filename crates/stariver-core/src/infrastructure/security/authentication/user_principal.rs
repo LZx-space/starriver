@@ -93,14 +93,16 @@ impl UserRepository for UserRepositoryImpl {
         self.delegate
             .find_by_username(user_id)
             .await
+            .unwrap()
+            .ok_or(AuthenticationError::UsernameNotFound)
+            .map_err(|e| {
+                println!("--------->{}", e);
+                AuthenticationError::UsernameNotFound
+            })
             .map(|u| User {
                 username: u.username,
                 password: u.password,
                 authorities: vec![],
-            })
-            .map_err(|e| {
-                println!("--------->{}", e);
-                AuthenticationError::UsernameNotFound
             })
     }
 }

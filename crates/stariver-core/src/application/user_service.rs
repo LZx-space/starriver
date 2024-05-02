@@ -17,20 +17,17 @@ impl UserApplication {
         }
     }
 
-    pub async fn insert(&self) -> Option<CodedErr> {
+    pub async fn insert(&self, user: User) -> Result<User, CodedErr> {
         self.repo
-            .insert(User {
-                username: "".to_string(),
-                password: "".to_string(),
-                phone: "".to_string(),
-                email: "".to_string(),
-            })
+            .insert(user)
             .await
-            .map(|e| CodedErr::new("B0000".to_string(), e.to_string()))
+            .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
     }
 
-    pub async fn find_by_username(&self, username: &str) -> Result<User, CodedErr> {
-        let result = self.repo.find_by_username(username).await;
-        result.map_err(|_err| CodedErr::new("B0000".to_string(), _err.to_string()))
+    pub async fn find_by_username(&self, username: &str) -> Result<Option<User>, CodedErr> {
+        self.repo
+            .find_by_username(username)
+            .await
+            .map_err(|err| CodedErr::new("B0000".to_string(), err.to_string()))
     }
 }

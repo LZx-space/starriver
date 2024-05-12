@@ -44,7 +44,9 @@ impl UserCredential {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     username: String,
+    #[serde(skip_serializing, default)]
     password: String,
+    #[serde(default)]
     authorities: Vec<SimpleAuthority>,
 }
 

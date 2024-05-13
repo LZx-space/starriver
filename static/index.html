@@ -5,100 +5,41 @@
     <title>stariver</title>
     <link href="https://unpkg.com/trix@2.0.0/dist/trix.css" rel="stylesheet" type="text/css">
     <script src="https://unpkg.com/trix@2.0.0/dist/trix.umd.min.js" type="text/javascript"></script>
-    <script src="./js/echarts.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<form>
-    <input id="editor" name="content" type="hidden">
-    <trix-editor input="editor"></trix-editor>
-    <button type="button" onclick="content1()">content</button>
-    <hr style="border-style: dashed">
-    <div id="main" style="width: 800px;height:500px;"></div>
-    <script type="text/javascript">
-        function content1() {
-            console.log(document.getElementById('editor').value)
-        }
-        // 基于准备好的dom，初始化echarts实例
-        const myChart = echarts.init(document.getElementById('main'));
 
-        // 指定图表的配置项和数据
-        const option = {
-            title: {
-                text: 'ECharts示例'
-            },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'cross' }
-                // formatter: function (params, ticket, callback) {
-                //     const series0 = params[0];
-                //     console.log(JSON.stringify(series0.dimensionNames[0] + ': ' + series0.value['2015']))
-                //     return series0.name +
-                //         '</br>2015: \t' + series0.data['2015'] +
-                //         '</br>2016: \t' + series0.data['2016'] +
-                //         '</br>2017: \t' + series0.data['2017'] +
-                //         '</br>'
-                // }
-            },
-            legend: {
-                // icon: 'rect',
-            },
-            dataset: {
-                // 提供一份数据。
-                source: [
-                    {'product': 'Matcha Latte', '2015': 43.3, '2016': 85.8, '2017': 93.7},
-                    {'product': 'Milk Tea', '2015': 83.1, '2016': 73.4, '2017': 55.1},
-                    {'product': 'Cheese Cocoa', '2015': 86.4, '2016': 65.2, '2017': 82.5},
-                    {'product': 'Walnut Brownie', '2015': 72.4, '2016': 53.9, '2017': 39.1}
-                ]
-            },
-            // 声明一个 X 轴，类目轴（category）。默认情况下，类目轴对应到 dataset 第一列。
-            xAxis: {type: 'category'},
-            // 声明一个 Y 轴，数值轴。
-            yAxis: {},
-            // 声明多个 bar 系列，默认情况下，每个系列会自动对应到 dataset 的每一列。
-            series: [
-                {
-                    type: 'bar',
-                    name: '啊',
-                    encode: {
-                        x: 'product',
-                        y: "2015",
-                        // tooltip: [0, 1,2]
-                    }
-                },
-                {
-                    type: 'bar',
-                    name: '测试',
-                    encode: {
-                        x: 'product',
-                        y: "2016",
-                        // tooltip: [2]
-                    }
-                },
-                {
-                    type: 'line',
-                    name: '测试2',
-                    encode: {
-                        x: 'product',
-                        y: "2017",
-                        // tooltip: [3]
-                    }
-                },
-                {
-                    type: 'line',
-                    name: '测试3',
-                    encode: {
-                        x: 'product',
-                        y: "2015",
-                        // tooltip: [4]
-                    }
+<input id="editor" name="content" type="hidden">
+<trix-editor input="editor"></trix-editor>
+<button onclick="content()" type="button">content</button>
+<hr style="border-style: dashed">
+<canvas id="myChart"></canvas>
+
+<script type="text/javascript">
+    function content() {
+        console.log(document.getElementById('editor').value)
+    }
+
+    const ctx = document.getElementById('myChart');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+            datasets: [{
+                label: '# of Votes',
+                data: [12, 19, 3, 5, 2, 3],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
                 }
-            ]
-        };
+            }
+        }
+    });
+</script>
 
-        // 使用刚指定的配置项和数据显示图表。
-        myChart.setOption(option);
-    </script>
-</form>
 </body>
 </html>

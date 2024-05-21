@@ -1,5 +1,6 @@
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
+
+use thiserror::Error;
 
 use crate::infrastructure::security::authentication::core::credential::Credential;
 use crate::infrastructure::security::authentication::core::principal::Principal;
@@ -17,20 +18,14 @@ pub trait Authenticator {
     ) -> Result<Self::Principal, AuthenticationError>;
 }
 
-/// 认证错误
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum AuthenticationError {
-    /// 用户名未发现
+    #[error("username not found")]
     UsernameNotFound,
-    /// 凭证错误
+
+    #[error("bad password")]
     BadPassword,
-}
 
-impl Error for AuthenticationError {}
-
-impl Display for AuthenticationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // todo 打印具体的异常名称
-        write!(f, "authenticate error")
-    }
+    #[error("unknown error")]
+    Unknown,
 }

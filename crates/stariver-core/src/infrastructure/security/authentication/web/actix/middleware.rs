@@ -97,9 +97,7 @@ where
                 let credential = authentication_flow
                     .extract_credential(&mut req)
                     .await
-                    .map_err(|e| {
-                        Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
-                    })?;
+                    .map_err(|e| Error::from(CodedErr::new("1000".to_string(), e.to_string())))?;
                 return match authentication_flow
                     .authenticate(authenticator, &credential)
                     .await
@@ -107,24 +105,18 @@ where
                     Ok(principal) => authentication_flow
                         .on_authenticate_success(&req, principal)
                         .await
-                        .map_err(|e| {
-                            Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
-                        }),
+                        .map_err(|e| Error::from(CodedErr::new("1000".to_string(), e.to_string()))),
                     Err(err) => authentication_flow
                         .on_authenticate_failure(&req, err)
                         .await
-                        .map_err(|e| {
-                            Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
-                        }),
+                        .map_err(|e| Error::from(CodedErr::new("1000".to_string(), e.to_string()))),
                 };
             }
             if !authentication_flow.is_authenticated(&req) {
                 return authentication_flow
                     .on_unauthenticated(&req)
                     .await
-                    .map_err(|e| {
-                        Error::from(CodedErr::new("1000".to_string(), "123".to_string()))
-                    });
+                    .map_err(|e| Error::from(CodedErr::new("1000".to_string(), e.to_string())));
             }
             service.call(req).await
         })

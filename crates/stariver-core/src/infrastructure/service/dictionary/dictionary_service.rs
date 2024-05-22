@@ -130,6 +130,7 @@ impl FromStr for DataType {
     }
 }
 
+#[cfg(test)]
 mod test {
     use serde::Serialize;
 

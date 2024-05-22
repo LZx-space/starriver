@@ -18,6 +18,7 @@ pub fn verify_password(password: &str, password_hash_string: PasswordHashString)
     argon2.verify_password(password.as_bytes(), &password_hash_string.password_hash())
 }
 
+#[cfg(test)]
 mod test {
     use std::time::SystemTime;
 

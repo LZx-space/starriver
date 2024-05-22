@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::{Error, FromRequest};
+use actix_web::Error;
 
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::Authenticator;

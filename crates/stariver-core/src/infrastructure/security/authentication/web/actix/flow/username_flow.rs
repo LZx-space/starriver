@@ -75,11 +75,7 @@ impl AuthenticationFlow for UsernameFlow {
         e: AuthenticationError,
     ) -> Result<Self::Response, AuthenticationError> {
         let err = CodedErr::new("A00001".to_string(), e.to_string());
-        let status_code = err.determine_http_status();
-        Ok(ServiceResponse::new(
-            req.request().to_owned(),
-            HttpResponse::new(status_code),
-        ))
+        Ok(ServiceResponse::from_err(err, req.request().to_owned()))
     }
 }
 

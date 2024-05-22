@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 use crate::domain::user::repository::UserRepository as DomainUserRepository;
 use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl as DomainUserRepoImpl;
@@ -92,20 +93,21 @@ impl UserRepositoryImpl {
 
 impl UserRepository for UserRepositoryImpl {
     async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError> {
-        self.delegate
+        let result = self
+            .delegate
             .find_by_username(user_id)
             .await
-            .unwrap()
-            .ok_or(AuthenticationError::UsernameNotFound)
-            .map_err(|e| {
-                println!("--------->{}", e);
-                AuthenticationError::UsernameNotFound
-            })
-            .map(|u| User {
-                username: u.username,
-                password: u.password,
-                authorities: vec![],
-            })
+            .map_err(|e| AuthenticationError::Unknown);
+        match result {
+            Ok(op) => op
+                .ok_or(AuthenticationError::UsernameNotFound)
+                .map(|u| User {
+                    username: u.username,
+                    password: u.password,
+                    authorities: vec![],
+                }),
+            Err(err) => Err(err),
+        }
     }
 }
 
@@ -135,7 +137,11 @@ impl Authenticator for UserAuthenticator {
             Ok(user) => {
                 let password_hash_string = to_password_hash_string_struct(user.password())
                     .map_err(|e| {
-                        println!("{}'s password was not hashed: {}", user.username(), e);
+                        error!(
+                            "{}'s password was not hashed: {}",
+                            user.username(),
+                            e.to_string()
+                        );
                         AuthenticationError::BadPassword
                     })?;
                 let result = verify_password(credential.password.as_str(), password_hash_string);

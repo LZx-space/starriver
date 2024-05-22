@@ -130,34 +130,42 @@ impl FromStr for DataType {
     }
 }
 
-#[test]
-fn test_de() {
-    #[derive(Serialize, Debug)]
-    struct A {
-        a: String,
-        b: u32,
-    }
-    let obj = A {
-        a: "abc".to_string(),
-        b: 100,
+mod test {
+    use serde::Serialize;
+
+    use crate::infrastructure::service::dictionary::dictionary_service::{
+        DataType, DictionaryEntry,
     };
-    println!("obj->{:?}", obj);
 
-    match "u123".parse::<i8>() {
-        Ok(i) => {
-            println!("parse to i8 {}", i);
+    #[test]
+    fn test_de() {
+        #[derive(Serialize, Debug)]
+        struct A {
+            a: String,
+            b: u32,
         }
-        Err(err) => {
-            println!("{}", err);
+        let obj = A {
+            a: "abc".to_string(),
+            b: 100,
+        };
+        println!("obj->{:?}", obj);
+
+        match "u123".parse::<i8>() {
+            Ok(i) => {
+                println!("parse to i8 {}", i);
+            }
+            Err(err) => {
+                println!("{}", err);
+            }
         }
+
+        let result = DictionaryEntry::new("55".to_string(), DataType::I8, "测试".to_string());
+        assert!(result.is_ok());
+        let result = DictionaryEntry::new("a55".to_string(), DataType::I8, "测试".to_string());
+        assert!(result.is_err());
+        let result = DictionaryEntry::new("66".to_string(), DataType::BOOLEAN, "测试".to_string());
+        assert!(result.is_err());
+        let result = DictionaryEntry::new("127".to_string(), DataType::I8, "测试".to_string());
+        println!("parse-{:?}", result.unwrap().try_parse::<isize>());
     }
-
-    let result = DictionaryEntry::new("55".to_string(), DataType::I8, "测试".to_string());
-    println!("{}", result.unwrap().value);
-    let result = DictionaryEntry::new("a55".to_string(), DataType::I8, "测试".to_string());
-    println!("{}", result.unwrap().value);
-    let result = DictionaryEntry::new("66".to_string(), DataType::BOOLEAN, "测试".to_string());
-    println!("{}", result.unwrap().value);
-    let result = DictionaryEntry::new("127".to_string(), DataType::I8, "测试".to_string());
-    println!("4-parse-{:?}", result.unwrap().try_parse::<isize>());
 }

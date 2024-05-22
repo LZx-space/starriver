@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Display, Formatter, Result};
 
 use serde::Serialize;
 
@@ -15,7 +15,7 @@ impl Default for State {
 }
 
 impl Display for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             State::Draft => f.write_str("draft"),
             State::Released => f.write_str("released"),

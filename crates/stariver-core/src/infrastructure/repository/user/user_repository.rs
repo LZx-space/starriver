@@ -45,7 +45,7 @@ impl UserRepository for UserRepositoryImpl {
                 .map(|m| User {
                     id: m.id,
                     username: m.username,
-                    password: m.password,
+                    password: String::new(),
                 })
                 .map_err(|e| Error::new(e)),
             Err(err) => Err(err),

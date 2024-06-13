@@ -5,7 +5,7 @@ mod test {
 
     #[derive(Debug, Serialize, Deserialize)]
     struct Claims {
-        // aud: String, // Optional. Audience
+        aud: String, // Optional. Audience
         exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
         iat: usize, // Optional. Issued at (as UTC timestamp)
         iss: String, // Optional. Issuer
@@ -16,7 +16,7 @@ mod test {
     #[test]
     fn demo1() {
         let claims = Claims {
-            // aud: "LZx".to_string(),
+            aud: "LZx".to_string(),
             exp: 2_000_000_000,
             iat: 1_661_231_234,
             iss: "LZx".to_string(),
@@ -30,23 +30,25 @@ mod test {
         );
         match token {
             Ok(jsonwebtoken) => {
-                println!("{}", jsonwebtoken);
+                println!("encode jwt: {}", jsonwebtoken);
+                let mut validation = Validation::default();
+                validation.set_audience(&vec!["LZx"]);
                 let decode = decode::<Claims>(
                     &jsonwebtoken,
                     &DecodingKey::from_secret("secret".as_ref()),
-                    &Validation::default(),
+                    &validation,
                 );
                 match decode {
                     Ok(t) => {
                         println!("decode = {:?}", t);
                     }
                     Err(err) => {
-                        println!("decode err {}", err);
+                        println!("decode err: {}", err);
                     }
                 }
             }
             Err(err) => {
-                panic!("encode err {}", err)
+                panic!("encode err: {}", err)
             }
         }
     }

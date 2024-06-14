@@ -1,37 +1,52 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <title>stariver</title>
-    <link href="https://unpkg.com/trix@2.0.0/dist/trix.css" rel="stylesheet" type="text/css">
-    <script src="https://unpkg.com/trix@2.0.0/dist/trix.umd.min.js" type="text/javascript"></script>
+    <link href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+<!-- Rich Text Editor -->
+<div id="editor"></div>
+<button class="ql-bold" type="button" onclick="content()">content</button>
 
-<input id="editor" name="content" type="hidden">
-<trix-editor input="editor"></trix-editor>
-<button onclick="content()" type="button">content</button>
+<!-- Chart -->
 <hr style="border-style: dashed">
-<canvas id="myChart"></canvas>
+<div style="width:70%;">
+    <canvas id="chart"></canvas>
+</div>
 
 <script type="text/javascript">
+
+    const quill = new Quill("#editor", {
+        theme: "snow",
+    });
+
     function content() {
-        console.log(document.getElementById('editor').value)
+        console.log('a=', quill.getContents());
+        console.log('t=', quill.getText());
+        console.log('h=', quill.getSemanticHTML());
     }
 
-    const ctx = document.getElementById('myChart');
+    const ctx = document.getElementById('chart');
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
             datasets: [{
-                label: '# of Votes',
+                label: 'Votes 1',
+                type: 'bar',
                 data: [12, 19, 3, 5, 2, 3],
-                borderWidth: 1
+            }, {
+                label: 'Votes 2',
+                type: 'line',
+                data: [15, 12, 5, 1, 12, 9],
             }]
         },
         options: {
+            locale: 'zh',
             scales: {
                 y: {
                     beginAtZero: true

@@ -1,53 +1,53 @@
 use std::marker::PhantomData;
 
-pub struct Charts<Q, T, U> {
+pub struct Charts<Q, R, T, U> {
     result_handler: U,
     _marker1: PhantomData<Q>,
-    _marker2: PhantomData<T>,
+    _marker2: PhantomData<R>,
+    _marker3: PhantomData<T>,
 }
 
-impl<Q, T, U> Charts<Q, T, U>
+impl<Q, R, T, U> Charts<Q, R, T, U>
 where
-    Q: RowQuery,
-    T: Result<Row = Q::Row>,
-    U: ResultHandler<Row = Q::Row, Result = T>,
+    T: Result<Row = R>,
+    U: QueryHandler<Query = Q, Row = R, Result = T>,
 {
     fn new(result_handler: U) -> Self {
         Charts {
             result_handler,
             _marker1: Default::default(),
             _marker2: Default::default(),
+            _marker3: Default::default(),
         }
     }
 
-    fn handle(&self, query: Q) -> T {
-        let initialized_rows = query.initialized_rows();
-        self.result_handler.update(initialized_rows)
+    fn handle(&self, context: Context<Q>) -> T {
+        self.result_handler.handle(context)
     }
+}
+
+pub struct Context<Q> {
+    query: Q,
 }
 
 pub trait Row {
     fn label(&self) -> &str;
 }
 
-pub trait RowQuery {
-    type Row: Row;
-
-    fn initialized_rows(&self) -> Vec<Self::Row>;
-}
-
 pub trait Result {
     type Row: Row;
 
-    fn dateset(&self) -> Vec<Self::Row>;
+    fn dateset(&self) -> Vec<&Self::Row>;
 }
 
-pub trait ResultHandler {
+pub trait QueryHandler {
+    type Query;
+
     type Row: Row;
 
     type Result: Result<Row = Self::Row>;
 
-    fn update(&self, initialized_rows: Vec<Self::Row>) -> Self::Result;
+    fn handle(&self, context: Context<Self::Query>) -> Self::Result;
 }
 
 #[test]
@@ -81,14 +81,6 @@ pub fn test() {
 
     struct TestRowQuery {}
 
-    impl RowQuery for TestRowQuery {
-        type Row = TestRow;
-
-        fn initialized_rows(&self) -> Vec<Self::Row> {
-            vec![TestRow::new("行A"), TestRow::new("行B")]
-        }
-    }
-
     // ----------------------------------
 
     struct TestResult {
@@ -98,8 +90,8 @@ pub fn test() {
     impl Result for TestResult {
         type Row = TestRow;
 
-        fn dateset(&self) -> Vec<Self::Row> {
-            self.dateset()
+        fn dateset(&self) -> Vec<&Self::Row> {
+            self.dateset.iter().map(|e| e).collect()
         }
     }
 
@@ -113,7 +105,7 @@ pub fn test() {
                     let x1 = &e.column_1;
                     String::from(x).add("-").add(x1)
                 })
-                .reduce(|mut a, b| a.add(" ").add(b.as_str()));
+                .reduce(|a, b| a.add(" ").add(b.as_str()));
             f.write_str(show.unwrap().as_str()).unwrap();
             Ok(())
         }
@@ -123,19 +115,24 @@ pub fn test() {
 
     struct TestResultHandler {}
 
-    impl ResultHandler for TestResultHandler {
+    impl QueryHandler for TestResultHandler {
+        type Query = TestRowQuery;
         type Row = TestRow;
         type Result = TestResult;
 
-        fn update(&self, mut initialized_rows: Vec<Self::Row>) -> Self::Result {
-            let vec: Vec<TestRow> = initialized_rows
-                .iter_mut()
-                .map(|e| TestRow {
-                    label: e.label.clone(),
-                    column_1: "ACV".to_string(),
-                })
-                .collect();
-            TestResult { dateset: vec }
+        fn handle(&self, context: Context<Self::Query>) -> Self::Result {
+            TestResult {
+                dateset: vec![
+                    TestRow {
+                        label: "R1".to_string(),
+                        column_1: "1".to_string(),
+                    },
+                    TestRow {
+                        label: "R2".to_string(),
+                        column_1: "2".to_string(),
+                    },
+                ],
+            }
         }
     }
 
@@ -144,6 +141,7 @@ pub fn test() {
     let handler = TestResultHandler {};
     let charts = Charts::new(handler);
     let query = TestRowQuery {};
-    let result = charts.handle(query);
+    let context = Context { query };
+    let result = charts.handle(context);
     println!("{:?}", result)
 }

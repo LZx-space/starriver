@@ -21,6 +21,18 @@ impl CodedErr {
         }
     }
 
+    pub fn new_with_client_reason(msg: String) -> Self {
+        Self::new("A0000".to_string(), msg)
+    }
+
+    pub fn new_with_system_self_reason(msg: String) -> Self {
+        Self::new("B0000".to_string(), msg)
+    }
+
+    pub fn new_with_third_part_reason(msg: String) -> Self {
+        Self::new("C0000".to_string(), msg)
+    }
+
     pub fn new_with_data<T: CodedErrData + 'static>(code: String, msg: String, data: T) -> Self {
         CodedErr::validate(&code);
         CodedErr {

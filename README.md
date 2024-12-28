@@ -1,3 +1,3 @@
-# Stariver
+# Starriver
 ## Intro
 * rust-lang practice

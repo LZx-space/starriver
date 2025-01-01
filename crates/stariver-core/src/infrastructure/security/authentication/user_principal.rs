@@ -1,7 +1,7 @@
-use std::fmt::Debug;
-
+use anyhow::Error;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use tracing::error;
 
 use crate::domain::user::repository::UserRepository as DomainUserRepository;
@@ -25,12 +25,6 @@ pub struct UserCredential {
 }
 
 impl Credential for UserCredential {
-    type Id = String;
-
-    fn id(&self) -> &Self::Id {
-        &self.username
-    }
-
     fn request_details(&self) -> RequestDetails {
         RequestDetails {}
     }
@@ -131,7 +125,7 @@ impl Authenticator for UserAuthenticator {
         &self,
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError> {
-        let username = credential.id();
+        let username = &credential.username;
         let user = self.user_repository.find_by_id(username).await;
         match user {
             Ok(user) => {

@@ -1,4 +1,3 @@
-use anyhow::Error;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -9,9 +8,7 @@ use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl
 use crate::infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
-use crate::infrastructure::security::authentication::core::credential::{
-    Credential, RequestDetails,
-};
+use crate::infrastructure::security::authentication::core::credential::{Credential, Ctx};
 use crate::infrastructure::security::authentication::core::principal::{
     Principal, SimpleAuthority,
 };
@@ -19,20 +16,26 @@ use crate::infrastructure::security::authentication::util::{
     to_password_hash_string_struct, verify_password,
 };
 
-pub struct UserCredential {
+pub struct UsernamePasswordCredential {
     username: String,
     password: String,
 }
 
-impl Credential for UserCredential {
-    fn request_details(&self) -> RequestDetails {
-        RequestDetails {}
+impl Credential for UsernamePasswordCredential {
+    fn request_details(&self) -> Ctx {
+        Ctx {}
     }
 }
 
-impl UserCredential {
-    pub fn new(username: String, password: String) -> Self {
-        UserCredential { username, password }
+impl UsernamePasswordCredential {
+    pub fn new(username: String, password: String) -> Result<Self, AuthenticationError> {
+        if username.is_empty() {
+            return Err(AuthenticationError::UsernameEmpty);
+        }
+        if password.is_empty() {
+            return Err(AuthenticationError::PasswordEmpty);
+        }
+        Ok(UsernamePasswordCredential { username, password })
     }
 }
 
@@ -118,7 +121,7 @@ impl UserAuthenticator {
 }
 
 impl Authenticator for UserAuthenticator {
-    type Credential = UserCredential;
+    type Credential = UsernamePasswordCredential;
     type Principal = User;
 
     async fn authenticate(

@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::AuthenticationError;
 use crate::infrastructure::security::authentication::user_principal::{
-    User, UserAuthenticator, UserCredential,
+    User, UserAuthenticator, UsernamePasswordCredential,
 };
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
 use crate::infrastructure::security::authentication::web::flow::AuthenticationFlow;
@@ -18,7 +18,7 @@ pub struct UsernameFlow {}
 impl AuthenticationFlow for UsernameFlow {
     type Request = ServiceRequest;
     type Response = ServiceResponse;
-    type Credential = UserCredential;
+    type Credential = UsernamePasswordCredential;
     type Principal = User;
     type Authenticator = UserAuthenticator;
 
@@ -43,16 +43,14 @@ impl AuthenticationFlow for UsernameFlow {
     async fn extract_credential(
         &self,
         req: &mut Self::Request,
-    ) -> Result<UserCredential, AuthenticationError> {
+    ) -> Result<UsernamePasswordCredential, AuthenticationError> {
         let http_req = req.request().clone();
         let payload = &mut req.take_payload();
         Form::<FormLoginCmd>::from_request(&http_req, payload)
             .await
-            .map(|e| {
-                let cmd = e.into_inner();
-                UserCredential::new(cmd.username, cmd.password)
-            })
-            .map_err(|e| AuthenticationError::UsernameNotFound)
+            .map(|e| e.into_inner())
+            .map_err(|e| AuthenticationError::Unknown)
+            .and_then(|e| UsernamePasswordCredential::new(e.username, e.password))
     }
 
     async fn on_authenticate_success(

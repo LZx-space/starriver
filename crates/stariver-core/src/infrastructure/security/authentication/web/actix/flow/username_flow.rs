@@ -26,16 +26,6 @@ impl AuthenticationFlow for UsernameFlow {
         req.cookie("id").is_some()
     }
 
-    async fn on_unauthenticated(
-        &self,
-        req: &Self::Request,
-    ) -> Result<Self::Response, AuthenticationError> {
-        Ok(ServiceResponse::from_err(
-            ErrUnauthorized {},
-            req.request().to_owned(),
-        ))
-    }
-
     fn is_authenticate_request(&self, req: &Self::Request) -> bool {
         req.uri().path().eq("/login") && req.method().eq(&Method::POST)
     }
@@ -51,6 +41,16 @@ impl AuthenticationFlow for UsernameFlow {
             .map(|e| e.into_inner())
             .map_err(|e| AuthenticationError::Unknown)
             .and_then(|e| UsernamePasswordCredential::new(e.username, e.password))
+    }
+
+    async fn on_unauthenticated(
+        &self,
+        req: &Self::Request,
+    ) -> Result<Self::Response, AuthenticationError> {
+        Ok(ServiceResponse::from_err(
+            ErrUnauthorized {},
+            req.request().to_owned(),
+        ))
     }
 
     async fn on_authenticate_success(

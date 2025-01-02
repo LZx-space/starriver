@@ -17,11 +17,6 @@ pub trait AuthenticationFlow {
 
     fn is_authenticated(&self, req: &Self::Request) -> bool;
 
-    async fn on_unauthenticated(
-        &self,
-        req: &Self::Request,
-    ) -> Result<Self::Response, AuthenticationError>;
-
     fn is_authenticate_request(&self, req: &Self::Request) -> bool;
 
     async fn extract_credential(
@@ -36,6 +31,11 @@ pub trait AuthenticationFlow {
     ) -> Result<Self::Principal, AuthenticationError> {
         authenticator.authenticate(credential).await
     }
+
+    async fn on_unauthenticated(
+        &self,
+        req: &Self::Request,
+    ) -> Result<Self::Response, AuthenticationError>;
 
     async fn on_authenticate_success(
         &self,

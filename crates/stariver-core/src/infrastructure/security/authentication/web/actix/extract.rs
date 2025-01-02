@@ -2,7 +2,7 @@ use std::future::{ready, Ready};
 
 use actix_web::dev::Payload;
 use actix_web::{FromRequest, HttpRequest};
-
+use tracing::error;
 use crate::infrastructure::security::authentication::core::principal_extract::Extractor;
 use crate::infrastructure::security::authentication::user_principal::User;
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
@@ -33,7 +33,7 @@ impl FromRequest for User {
                 let value = cookie.value();
                 println!("--->{}", value);
                 let result = serde_json::from_str::<User>(value).map_err(|e| {
-                    println!("####{}", e);
+                    error!("parse cookie err, {}", e);
                     let unauthorized = ErrUnauthorized {};
                     unauthorized.into()
                 });

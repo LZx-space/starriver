@@ -2,8 +2,6 @@ use std::env;
 use std::io::{stdout, BufWriter};
 use std::net::IpAddr;
 
-use actix_session::storage::CookieSessionStore;
-use actix_web::cookie::Key;
 use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
 
@@ -35,14 +33,6 @@ async fn main() -> std::io::Result<()> {
                 UserAuthenticator::new(UserRepositoryImpl::new(conn)),
                 UsernameFlow {},
             ))
-            .wrap(
-                actix_session::SessionMiddleware::builder(
-                    CookieSessionStore::default(),
-                    Key::from(&[0; 64]),
-                )
-                .cookie_secure(false)
-                .build(),
-            )
             .wrap(middleware::Logger::default())
             .wrap(middleware::ErrorHandlers::new())
             .app_data(web::Data::new(app_state))

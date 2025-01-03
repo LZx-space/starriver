@@ -9,14 +9,10 @@ unsafe_code = "forbid"
 
 [dependencies]
 actix-web = { workspace = true }
-actix-session = { workspace = true }
-anyhow = { workspace = true }
 
 chrono = { workspace = true }
 
-sea-orm = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 
 stariver-core = { path = "../stariver-core" }
 uuid = { workspace = true }

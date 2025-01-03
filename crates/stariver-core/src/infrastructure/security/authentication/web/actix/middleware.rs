@@ -112,7 +112,9 @@ where
                         .map_err(|e| Error::from(CodedErr::new("1000".to_string(), e.to_string()))),
                 };
             }
-            if !authentication_flow.is_authenticated(&req) {
+            if authentication_flow.is_access_require_authentication(&req)
+                && !authentication_flow.is_authenticated(&req)
+            {
                 return authentication_flow
                     .on_unauthenticated(&req)
                     .await

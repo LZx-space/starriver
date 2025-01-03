@@ -1,10 +1,3 @@
-use actix_session::SessionExt;
-use actix_web::dev::{ServiceRequest, ServiceResponse};
-use actix_web::http::{Method, StatusCode};
-use actix_web::web::Form;
-use actix_web::{FromRequest, HttpMessage, HttpResponse};
-use serde::Deserialize;
-
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::AuthenticationError;
 use crate::infrastructure::security::authentication::user_principal::{
@@ -12,6 +5,13 @@ use crate::infrastructure::security::authentication::user_principal::{
 };
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
 use crate::infrastructure::security::authentication::web::flow::AuthenticationFlow;
+use actix_web::cookie::Cookie;
+use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::http::{Method, StatusCode};
+use actix_web::web::Form;
+use actix_web::{FromRequest, HttpMessage, HttpResponse};
+use serde::Deserialize;
+use std::ops::Not;
 
 pub struct UsernameFlow {}
 
@@ -21,6 +21,10 @@ impl AuthenticationFlow for UsernameFlow {
     type Credential = UsernamePasswordCredential;
     type Principal = User;
     type Authenticator = UserAuthenticator;
+
+    fn is_access_require_authentication(&self, req: &Self::Request) -> bool {
+        req.uri().path().eq("/users").not() && req.method().eq(&Method::POST).not()
+    }
 
     fn is_authenticated(&self, req: &Self::Request) -> bool {
         req.cookie("id").is_some()
@@ -58,13 +62,14 @@ impl AuthenticationFlow for UsernameFlow {
         req: &Self::Request,
         principal: User,
     ) -> Result<Self::Response, AuthenticationError> {
-        req.get_session()
-            .insert("authenticated_principal".to_string(), principal)
-            .map_err(|e| AuthenticationError::UsernameNotFound)?;
-        Ok(ServiceResponse::new(
-            req.request().to_owned(),
-            HttpResponse::new(StatusCode::OK),
-        ))
+        serde_json::to_string(&principal)
+            .map_err(|e| AuthenticationError::Unknown)
+            .map(|json| {
+                let http_response = HttpResponse::build(StatusCode::OK)
+                    .cookie(Cookie::new("id", json))
+                    .finish();
+                ServiceResponse::new(req.request().clone(), http_response)
+            })
     }
 
     async fn on_authenticate_failure(

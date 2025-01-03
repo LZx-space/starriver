@@ -9,14 +9,10 @@ unsafe_code = "forbid"
 
 [dependencies]
 actix-web = { workspace = true }
-actix-web-httpauth = { workspace = true }
-actix-session = { workspace = true }
 anyhow = { workspace = true }
 
 argon2 = "^0"
 chrono = { workspace = true }
-dotenvy = "^0"
-env_logger = "^0"
 
 jsonwebtoken = "^9"
 sea-orm = { workspace = true }
@@ -25,7 +21,6 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 trait-variant = "^0"
 tracing = "^0"
-tracing-subscriber = "^0"
 uuid = { workspace = true }
 redis = { version = "0.27.5", features = ["tokio-comp"] }
 sha2 = "0.10.8"

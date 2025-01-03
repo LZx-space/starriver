@@ -1,11 +1,11 @@
 use std::future::{ready, Ready};
 
-use actix_web::dev::Payload;
-use actix_web::{FromRequest, HttpRequest};
-use tracing::error;
 use crate::infrastructure::security::authentication::core::principal_extract::Extractor;
 use crate::infrastructure::security::authentication::user_principal::User;
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
+use actix_web::dev::Payload;
+use actix_web::{FromRequest, HttpRequest};
+use tracing::error;
 
 impl Extractor for User {
     type Payload = HttpRequest;

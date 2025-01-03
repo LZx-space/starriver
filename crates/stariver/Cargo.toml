@@ -10,11 +10,8 @@ unsafe_code = "forbid"
 [dependencies]
 ferris-says = "^0"
 actix-web = { workspace = true }
-actix-session = { workspace = true }
-anyhow = { workspace = true }
 
 dotenvy = "^0"
-env_logger = "^0"
 
 stariver-adapter = { path = "../stariver-adapter" }
 stariver-core = { path = "../stariver-core" }

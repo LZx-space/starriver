@@ -8,8 +8,6 @@ members = [
 
 [workspace.dependencies]
 actix-web = "^4"
-actix-web-httpauth = "^0"
-actix-session = { version = "^0", features = ["cookie-session"] }
 anyhow = "^1"
 chrono = "^0"
 serde = { version = "^1", features = ["derive"] }

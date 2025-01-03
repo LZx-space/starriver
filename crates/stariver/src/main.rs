@@ -1,10 +1,10 @@
 use std::env;
+use std::fmt::Debug;
 use std::io::{stdout, BufWriter};
 use std::net::IpAddr;
 
 use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
-
 use stariver_adapter::api::blog;
 use stariver_adapter::api::dictionary;
 use stariver_adapter::api::{authentication, user};
@@ -15,6 +15,7 @@ use stariver_core::infrastructure::security::authentication::web::actix::flow::u
 use stariver_core::infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use stariver_core::infrastructure::util::db::db_conn;
 use stariver_core::infrastructure::web::app_state::AppState;
+use tracing_subscriber::fmt::time::LocalTime;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -22,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
-        .with_test_writer()
+        .with_timer(LocalTime::rfc_3339())
         .init();
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();

@@ -16,5 +16,5 @@ dotenvy = "^0"
 stariver-adapter = { path = "../stariver-adapter" }
 stariver-core = { path = "../stariver-core" }
 
-tracing = "^0"
-tracing-subscriber = "^0"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

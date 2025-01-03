@@ -31,7 +31,6 @@ impl FromRequest for User {
             }
             Some(cookie) => {
                 let value = cookie.value();
-                println!("--->{}", value);
                 let result = serde_json::from_str::<User>(value).map_err(|e| {
                     error!("parse cookie err, {}", e);
                     let unauthorized = ErrUnauthorized {};

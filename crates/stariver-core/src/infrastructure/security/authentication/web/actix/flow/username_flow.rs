@@ -5,13 +5,14 @@ use crate::infrastructure::security::authentication::user_principal::{
 };
 use crate::infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
 use crate::infrastructure::security::authentication::web::flow::AuthenticationFlow;
+use actix_web::cookie::time::{Duration, OffsetDateTime};
 use actix_web::cookie::Cookie;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
 use actix_web::{FromRequest, HttpMessage, HttpResponse};
 use serde::Deserialize;
-use std::ops::Not;
+use std::ops::{Add, Not};
 
 pub struct UsernameFlow {}
 
@@ -66,7 +67,13 @@ impl AuthenticationFlow for UsernameFlow {
             .map_err(|e| AuthenticationError::Unknown)
             .map(|json| {
                 let http_response = HttpResponse::build(StatusCode::OK)
-                    .cookie(Cookie::new("id", json))
+                    .cookie(
+                        Cookie::build("id", json)
+                            .http_only(true)
+                            .expires(OffsetDateTime::now_utc().add(Duration::hours(1)))
+                            .secure(false)
+                            .finish(),
+                    )
                     .finish();
                 ServiceResponse::new(req.request().clone(), http_response)
             })

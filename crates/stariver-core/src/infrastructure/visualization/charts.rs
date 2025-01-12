@@ -31,7 +31,7 @@ pub struct Context<Q> {
 }
 
 pub trait Row {
-    fn label(&self) -> &str;
+    fn id(&self) -> &str;
 }
 
 pub trait Result {
@@ -57,7 +57,7 @@ pub fn test() {
     use std::ops::Add;
 
     struct TestRow {
-        label: String,
+        id: String,
 
         column_1: String,
     }
@@ -65,15 +65,15 @@ pub fn test() {
     impl TestRow {
         fn new(label: &str) -> Self {
             TestRow {
-                label: String::from(label),
+                id: String::from(label),
                 column_1: "123".to_string(),
             }
         }
     }
 
     impl Row for TestRow {
-        fn label(&self) -> &str {
-            &self.label
+        fn id(&self) -> &str {
+            &self.id
         }
     }
 
@@ -101,7 +101,7 @@ pub fn test() {
                 .dateset
                 .iter()
                 .map(|e| {
-                    let x = &e.label;
+                    let x = &e.id;
                     let x1 = &e.column_1;
                     String::from(x).add("-").add(x1)
                 })
@@ -124,11 +124,11 @@ pub fn test() {
             TestResult {
                 dateset: vec![
                     TestRow {
-                        label: "R1".to_string(),
+                        id: "R1".to_string(),
                         column_1: "1".to_string(),
                     },
                     TestRow {
-                        label: "R2".to_string(),
+                        id: "R2".to_string(),
                         column_1: "2".to_string(),
                     },
                 ],

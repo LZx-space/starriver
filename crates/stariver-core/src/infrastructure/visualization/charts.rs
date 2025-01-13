@@ -1,54 +1,34 @@
-use std::marker::PhantomData;
+use anyhow::Error;
+use std::fmt::Display;
 
-pub struct Charts<Q, R, T, U> {
-    result_handler: U,
-    _marker1: PhantomData<Q>,
-    _marker2: PhantomData<R>,
-    _marker3: PhantomData<T>,
-}
-
-impl<Q, R, T, U> Charts<Q, R, T, U>
-where
-    T: Result<Row = R>,
-    U: QueryHandler<Query = Q, Row = R, Result = T>,
-{
-    fn new(result_handler: U) -> Self {
-        Charts {
-            result_handler,
-            _marker1: Default::default(),
-            _marker2: Default::default(),
-            _marker3: Default::default(),
-        }
-    }
-
-    fn handle(&self, context: Context<Q>) -> T {
-        self.result_handler.handle(context)
-    }
-}
-
-pub struct Context<Q> {
-    query: Q,
-}
-
-pub trait Row {
-    fn id(&self) -> &str;
-}
-
-pub trait Result {
-    type Row: Row;
-
-    fn dateset(&self) -> Vec<&Self::Row>;
-}
-
-pub trait QueryHandler {
+/// handle a query to producer a chart dataset
+pub trait ChartHandler {
     type Query;
 
     type Row: Row;
 
-    type Result: Result<Row = Self::Row>;
+    type Dataset: Dataset<Row = Self::Row>;
 
-    fn handle(&self, context: Context<Self::Query>) -> Self::Result;
+    fn handle(&self, ctx: impl Context<Query = Self::Query>) -> Result<Self::Dataset, Error>;
 }
+
+/// implementing this trait, so u can passing more fields
+pub trait Context {
+    type Query;
+    fn query(&self) -> &Self::Query;
+}
+
+pub trait Row {
+    fn id(&self) -> &impl Display;
+}
+
+pub trait Dataset {
+    type Row: Row;
+
+    fn rows(&self) -> Vec<&Self::Row>;
+}
+
+// ---------------------------------------------------------
 
 #[test]
 pub fn test() {
@@ -62,40 +42,43 @@ pub fn test() {
         column_1: String,
     }
 
-    impl TestRow {
-        fn new(label: &str) -> Self {
-            TestRow {
-                id: String::from(label),
-                column_1: "123".to_string(),
-            }
-        }
-    }
-
     impl Row for TestRow {
-        fn id(&self) -> &str {
+        fn id(&self) -> &impl Display {
             &self.id
         }
     }
 
     // -----------------------------------
 
-    struct TestRowQuery {}
+    struct DummyQuery {}
 
     // ----------------------------------
 
-    struct TestResult {
+    struct Ctx {
+        q: DummyQuery,
+    }
+
+    impl Context for Ctx {
+        type Query = DummyQuery;
+
+        fn query(&self) -> &DummyQuery {
+            &self.q
+        }
+    }
+
+    struct TestDataset {
         dateset: Vec<TestRow>,
     }
 
-    impl Result for TestResult {
+    impl Dataset for TestDataset {
         type Row = TestRow;
 
-        fn dateset(&self) -> Vec<&Self::Row> {
+        fn rows(&self) -> Vec<&Self::Row> {
             self.dateset.iter().map(|e| e).collect()
         }
     }
 
-    impl Debug for TestResult {
+    impl Debug for TestDataset {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             let show = self
                 .dateset
@@ -113,15 +96,15 @@ pub fn test() {
 
     // -----------------------------------
 
-    struct TestResultHandler {}
+    struct TestChart {}
 
-    impl QueryHandler for TestResultHandler {
-        type Query = TestRowQuery;
+    impl ChartHandler for TestChart {
+        type Query = DummyQuery;
         type Row = TestRow;
-        type Result = TestResult;
+        type Dataset = TestDataset;
 
-        fn handle(&self, context: Context<Self::Query>) -> Self::Result {
-            TestResult {
+        fn handle(&self, _ctx: impl Context) -> Result<Self::Dataset, Error> {
+            Ok(TestDataset {
                 dateset: vec![
                     TestRow {
                         id: "R1".to_string(),
@@ -132,16 +115,15 @@ pub fn test() {
                         column_1: "2".to_string(),
                     },
                 ],
-            }
+            })
         }
     }
 
     // -----------------------------------
 
-    let handler = TestResultHandler {};
-    let charts = Charts::new(handler);
-    let query = TestRowQuery {};
-    let context = Context { query };
-    let result = charts.handle(context);
-    println!("{:?}", result)
+    let handler = TestChart {};
+    let query = DummyQuery {};
+    let ctx = Ctx { q: query };
+    let result = handler.handle(ctx);
+    println!("----------{:?}", result.expect("fail to handle"));
 }

@@ -9,7 +9,7 @@ pub trait ChartHandler {
 
     type Dataset: Dataset<Row = Self::Row>;
 
-    fn handle(&self, ctx: impl Context<Query = Self::Query>) -> Result<Self::Dataset, Error>;
+    fn handle(&self, ctx: &impl Context<Query = Self::Query>) -> Result<Self::Dataset, Error>;
 }
 
 /// implementing this trait, so u can passing more fields
@@ -104,7 +104,7 @@ pub fn test() {
         type Row = TestRow;
         type Dataset = TestDataset;
 
-        fn handle(&self, _ctx: impl Context) -> Result<Self::Dataset, Error> {
+        fn handle(&self, _ctx: &impl Context) -> Result<Self::Dataset, Error> {
             Ok(TestDataset {
                 dateset: vec![
                     TestRow {
@@ -125,6 +125,6 @@ pub fn test() {
     let handler = TestChart {};
     let query = DummyQuery {};
     let ctx = Ctx { q: query };
-    let result = handler.handle(ctx);
+    let result = handler.handle(&ctx);
     println!("----------{:?}", result.expect("fail to handle"));
 }

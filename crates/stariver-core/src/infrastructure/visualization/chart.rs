@@ -15,6 +15,7 @@ pub trait ChartHandler {
 /// implementing this trait, so u can passing more fields
 pub trait Context {
     type Query;
+
     fn query(&self) -> &Self::Query;
 }
 

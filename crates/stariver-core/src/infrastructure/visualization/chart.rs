@@ -1,5 +1,6 @@
 use anyhow::Error;
 use std::fmt::Display;
+use std::marker::PhantomData;
 
 /// handle a query to producer a chart dataset
 pub trait ChartHandler {
@@ -9,7 +10,7 @@ pub trait ChartHandler {
 
     type Dataset: Dataset<Row = Self::Row>;
 
-    fn handle(&self, ctx: &impl Context<Query = Self::Query>) -> Result<Self::Dataset, Error>;
+    fn handle(&self, ctx: Box<dyn Context<Query = Self::Query>>) -> Result<Self::Dataset, Error>;
 }
 
 /// implementing this trait, so u can passing more fields
@@ -29,8 +30,47 @@ pub trait Dataset {
     fn rows(&self) -> Vec<&Self::Row>;
 }
 
-// ---------------------------------------------------------
+// ----- impl ----------------------------------------------------
 
+pub struct DefaultChartHandler<Q, R, D, F: Fn(Box<dyn Context<Query = Q>>) -> Result<D, Error>> {
+    handler: F,
+    _marker1: PhantomData<Q>,
+    _marker2: PhantomData<R>,
+    _marker3: PhantomData<D>,
+}
+
+impl<Q, R, D, F> DefaultChartHandler<Q, R, D, F>
+where
+    R: Row,
+    D: Dataset<Row = R>,
+    F: Fn(Box<dyn Context<Query = Q>>) -> Result<D, Error>,
+{
+    pub fn new(handler: F) -> Self {
+        DefaultChartHandler {
+            handler,
+            _marker1: Default::default(),
+            _marker2: Default::default(),
+            _marker3: Default::default(),
+        }
+    }
+}
+
+impl<Q, R, D, F> ChartHandler for DefaultChartHandler<Q, R, D, F>
+where
+    R: Row,
+    D: Dataset<Row = R>,
+    F: Fn(Box<dyn Context<Query = Q>>) -> Result<D, Error>,
+{
+    type Query = Q;
+    type Row = R;
+    type Dataset = D;
+
+    fn handle(&self, ctx: Box<dyn Context<Query = Self::Query>>) -> Result<Self::Dataset, Error> {
+        (self.handler)(ctx)
+    }
+}
+
+// ----- test ----------------------------------------------------
 #[test]
 pub fn test() {
     use std::fmt::Debug;
@@ -51,18 +91,18 @@ pub fn test() {
 
     // -----------------------------------
 
-    struct DummyQuery {}
+    struct TestQuery {}
 
     // ----------------------------------
 
-    struct Ctx {
-        q: DummyQuery,
+    struct TestCtx {
+        q: TestQuery,
     }
 
-    impl Context for Ctx {
-        type Query = DummyQuery;
+    impl Context for TestCtx {
+        type Query = TestQuery;
 
-        fn query(&self) -> &DummyQuery {
+        fn query(&self) -> &TestQuery {
             &self.q
         }
     }
@@ -90,41 +130,29 @@ pub fn test() {
                     String::from(x).add("-").add(x1)
                 })
                 .reduce(|a, b| a.add(" ").add(b.as_str()));
-            f.write_str(show.unwrap().as_str()).unwrap();
-            Ok(())
+            Ok(f.write_str(show.unwrap().as_str())?)
         }
     }
 
     // -----------------------------------
 
-    struct TestChart {}
-
-    impl ChartHandler for TestChart {
-        type Query = DummyQuery;
-        type Row = TestRow;
-        type Dataset = TestDataset;
-
-        fn handle(&self, _ctx: &impl Context) -> Result<Self::Dataset, Error> {
-            Ok(TestDataset {
-                dateset: vec![
-                    TestRow {
-                        id: "R1".to_string(),
-                        column_1: "1".to_string(),
-                    },
-                    TestRow {
-                        id: "R2".to_string(),
-                        column_1: "2".to_string(),
-                    },
-                ],
-            })
-        }
-    }
-
-    // -----------------------------------
-
-    let handler = TestChart {};
-    let query = DummyQuery {};
-    let ctx = Ctx { q: query };
-    let result = handler.handle(&ctx);
+    let query = TestQuery {};
+    let ctx = TestCtx { q: query };
+    let handler = DefaultChartHandler::new(|_ctx| {
+        Ok(TestDataset {
+            dateset: vec![
+                TestRow {
+                    id: "R1".to_string(),
+                    column_1: "1".to_string(),
+                },
+                TestRow {
+                    id: "R2".to_string(),
+                    column_1: "2".to_string(),
+                },
+            ],
+        })
+    });
+    let result = handler.handle(Box::new(ctx));
+    println!("--------------------------");
     println!("----------{:?}", result.expect("fail to handle"));
 }

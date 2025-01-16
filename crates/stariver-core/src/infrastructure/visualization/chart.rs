@@ -153,6 +153,5 @@ pub fn test() {
         })
     });
     let result = handler.handle(Box::new(ctx));
-    println!("--------------------------");
     println!("----------{:?}", result.expect("fail to handle"));
 }

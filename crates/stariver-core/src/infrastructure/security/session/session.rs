@@ -73,13 +73,12 @@ pub struct Claims {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use hmac::{Hmac, Mac};
     use redis::Commands;
     use sha2::Sha256;
     use std::time::Instant;
 
-    #[test]
     pub fn test_redis() {
         // connect to redis
         let client =

@@ -71,87 +71,93 @@ where
 }
 
 // ----- test ----------------------------------------------------
-#[test]
-pub fn test() {
-    use std::fmt::Debug;
-    use std::fmt::Formatter;
-    use std::ops::Add;
 
-    struct TestRow {
-        id: String,
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        column_1: String,
-    }
+    #[test]
+    pub fn test() {
+        use std::fmt::Debug;
+        use std::fmt::Formatter;
+        use std::ops::Add;
 
-    impl Row for TestRow {
-        fn id(&self) -> &impl Display {
-            &self.id
+        struct TestRow {
+            id: String,
+
+            column_1: String,
         }
-    }
 
-    // -----------------------------------
-
-    struct TestQuery {}
-
-    // ----------------------------------
-
-    struct TestCtx {
-        q: TestQuery,
-    }
-
-    impl Context for TestCtx {
-        type Query = TestQuery;
-
-        fn query(&self) -> &TestQuery {
-            &self.q
+        impl Row for TestRow {
+            fn id(&self) -> &impl Display {
+                &self.id
+            }
         }
-    }
 
-    struct TestDataset {
-        dateset: Vec<TestRow>,
-    }
+        // -----------------------------------
 
-    impl Dataset for TestDataset {
-        type Row = TestRow;
+        struct TestQuery {}
 
-        fn rows(&self) -> Vec<&Self::Row> {
-            self.dateset.iter().map(|e| e).collect()
+        // ----------------------------------
+
+        struct TestCtx {
+            q: TestQuery,
         }
-    }
 
-    impl Debug for TestDataset {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            let show = self
-                .dateset
-                .iter()
-                .map(|e| {
-                    let x = &e.id;
-                    let x1 = &e.column_1;
-                    String::from(x).add("-").add(x1)
-                })
-                .reduce(|a, b| a.add(" ").add(b.as_str()));
-            Ok(f.write_str(show.unwrap().as_str())?)
+        impl Context for TestCtx {
+            type Query = TestQuery;
+
+            fn query(&self) -> &TestQuery {
+                &self.q
+            }
         }
+
+        struct TestDataset {
+            dateset: Vec<TestRow>,
+        }
+
+        impl Dataset for TestDataset {
+            type Row = TestRow;
+
+            fn rows(&self) -> Vec<&Self::Row> {
+                self.dateset.iter().map(|e| e).collect()
+            }
+        }
+
+        impl Debug for TestDataset {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                let show = self
+                    .dateset
+                    .iter()
+                    .map(|e| {
+                        let x = &e.id;
+                        let x1 = &e.column_1;
+                        String::from(x).add("-").add(x1)
+                    })
+                    .reduce(|a, b| a.add(" ").add(b.as_str()));
+                Ok(f.write_str(show.unwrap().as_str())?)
+            }
+        }
+
+        // -----------------------------------
+
+        let query = TestQuery {};
+        let ctx = TestCtx { q: query };
+        let handler = DefaultChartHandler::new(|_ctx| {
+            Ok(TestDataset {
+                dateset: vec![
+                    TestRow {
+                        id: "R1".to_string(),
+                        column_1: "1".to_string(),
+                    },
+                    TestRow {
+                        id: "R2".to_string(),
+                        column_1: "2".to_string(),
+                    },
+                ],
+            })
+        });
+        let result = handler.handle(Box::new(ctx));
+        println!("----------{:?}", result.expect("fail to handle"));
     }
-
-    // -----------------------------------
-
-    let query = TestQuery {};
-    let ctx = TestCtx { q: query };
-    let handler = DefaultChartHandler::new(|_ctx| {
-        Ok(TestDataset {
-            dateset: vec![
-                TestRow {
-                    id: "R1".to_string(),
-                    column_1: "1".to_string(),
-                },
-                TestRow {
-                    id: "R2".to_string(),
-                    column_1: "2".to_string(),
-                },
-            ],
-        })
-    });
-    let result = handler.handle(Box::new(ctx));
-    println!("----------{:?}", result.expect("fail to handle"));
 }

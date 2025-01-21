@@ -94,3 +94,47 @@ pub struct FormLoginCmd {
     pub username: String,
     pub password: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::http;
+    use actix_web::test::{self, TestRequest};
+
+    #[actix_web::test]
+    async fn test_is_access_require_authentication() {
+        let flow = UsernameFlow {};
+        let req = TestRequest::default()
+            .uri("/not_users")
+            .method(Method::GET)
+            .to_srv_request();
+        assert!(flow.is_access_require_authentication(&req));
+    }
+
+    #[actix_web::test]
+    async fn test_is_authenticated() {
+        let flow = UsernameFlow {};
+        let req = TestRequest::default()
+            .cookie(Cookie::new("id", "test"))
+            .to_srv_request();
+        assert!(flow.is_authenticated(&req));
+    }
+
+    #[actix_web::test]
+    async fn test_is_authenticate_request() {
+        let flow = UsernameFlow {};
+        let req = TestRequest::default()
+            .uri("/login")
+            .method(http::Method::POST)
+            .to_srv_request();
+        assert!(flow.is_authenticate_request(&req));
+    }
+
+    #[actix_web::test]
+    async fn test_on_unauthenticated() {
+        let flow = UsernameFlow {};
+        let req = TestRequest::default().to_srv_request();
+        let result = flow.on_unauthenticated(&req).await;
+        assert!(result.is_ok());
+    }
+}

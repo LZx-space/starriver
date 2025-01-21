@@ -1,7 +1,7 @@
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::domain::user::repository::UserRepository as DomainUserRepository;
 use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl as DomainUserRepoImpl;
@@ -90,20 +90,20 @@ impl UserRepositoryImpl {
 
 impl UserRepository for UserRepositoryImpl {
     async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError> {
-        let result = self
-            .delegate
-            .find_by_username(user_id)
-            .await
-            .map_err(|e| AuthenticationError::Unknown);
-        match result {
-            Ok(op) => op
-                .ok_or(AuthenticationError::UsernameNotFound)
-                .map(|u| User {
-                    username: u.username,
-                    password: u.password,
-                    authorities: vec![],
-                }),
-            Err(err) => Err(err),
+        let user = self.delegate.find_by_username(user_id).await.map_err(|e| {
+            error!("Failed to find user by username: {}", e);
+            AuthenticationError::Unknown
+        })?;
+        match user {
+            Some(u) => Ok(User {
+                username: u.username,
+                password: u.password,
+                authorities: vec![],
+            }),
+            None => {
+                info!("User not found with username: {}", user_id);
+                Err(AuthenticationError::UsernameNotFound)
+            }
         }
     }
 }
@@ -129,25 +129,20 @@ impl Authenticator for UserAuthenticator {
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError> {
         let username = &credential.username;
-        let user = self.user_repository.find_by_id(username).await;
-        match user {
-            Ok(user) => {
-                let password_hash_string = to_password_hash_string_struct(user.password())
-                    .map_err(|e| {
-                        error!(
-                            "{}'s password was not hashed: {}",
-                            user.username(),
-                            e.to_string()
-                        );
-                        AuthenticationError::BadPassword
-                    })?;
-                let result = verify_password(credential.password.as_str(), password_hash_string);
-                match result {
-                    Ok(_) => Ok(user),
-                    Err(_) => Err(AuthenticationError::BadPassword),
-                }
-            }
-            Err(err) => Err(err),
-        }
+        // 查找用户
+        let user = self.user_repository.find_by_id(username).await?;
+        // 验证密码
+        let password_hash_string =
+            to_password_hash_string_struct(user.password()).map_err(|e| {
+                error!(
+                    "{}'s password was not hashed: {}",
+                    user.username(),
+                    e.to_string()
+                );
+                AuthenticationError::BadPassword
+            })?;
+        verify_password(credential.password.as_str(), password_hash_string)
+            .map(|_| user)
+            .map_err(|_| AuthenticationError::BadPassword)
     }
 }

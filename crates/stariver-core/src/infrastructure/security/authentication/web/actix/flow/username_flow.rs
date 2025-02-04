@@ -98,8 +98,7 @@ pub struct FormLoginCmd {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::http;
-    use actix_web::test::{self, TestRequest};
+    use actix_web::test::TestRequest;
 
     #[actix_web::test]
     async fn test_is_access_require_authentication() {
@@ -125,7 +124,7 @@ mod tests {
         let flow = UsernameFlow {};
         let req = TestRequest::default()
             .uri("/login")
-            .method(http::Method::POST)
+            .method(Method::POST)
             .to_srv_request();
         assert!(flow.is_authenticate_request(&req));
     }

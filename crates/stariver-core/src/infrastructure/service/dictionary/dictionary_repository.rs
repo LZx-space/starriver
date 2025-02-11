@@ -1,8 +1,8 @@
 use sea_orm::entity::prelude::*;
-use sea_orm::prelude::DateTimeLocal;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelBehavior, DatabaseConnection, QueryOrder};
 use std::str::FromStr;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
@@ -74,9 +74,9 @@ pub struct Model {
 
     comment: String,
 
-    create_at: DateTimeLocal,
+    create_at: OffsetDateTime,
 
-    update_at: Option<DateTimeLocal>,
+    update_at: Option<OffsetDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

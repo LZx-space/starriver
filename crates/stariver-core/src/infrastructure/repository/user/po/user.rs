@@ -1,8 +1,8 @@
 use sea_orm::entity::prelude::*;
-use sea_orm::prelude::DateTimeLocal;
 use sea_orm::DerivePrimaryKey;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize, Serialize)]
@@ -15,9 +15,9 @@ pub struct Model {
 
     pub password: String,
 
-    pub create_at: DateTimeLocal,
+    pub create_at: OffsetDateTime,
 
-    pub update_at: Option<DateTimeLocal>,
+    pub update_at: Option<OffsetDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

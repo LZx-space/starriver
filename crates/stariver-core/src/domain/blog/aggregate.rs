@@ -1,6 +1,6 @@
 use anyhow::Error;
-use chrono::{DateTime, Local};
 use serde::Serialize;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::domain::blog::value_object::State;
@@ -14,8 +14,8 @@ pub struct Article {
     pub body: String,
     pub state: State,
     pub author_id: String,
-    pub create_at: DateTime<Local>,
-    pub update_at: Option<DateTime<Local>>,
+    pub create_at: OffsetDateTime,
+    pub update_at: Option<OffsetDateTime>,
 }
 
 impl Article {

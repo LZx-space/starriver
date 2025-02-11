@@ -1,6 +1,6 @@
-use sea_orm::entity::prelude::*;
-
 use crate::infrastructure::repository::blog::po::state::ArticleState;
+use sea_orm::entity::prelude::*;
+use time::OffsetDateTime;
 
 /// 文章
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -18,9 +18,9 @@ pub struct Model {
 
     pub author_id: String,
 
-    pub create_at: DateTimeLocal,
+    pub create_at: OffsetDateTime,
 
-    pub update_at: Option<DateTimeLocal>,
+    pub update_at: Option<OffsetDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

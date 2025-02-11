@@ -1,10 +1,10 @@
 use std::fmt::Display;
 use std::str::FromStr;
 
-use chrono::{DateTime, Local};
 use sea_orm::entity::prelude::*;
 use sea_orm::DbErr;
 use serde::Serialize;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::infrastructure::model::page::{PageQuery, PageResult};
@@ -43,8 +43,8 @@ pub struct DictionaryEntry {
     pub value: String,
     pub data_type: DataType,
     pub comment: String,
-    pub create_at: DateTime<Local>,
-    pub update_at: Option<DateTime<Local>>,
+    pub create_at: OffsetDateTime,
+    pub update_at: Option<OffsetDateTime>,
 }
 
 impl DictionaryEntry {
@@ -74,7 +74,7 @@ impl DictionaryEntry {
                     value,
                     data_type,
                     comment,
-                    create_at: Local::now(),
+                    create_at: OffsetDateTime::now_utc(),
                     update_at: None,
                 })
             }

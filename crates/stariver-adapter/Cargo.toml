@@ -10,7 +10,7 @@ unsafe_code = "forbid"
 [dependencies]
 actix-web = { workspace = true }
 
-chrono = { workspace = true }
+time = { workspace = true }
 
 serde = { workspace = true }
 

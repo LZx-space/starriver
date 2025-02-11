@@ -1,7 +1,7 @@
 use anyhow::Error;
-use chrono::Local;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::domain::user::aggregate::User;
@@ -34,7 +34,7 @@ impl UserRepository for UserRepositoryImpl {
                 id: Set(Uuid::now_v7()),
                 username: Set(user.username),
                 password: Set(e.to_string()),
-                create_at: Set(Local::now()),
+                create_at: Set(OffsetDateTime::now_utc()),
                 update_at: Set(None),
             });
 

@@ -1,4 +1,4 @@
-use chrono::Local;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use stariver_core::domain::blog::aggregate::Article;
@@ -13,7 +13,7 @@ pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
         body: cmd.body,
         state: Draft,
         author_id,
-        create_at: Local::now(),
+        create_at: OffsetDateTime::now_utc(),
         update_at: None,
     }
 }

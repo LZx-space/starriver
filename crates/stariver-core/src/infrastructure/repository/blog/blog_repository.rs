@@ -1,7 +1,7 @@
 use anyhow::Error;
-use chrono::Local;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::domain::blog::aggregate::Article;
@@ -60,7 +60,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
             body: Set(e.body),
             state: Set(Default::default()),
             author_id: Set(e.author_id),
-            create_at: Set(Local::now()),
+            create_at: Set(OffsetDateTime::now_utc()),
             update_at: Set(None),
         }
         .insert(self.conn)
@@ -87,7 +87,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
 
     async fn update(&self, e: Article) -> Result<Option<Article>, Error> {
         let exist = Entity::find_by_id(e.id).one(self.conn).await;
-        return match exist {
+        match exist {
             Ok(op) => match op {
                 None => Ok(None),
                 Some(found) => ActiveModel {
@@ -97,7 +97,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
                     state: Set(e.state.into()),
                     author_id: Set(found.author_id),
                     create_at: Set(found.create_at),
-                    update_at: Set(Some(Local::now())),
+                    update_at: Set(Some(OffsetDateTime::now_utc())),
                 }
                 .update(self.conn)
                 .await
@@ -115,6 +115,6 @@ impl ArticleRepository for ArticleRepositoryImpl {
                 .map_err(|e| Error::from(e)),
             },
             Err(err) => Err(Error::from(err)),
-        };
+        }
     }
 }

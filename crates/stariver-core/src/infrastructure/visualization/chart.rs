@@ -13,7 +13,7 @@ pub trait ChartHandler {
     fn handle(&self, ctx: Box<dyn Context<Query = Self::Query>>) -> Result<Self::Dataset, Error>;
 }
 
-/// implementing this trait, so u can passing more fields
+/// implementing this trait, so u can pass more fields
 pub trait Context {
     type Query;
 

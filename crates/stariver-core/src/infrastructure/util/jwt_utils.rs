@@ -29,12 +29,12 @@ mod test {
             &EncodingKey::from_secret("secret".as_ref()),
         );
         match token {
-            Ok(jsonwebtoken) => {
-                println!("encode jwt: {}", jsonwebtoken);
+            Ok(jwt) => {
+                println!("encode jwt: {}", jwt);
                 let mut validation = Validation::default();
                 validation.set_audience(&vec!["LZx"]);
                 let decode = decode::<Claims>(
-                    &jsonwebtoken,
+                    &jwt,
                     &DecodingKey::from_secret("secret".as_ref()),
                     &validation,
                 );

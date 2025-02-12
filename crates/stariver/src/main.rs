@@ -19,13 +19,14 @@ use tracing_subscriber::fmt::time::LocalTime;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     say_hello();
-    dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_timer(LocalTime::rfc_3339())
         .init();
+    dotenvy::dotenv().expect(".env file not found");
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
+
     HttpServer::new(move || {
         let app_state = AppState::new(conn);
         App::new()

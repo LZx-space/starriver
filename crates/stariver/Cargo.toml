@@ -18,3 +18,4 @@ stariver-core = { path = "../stariver-core" }
 
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }

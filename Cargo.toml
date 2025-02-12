@@ -16,6 +16,7 @@ time = { version = "^0", features = ["serde-human-readable", "serde-well-known"]
 thiserror = "^2"
 tracing = "^0"
 tracing-subscriber = { version = "^0", features = ["local-time"] }
+tracing-appender = "^0"
 uuid = { version = "^1", features = ["v7", "fast-rng", "macro-diagnostics"] }
 
 [profile.dev]

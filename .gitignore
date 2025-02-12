@@ -13,3 +13,4 @@ Cargo.lock
 vendor/
 # IDEA
 .idea/
+log/

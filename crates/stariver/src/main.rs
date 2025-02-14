@@ -14,21 +14,35 @@ use stariver_core::infrastructure::security::authentication::web::actix::flow::u
 use stariver_core::infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use stariver_core::infrastructure::util::db::db_conn;
 use stariver_core::infrastructure::web::app_state::AppState;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::fmt::layer;
 use tracing_subscriber::fmt::time::LocalTime;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     say_hello();
     dotenvy::dotenv().expect(".env file not found");
-    
-    let file_appender = tracing_appender::rolling::hourly("./log", "stariver.log");
+
+    let file_appender = tracing_appender::rolling::daily("./log", "stariver.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-    tracing_subscriber::fmt()
+    let file_layer = layer()
+        .with_ansi(false)
         .with_writer(non_blocking)
-        .with_max_level(tracing::Level::INFO)
+        .with_filter(LevelFilter::INFO);
+
+    let console_layer = layer()
+        .with_writer(stdout)
         .with_timer(LocalTime::rfc_3339())
+        .with_filter(LevelFilter::INFO);
+
+    tracing_subscriber::registry()
+        .with(file_layer)
+        .with(console_layer)
         .init();
-    
+
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
 
@@ -39,7 +53,6 @@ async fn main() -> std::io::Result<()> {
                 UserAuthenticator::new(UserRepositoryImpl::new(conn)),
                 UsernameFlow {},
             ))
-            .wrap(middleware::Logger::default())
             .wrap(middleware::ErrorHandlers::new())
             .app_data(web::Data::new(app_state))
             .service(authentication::validate_authenticated)

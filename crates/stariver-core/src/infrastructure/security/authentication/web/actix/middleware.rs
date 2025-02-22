@@ -1,4 +1,4 @@
-use std::future::{ready, Future, Ready};
+use std::future::{ready, Ready};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;

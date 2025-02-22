@@ -5,6 +5,10 @@ members = [
     "crates/stariver-adapter",
     "crates/stariver-core",
 ]
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85.0"
 
 [workspace.dependencies]
 actix-web = "^4"

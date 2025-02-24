@@ -1,6 +1,6 @@
 use actix_web::http::StatusCode;
 use actix_web::web::{Json, Path, Query};
-use actix_web::{delete, get, post, put, web, Responder};
+use actix_web::{Responder, delete, get, post, put, web};
 use uuid::Uuid;
 
 use stariver_core::infrastructure::model::page::PageQuery;

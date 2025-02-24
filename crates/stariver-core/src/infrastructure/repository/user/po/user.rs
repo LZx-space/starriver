@@ -1,5 +1,5 @@
-use sea_orm::entity::prelude::*;
 use sea_orm::DerivePrimaryKey;
+use sea_orm::entity::prelude::*;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

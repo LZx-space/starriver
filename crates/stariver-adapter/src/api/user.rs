@@ -1,5 +1,5 @@
 use actix_web::web::Json;
-use actix_web::{post, web, Responder};
+use actix_web::{Responder, post, web};
 use uuid::Uuid;
 
 use stariver_core::application::user_service::UserApplication;

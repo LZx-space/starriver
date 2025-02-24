@@ -1,11 +1,11 @@
-use std::future::{ready, Ready};
+use std::future::{Ready, ready};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::Error;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 
 use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::security::authentication::core::authenticator::Authenticator;

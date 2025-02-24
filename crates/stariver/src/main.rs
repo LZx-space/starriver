@@ -1,8 +1,8 @@
 use std::env;
-use std::io::{stdout, BufWriter};
+use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
 
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{App, HttpServer, middleware, web};
 use ferris_says::say;
 use stariver_adapter::api::blog;
 use stariver_adapter::api::dictionary;
@@ -15,11 +15,11 @@ use stariver_core::infrastructure::security::authentication::web::actix::middlew
 use stariver_core::infrastructure::util::db::db_conn;
 use stariver_core::infrastructure::web::app_state::AppState;
 use tracing::level_filters::LevelFilter;
+use tracing_subscriber::Layer;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::fmt::time::LocalTime;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::Layer;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

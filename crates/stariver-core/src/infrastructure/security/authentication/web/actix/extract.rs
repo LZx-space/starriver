@@ -1,4 +1,4 @@
-use std::future::{ready, Ready};
+use std::future::{Ready, ready};
 
 use crate::infrastructure::security::authentication::core::principal_extract::Extractor;
 use crate::infrastructure::security::authentication::user_principal::User;

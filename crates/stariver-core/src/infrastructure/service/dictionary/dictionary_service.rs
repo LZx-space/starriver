@@ -1,8 +1,8 @@
 use std::fmt::Display;
 use std::str::FromStr;
 
-use sea_orm::entity::prelude::*;
 use sea_orm::DbErr;
+use sea_orm::entity::prelude::*;
 use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;

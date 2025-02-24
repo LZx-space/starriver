@@ -1,5 +1,5 @@
 use argon2::password_hash::{PasswordHashString, SaltString};
-use argon2::{password_hash, Argon2, PasswordHasher, PasswordVerifier};
+use argon2::{Argon2, PasswordHasher, PasswordVerifier, password_hash};
 use password_hash::errors::Result;
 
 pub fn to_password_hash_string_struct(hashed_password: &String) -> Result<PasswordHashString> {

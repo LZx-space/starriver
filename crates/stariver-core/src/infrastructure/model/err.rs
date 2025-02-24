@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
-use actix_web::http::StatusCode;
 use actix_web::ResponseError;
+use actix_web::http::StatusCode;
 
 #[derive(Debug)]
 pub struct CodedErr {

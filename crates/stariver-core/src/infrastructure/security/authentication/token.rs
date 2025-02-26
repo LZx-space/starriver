@@ -15,10 +15,10 @@ impl TryFrom<JWT> for Foo {
             &DecodingKey::from_secret("secret".as_ref()),
             &Validation::default(),
         )
-            .map(|data| Foo {
-                username: data.claims.sub,
-            })
-            .map_err(|e| Error::msg(e.to_string()))
+        .map(|data| Foo {
+            username: data.claims.sub,
+        })
+        .map_err(|e| Error::msg(e.to_string()))
     }
 }
 
@@ -39,8 +39,8 @@ impl TryInto<JWT> for Foo {
             &claims,
             &EncodingKey::from_secret("secret".as_ref()),
         )
-            .map(|e| JWT(e))
-            .map_err(|e| Error::msg(e.to_string()))
+        .map(|e| JWT(e))
+        .map_err(|e| Error::msg(e.to_string()))
     }
 }
 

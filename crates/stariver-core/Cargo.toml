@@ -23,6 +23,5 @@ thiserror = { workspace = true }
 trait-variant = "^0"
 tracing = { workspace = true }
 uuid = { workspace = true }
-redis = { version = "^0", features = ["tokio-comp"] }
 sha2 = "^0"
 hmac = "^0"

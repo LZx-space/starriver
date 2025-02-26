@@ -2,11 +2,11 @@ use anyhow::Error;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 
-pub struct Session {
+pub struct Foo {
     username: String,
 }
 
-impl TryFrom<JWT> for Session {
+impl TryFrom<JWT> for Foo {
     type Error = Error;
 
     fn try_from(value: JWT) -> Result<Self, Self::Error> {
@@ -15,14 +15,14 @@ impl TryFrom<JWT> for Session {
             &DecodingKey::from_secret("secret".as_ref()),
             &Validation::default(),
         )
-        .map(|data| Session {
-            username: data.claims.sub,
-        })
-        .map_err(|e| Error::msg(e.to_string()))
+            .map(|data| Foo {
+                username: data.claims.sub,
+            })
+            .map_err(|e| Error::msg(e.to_string()))
     }
 }
 
-impl TryInto<JWT> for Session {
+impl TryInto<JWT> for Foo {
     type Error = Error;
 
     fn try_into(self) -> Result<JWT, Self::Error> {
@@ -39,8 +39,8 @@ impl TryInto<JWT> for Session {
             &claims,
             &EncodingKey::from_secret("secret".as_ref()),
         )
-        .map(|e| JWT(e))
-        .map_err(|e| Error::msg(e.to_string()))
+            .map(|e| JWT(e))
+            .map_err(|e| Error::msg(e.to_string()))
     }
 }
 
@@ -75,25 +75,8 @@ pub struct Claims {
 #[cfg(test)]
 mod tests {
     use hmac::{Hmac, Mac};
-    use redis::Commands;
     use sha2::Sha256;
     use std::time::Instant;
-
-    pub fn test_redis() {
-        // connect to redis
-        let client =
-            redis::Client::open("redis://127.0.0.1/").expect("failed to create redis client");
-        let mut con = client
-            .get_connection()
-            .expect("failed to get redis connection");
-        let _: () = con.set("my_key", 42).expect("failed to set value");
-
-        let start = Instant::now();
-        let val: i64 = con.get("my_key").expect("failed to get my_key");
-        println!("{}", val);
-        let end = Instant::now();
-        println!("代码执行时间: {:?} 微秒", (end - start).as_micros());
-    }
 
     #[test]
     pub fn test_hmac() {

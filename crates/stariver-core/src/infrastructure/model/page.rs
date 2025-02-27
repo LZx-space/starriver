@@ -25,7 +25,7 @@ impl<T: Serialize> PageResult<T> {
     pub fn new(page: u64, page_size: u64, total_items: u64, items: Vec<T>) -> Self {
         let mut total_pages = total_items / page_size;
         if total_items % page_size != 0 {
-            total_pages = total_pages + 1;
+            total_pages += 1;
         }
         PageResult {
             page,

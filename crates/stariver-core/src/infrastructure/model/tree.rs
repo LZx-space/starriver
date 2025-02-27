@@ -26,7 +26,7 @@ impl<T> ID<T> for Node1<T> {
 
 impl<T> ChildrenNode<Node1<T>> for Node1<T> {
     fn children(&mut self) -> Vec<&Node1<T>> {
-        self.children.iter().map(|e| e).collect()
+        self.children.iter().collect()
     }
 }
 

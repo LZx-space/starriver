@@ -50,7 +50,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
                     update_at: e.update_at,
                 })
             })
-            .map_err(|e| Error::from(e))
+            .map_err(Error::from)
     }
 
     async fn add(&self, e: Article) -> Result<Article, Error> {
@@ -74,7 +74,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
             create_at: e.create_at,
             update_at: e.update_at,
         })
-        .map_err(|e| Error::from(e))
+        .map_err(Error::from)
     }
 
     async fn delete_by_id(&self, id: Uuid) -> Result<bool, Error> {
@@ -82,7 +82,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
             .exec(self.conn)
             .await
             .map(|e| e.rows_affected > 0)
-            .map_err(|e| Error::from(e))
+            .map_err(Error::from)
     }
 
     async fn update(&self, e: Article) -> Result<Option<Article>, Error> {
@@ -112,7 +112,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
                         update_at: updated.update_at,
                     })
                 })
-                .map_err(|e| Error::from(e)),
+                .map_err(Error::from),
             },
             Err(err) => Err(Error::from(err)),
         }

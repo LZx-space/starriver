@@ -42,9 +42,8 @@ impl CodedErr {
         }
     }
 
-    fn validate(code: &String) {
-        let caused_by = code.as_str();
-        if caused_by.starts_with("A") || caused_by.starts_with("B") || caused_by.starts_with("C") {
+    fn validate(code: &str) {
+        if code.starts_with("A") || code.starts_with("B") || code.starts_with("C") {
             return;
         }
         panic!("bad format error code")

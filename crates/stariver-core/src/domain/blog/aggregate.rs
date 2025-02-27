@@ -22,10 +22,10 @@ impl Article {
     /// 验证数据
     #[allow(unused)]
     pub fn valid(&self) -> Result<bool, Error> {
-        if self.title.trim().len() == 0 {
+        if self.title.trim().is_empty() {
             return Err(Error::msg("标题不能为空"));
         }
-        if self.body.trim().len() == 0 {
+        if self.body.trim().is_empty() {
             return Err(Error::msg("正文不能为空"));
         }
         Ok(true)

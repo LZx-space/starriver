@@ -2,16 +2,11 @@ use std::fmt::{Display, Formatter, Result};
 
 use serde::Serialize;
 
-#[derive(Debug, Eq, PartialEq, Serialize)]
+#[derive(Default, Debug, Eq, PartialEq, Serialize)]
 pub enum State {
+    #[default]
     Draft,
     Released,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        State::Draft
-    }
 }
 
 impl Display for State {

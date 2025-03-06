@@ -1,4 +1,5 @@
 use sea_orm::DatabaseConnection;
+use sea_orm::prelude::async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use tracing::{error, info};
@@ -71,7 +72,7 @@ impl User {
     }
 }
 
-#[trait_variant::make(HttpService: Send)]
+#[async_trait]
 pub trait UserRepository {
     async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError>;
 }
@@ -88,6 +89,7 @@ impl UserRepositoryImpl {
     }
 }
 
+#[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError> {
         let user = self.delegate.find_by_username(user_id).await.map_err(|e| {
@@ -120,6 +122,7 @@ impl UserAuthenticator {
     }
 }
 
+#[async_trait]
 impl Authenticator for UserAuthenticator {
     type Credential = UsernamePasswordCredential;
     type Principal = User;

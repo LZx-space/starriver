@@ -1,7 +1,7 @@
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
 use sea_orm::prelude::async_trait::async_trait;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
 use time::OffsetDateTime;
 use uuid::Uuid;
 

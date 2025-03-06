@@ -1,4 +1,5 @@
 use anyhow::Error;
+use sea_orm::prelude::async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::domain::blog::aggregate::Article;
@@ -6,7 +7,7 @@ use crate::infrastructure::model::blog::ArticleSummary;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 /// 仓库
-#[trait_variant::make(HttpService: Send)]
+#[async_trait]
 pub trait ArticleRepository {
     /// 查询一页数据
     async fn find_page(&self, query: PageQuery) -> Result<PageResult<ArticleSummary>, Error>;

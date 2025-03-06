@@ -1,8 +1,8 @@
 use anyhow::Error;
-
+use sea_orm::prelude::async_trait::async_trait;
 use crate::domain::user::aggregate::User;
 
-#[trait_variant::make(HttpService: Send)]
+#[async_trait]
 pub trait UserRepository {
     async fn insert(&self, user: User) -> Result<User, Error>;
 

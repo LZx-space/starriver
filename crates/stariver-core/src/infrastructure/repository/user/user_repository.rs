@@ -1,6 +1,7 @@
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::prelude::async_trait::async_trait;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -26,6 +27,7 @@ impl UserRepositoryImpl {
     }
 }
 
+#[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn insert(&self, user: User) -> Result<User, Error> {
         let model = hash_password(&user.password, self.password_salt)

@@ -1,6 +1,7 @@
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
+use sea_orm::prelude::async_trait::async_trait;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -17,6 +18,7 @@ pub struct ArticleRepositoryImpl {
     pub conn: &'static DatabaseConnection,
 }
 
+#[async_trait]
 impl ArticleRepository for ArticleRepositoryImpl {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, Error> {
         let articles = Entity::find()

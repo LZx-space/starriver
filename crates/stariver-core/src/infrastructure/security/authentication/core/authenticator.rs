@@ -1,11 +1,11 @@
+use sea_orm::prelude::async_trait::async_trait;
 use std::fmt::Debug;
-
 use thiserror::Error;
 
 use crate::infrastructure::security::authentication::core::credential::Credential;
 use crate::infrastructure::security::authentication::core::principal::Principal;
 
-#[trait_variant::make(HttpService: Send)]
+#[async_trait]
 pub trait Authenticator {
     type Credential: Credential;
 

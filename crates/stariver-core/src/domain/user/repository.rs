@@ -1,6 +1,6 @@
+use crate::domain::user::aggregate::User;
 use anyhow::Error;
 use sea_orm::prelude::async_trait::async_trait;
-use crate::domain::user::aggregate::User;
 
 #[async_trait]
 pub trait UserRepository {

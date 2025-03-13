@@ -1,9 +1,7 @@
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
-use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::domain::user::aggregate::User;
 use crate::domain::user::repository::UserRepository;
@@ -27,13 +25,12 @@ impl UserRepositoryImpl {
     }
 }
 
-#[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn insert(&self, user: User) -> Result<User, Error> {
         let model = hash_password(&user.password, self.password_salt)
             .map_err(|e| Error::msg(e.to_string()))
             .map(|e| ActiveModel {
-                id: Set(Uuid::now_v7()),
+                id: Set(user.id),
                 username: Set(user.username),
                 password: Set(e.to_string()),
                 create_at: Set(OffsetDateTime::now_utc()),
@@ -48,6 +45,9 @@ impl UserRepository for UserRepositoryImpl {
                     id: m.id,
                     username: m.username,
                     password: String::new(),
+                    state: Default::default(),
+                    created_at: m.create_at,
+                    login_records: vec![],
                 })
                 .map_err(|e| Error::new(e)),
             Err(err) => Err(err),
@@ -68,6 +68,9 @@ impl UserRepository for UserRepositoryImpl {
                     id: m.id,
                     username: m.username,
                     password: m.password,
+                    state: Default::default(),
+                    created_at: m.create_at,
+                    login_records: vec![],
                 })
             })
             .map_err(|e| Error::new(e))

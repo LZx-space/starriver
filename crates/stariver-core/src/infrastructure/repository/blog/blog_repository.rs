@@ -1,6 +1,5 @@
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
-use sea_orm::prelude::async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -18,7 +17,6 @@ pub struct ArticleRepositoryImpl {
     pub conn: &'static DatabaseConnection,
 }
 
-#[async_trait]
 impl ArticleRepository for ArticleRepositoryImpl {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, Error> {
         let articles = Entity::find()
@@ -92,29 +90,26 @@ impl ArticleRepository for ArticleRepositoryImpl {
         match exist {
             Ok(op) => match op {
                 None => Ok(None),
-                Some(found) => ActiveModel {
-                    id: Set(found.id),
-                    title: Set(e.title),
-                    body: Set(e.body),
-                    state: Set(e.state.into()),
-                    author_id: Set(found.author_id),
-                    create_at: Set(found.create_at),
-                    update_at: Set(Some(OffsetDateTime::now_utc())),
+                Some(found) => {
+                    let mut found: ActiveModel = found.into();
+                    found.title = Set(e.title);
+                    found.body = Set(e.body);
+                    found
+                        .update(self.conn)
+                        .await
+                        .map(|updated| {
+                            Some(Article {
+                                id: updated.id,
+                                title: updated.title,
+                                body: updated.body,
+                                state: updated.state.into(),
+                                author_id: updated.author_id,
+                                create_at: updated.create_at,
+                                update_at: updated.update_at,
+                            })
+                        })
+                        .map_err(Error::from)
                 }
-                .update(self.conn)
-                .await
-                .map(|updated| {
-                    Some(Article {
-                        id: updated.id,
-                        title: updated.title,
-                        body: updated.body,
-                        state: updated.state.into(),
-                        author_id: updated.author_id,
-                        create_at: updated.create_at,
-                        update_at: updated.update_at,
-                    })
-                })
-                .map_err(Error::from),
             },
             Err(err) => Err(Error::from(err)),
         }

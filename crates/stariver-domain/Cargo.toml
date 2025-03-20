@@ -1,0 +1,14 @@
+[package]
+name = "stariver-domain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+stariver-infrastructure = { path = "../stariver-infrastructure" }
+anyhow = { workspace = true }
+
+time = { workspace = true }
+
+serde = { workspace = true }
+uuid = { workspace = true }

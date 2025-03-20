@@ -6,7 +6,7 @@ use crate::infrastructure::model::blog::ArticleSummary;
 use crate::infrastructure::model::page::{PageQuery, PageResult};
 
 /// 仓库
-pub trait ArticleRepository {
+pub(crate) trait ArticleRepository {
     /// 查询一页数据
     fn find_page(
         &self,

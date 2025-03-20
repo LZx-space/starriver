@@ -15,7 +15,7 @@ pub struct Dictionary {
 }
 
 impl Dictionary {
-    pub fn new(conn: &'static DatabaseConnection) -> Self {
+    pub(crate) fn new(conn: &'static DatabaseConnection) -> Self {
         let repo = Repository::new(conn);
         Dictionary { repo }
     }

@@ -11,4 +11,5 @@ stariver-infrastructure = { path = "../stariver-infrastructure" }
 anyhow = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
+time = { workspace = true }
 uuid = { workspace = true }

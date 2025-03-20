@@ -1,7 +1,7 @@
 use crate::domain::user::aggregate::User;
 use anyhow::Error;
 
-pub trait UserRepository {
+pub(crate) trait UserRepository {
     fn insert(&self, user: User) -> impl Future<Output = Result<User, Error>> + Send;
 
     fn update(&self, user: User) -> impl Future<Output = Option<Error>> + Send;

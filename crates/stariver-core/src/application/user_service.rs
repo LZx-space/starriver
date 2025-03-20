@@ -6,12 +6,12 @@ use crate::infrastructure::model::err::CodedErr;
 use crate::infrastructure::repository::user::user_repository::UserRepositoryImpl;
 
 pub struct UserApplication {
-    pub repo: UserRepositoryImpl,
+    repo: UserRepositoryImpl,
 }
 
 impl UserApplication {
     /// 新建
-    pub fn new(conn: &'static DatabaseConnection) -> UserApplication {
+    pub(crate) fn new(conn: &'static DatabaseConnection) -> UserApplication {
         UserApplication {
             repo: UserRepositoryImpl::new(conn),
         }

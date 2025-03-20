@@ -9,12 +9,12 @@ use crate::infrastructure::model::page::{PageQuery, PageResult};
 use crate::infrastructure::repository::blog::blog_repository::ArticleRepositoryImpl;
 
 pub struct ArticleApplication {
-    pub repo: ArticleRepositoryImpl,
+    repo: ArticleRepositoryImpl,
 }
 
 impl ArticleApplication {
     /// 新建
-    pub fn new(conn: &'static DatabaseConnection) -> ArticleApplication {
+    pub(crate) fn new(conn: &'static DatabaseConnection) -> ArticleApplication {
         ArticleApplication {
             repo: ArticleRepositoryImpl { conn },
         }

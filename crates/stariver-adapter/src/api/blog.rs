@@ -3,11 +3,10 @@ use actix_web::web::{Json, Path, Query};
 use actix_web::{Responder, delete, get, post, put, web};
 use uuid::Uuid;
 
-use stariver_core::infrastructure::model::page::PageQuery;
-use stariver_core::infrastructure::web::app_state::AppState;
-
+use crate::app_state::AppState;
 use crate::assembler::blog::{cmd_2_new_entity, cmd_2_update_entity};
 use crate::model::blog::{ArticleCmd, ArticleVo};
+use stariver_infrastructure::model::page::PageQuery;
 
 #[get("/blogs")]
 pub async fn page(state: web::Data<AppState>, params: Query<PageQuery>) -> impl Responder {

@@ -12,8 +12,12 @@ unsafe_code = "forbid"
 actix-web = { workspace = true }
 
 time = { workspace = true }
-
+sea-orm = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 
-stariver-core = { path = "../stariver-core" }
+stariver-application = { path = "../stariver-application" }
+stariver-domain = { path = "../stariver-domain" }
+stariver-infrastructure = { path = "../stariver-infrastructure" }
+tracing = { workspace = true }
 uuid = { workspace = true }

@@ -1,8 +1,8 @@
 use actix_web::web::Json;
 use actix_web::{Responder, get};
 
-use stariver_core::infrastructure::security::authentication::core::principal::Principal;
-use stariver_core::infrastructure::security::authentication::user_principal::User;
+use crate::user_principal::User;
+use stariver_infrastructure::security::authentication::core::principal::Principal;
 
 #[get("/session/user")]
 pub async fn validate_authenticated(user: User) -> impl Responder {

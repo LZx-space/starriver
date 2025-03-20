@@ -7,13 +7,11 @@ use ferris_says::say;
 use stariver_adapter::api::blog;
 use stariver_adapter::api::dictionary;
 use stariver_adapter::api::{authentication, user};
-use stariver_core::infrastructure::security::authentication::user_principal::{
-    UserAuthenticator, UserRepositoryImpl,
-};
-use stariver_core::infrastructure::security::authentication::web::actix::flow::username_flow::UsernameFlow;
-use stariver_core::infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
-use stariver_core::infrastructure::util::db::db_conn;
-use stariver_core::infrastructure::web::app_state::AppState;
+use stariver_adapter::app_state::AppState;
+use stariver_adapter::user_principal::{UserAuthenticator, UserRepositoryImpl};
+use stariver_adapter::username_flow::UsernameFlow;
+use stariver_infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
+use stariver_infrastructure::util::db::db_conn;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::Layer;
 use tracing_subscriber::fmt::layer;

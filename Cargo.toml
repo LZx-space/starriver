@@ -3,7 +3,9 @@ resolver = "2"
 members = [
     "crates/stariver",
     "crates/stariver-adapter",
-    "crates/stariver-core",
+    "crates/stariver-application",
+    "crates/stariver-domain",
+    "crates/stariver-infrastructure",
 ]
 [workspace.package]
 version = "0.1.0"

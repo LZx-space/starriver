@@ -15,7 +15,7 @@ actix-web = { workspace = true }
 dotenvy = "^0"
 
 stariver-adapter = { path = "../stariver-adapter" }
-stariver-core = { path = "../stariver-core" }
+stariver-infrastructure = { path = "../stariver-infrastructure" }
 
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

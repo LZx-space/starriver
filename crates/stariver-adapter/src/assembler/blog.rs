@@ -6,13 +6,13 @@ use stariver_domain::blog::value_object::State::Draft;
 
 use crate::model::blog::BlogCmd;
 
-pub fn cmd_2_new_entity(cmd: BlogCmd, author_id: String) -> Blog {
+pub fn cmd_2_new_entity(cmd: BlogCmd, blogger_id: String) -> Blog {
     Blog {
         id: Uuid::now_v7(),
         title: cmd.title,
         body: cmd.body,
         state: Draft,
-        author_id,
+        blogger_id,
         create_at: OffsetDateTime::now_utc(),
         update_at: None,
     }

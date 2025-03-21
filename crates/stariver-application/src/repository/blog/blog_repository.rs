@@ -43,7 +43,7 @@ impl BlogRepository for BlogRepositoryImpl {
                     title: e.title.clone(),
                     body: e.body.clone(),
                     state: e.state.into(),
-                    author_id: e.author_id,
+                    blogger_id: e.blogger_id,
                     create_at: e.create_at,
                     update_at: e.update_at,
                 })
@@ -57,7 +57,7 @@ impl BlogRepository for BlogRepositoryImpl {
             title: Set(e.title),
             body: Set(e.body),
             state: Set(Default::default()),
-            author_id: Set(e.author_id),
+            blogger_id: Set(e.blogger_id),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: Set(None),
         }
@@ -68,7 +68,7 @@ impl BlogRepository for BlogRepositoryImpl {
             title: e.title,
             body: e.body,
             state: e.state.into(),
-            author_id: e.author_id,
+            blogger_id: e.blogger_id,
             create_at: e.create_at,
             update_at: e.update_at,
         })
@@ -101,7 +101,7 @@ impl BlogRepository for BlogRepositoryImpl {
                                 title: updated.title,
                                 body: updated.body,
                                 state: updated.state.into(),
-                                author_id: updated.author_id,
+                                blogger_id: updated.blogger_id,
                                 create_at: updated.create_at,
                                 update_at: updated.update_at,
                             })

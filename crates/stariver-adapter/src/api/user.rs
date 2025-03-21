@@ -1,7 +1,7 @@
 use actix_web::web::Json;
 use actix_web::{Responder, post, web};
 
-use crate::app_state::AppState;
+use crate::config::app_state::AppState;
 use crate::model::user::UserCmd;
 use stariver_application::service::user_service::UserApplication;
 use stariver_domain::user::aggregate::User;

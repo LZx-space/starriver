@@ -1,6 +1,6 @@
 use std::future::{Ready, ready};
 
-use crate::user_principal::User;
+use crate::config::user_principal::User;
 use actix_web::dev::Payload;
 use actix_web::{FromRequest, HttpRequest};
 use stariver_infrastructure::security::authentication::core::principal_extract::Extractor;

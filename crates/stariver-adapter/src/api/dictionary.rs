@@ -1,7 +1,7 @@
 use actix_web::web::{Json, Query};
 use actix_web::{Responder, get, post, web};
 
-use crate::app_state::AppState;
+use crate::config::app_state::AppState;
 use stariver_infrastructure::model::err::CodedErr;
 use stariver_infrastructure::model::page::PageQuery;
 use stariver_infrastructure::service::dictionary::dictionary_service::{DataType, DictionaryEntry};

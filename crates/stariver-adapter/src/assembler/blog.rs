@@ -1,13 +1,13 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use stariver_domain::blog::aggregate::Article;
+use stariver_domain::blog::aggregate::Blog;
 use stariver_domain::blog::value_object::State::Draft;
 
-use crate::model::blog::ArticleCmd;
+use crate::model::blog::BlogCmd;
 
-pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
-    Article {
+pub fn cmd_2_new_entity(cmd: BlogCmd, author_id: String) -> Blog {
+    Blog {
         id: Uuid::now_v7(),
         title: cmd.title,
         body: cmd.body,
@@ -18,7 +18,7 @@ pub fn cmd_2_new_entity(cmd: ArticleCmd, author_id: String) -> Article {
     }
 }
 
-pub fn cmd_2_update_entity(cmd: ArticleCmd, mut to_update: Article) -> Article {
+pub fn cmd_2_update_entity(cmd: BlogCmd, mut to_update: Blog) -> Blog {
     to_update.title = cmd.title;
     to_update.body = cmd.body;
     to_update

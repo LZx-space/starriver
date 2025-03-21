@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(Serialize, FromQueryResult)]
-pub struct ArticleSummary {
+pub struct BlogPreview {
     pub id: Uuid,
 
     pub title: String,

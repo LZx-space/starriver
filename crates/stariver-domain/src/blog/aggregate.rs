@@ -8,7 +8,7 @@ use crate::blog::value_object::State::{Draft, Released};
 
 /// 文章
 #[derive(Debug, Serialize)]
-pub struct Article {
+pub struct Blog {
     pub id: Uuid,
     pub title: String,
     pub body: String,
@@ -18,7 +18,7 @@ pub struct Article {
     pub update_at: Option<OffsetDateTime>,
 }
 
-impl Article {
+impl Blog {
     /// 验证数据
     #[allow(unused)]
     pub fn valid(&self) -> Result<bool, Error> {

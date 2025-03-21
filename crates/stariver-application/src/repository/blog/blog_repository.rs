@@ -1,28 +1,28 @@
-use super::po::article::ActiveModel;
-use super::po::article::Column;
-use super::po::article::Entity;
+use super::po::blog::ActiveModel;
+use super::po::blog::Column;
+use super::po::blog::Entity;
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
-use stariver_domain::blog::aggregate::Article;
-use stariver_domain::blog::repository::ArticleRepository;
-use stariver_infrastructure::model::blog::ArticleSummary;
+use stariver_domain::blog::aggregate::Blog;
+use stariver_domain::blog::repository::BlogRepository;
+use stariver_infrastructure::model::blog::BlogPreview;
 use stariver_infrastructure::model::page::{PageQuery, PageResult};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-pub struct ArticleRepositoryImpl {
+pub struct BlogRepositoryImpl {
     pub conn: &'static DatabaseConnection,
 }
 
-impl ArticleRepository for ArticleRepositoryImpl {
-    async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleSummary>, Error> {
-        let articles = Entity::find()
+impl BlogRepository for BlogRepositoryImpl {
+    async fn find_page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, Error> {
+        let blogs = Entity::find()
             .select_only()
             .columns([Column::Id, Column::Title, Column::CreateAt])
             .offset(q.page * q.page_size)
             .limit(q.page_size)
-            .into_model::<ArticleSummary>()
+            .into_model::<BlogPreview>()
             .all(self.conn)
             .await?;
         let record_total = Entity::find()
@@ -30,15 +30,15 @@ impl ArticleRepository for ArticleRepositoryImpl {
             .column(Column::Id)
             .count(self.conn)
             .await?;
-        Ok(PageResult::new(q.page, q.page_size, record_total, articles))
+        Ok(PageResult::new(q.page, q.page_size, record_total, blogs))
     }
 
-    async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, Error> {
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, Error> {
         Entity::find_by_id(id)
             .one(self.conn)
             .await
             .map(|op| {
-                op.map(|e| Article {
+                op.map(|e| Blog {
                     id,
                     title: e.title.clone(),
                     body: e.body.clone(),
@@ -51,7 +51,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
             .map_err(Error::from)
     }
 
-    async fn add(&self, e: Article) -> Result<Article, Error> {
+    async fn add(&self, e: Blog) -> Result<Blog, Error> {
         ActiveModel {
             id: Set(e.id),
             title: Set(e.title),
@@ -63,7 +63,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
         }
         .insert(self.conn)
         .await
-        .map(|e| Article {
+        .map(|e| Blog {
             id: e.id,
             title: e.title,
             body: e.body,
@@ -83,7 +83,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
             .map_err(Error::from)
     }
 
-    async fn update(&self, e: Article) -> Result<Option<Article>, Error> {
+    async fn update(&self, e: Blog) -> Result<Option<Blog>, Error> {
         let exist = Entity::find_by_id(e.id).one(self.conn).await;
         match exist {
             Ok(op) => match op {
@@ -96,7 +96,7 @@ impl ArticleRepository for ArticleRepositoryImpl {
                         .update(self.conn)
                         .await
                         .map(|updated| {
-                            Some(Article {
+                            Some(Blog {
                                 id: updated.id,
                                 title: updated.title,
                                 body: updated.body,

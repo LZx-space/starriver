@@ -4,7 +4,7 @@ use stariver_domain::blog::value_object::State;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
-pub enum ArticleState {
+pub enum BlogState {
     #[sea_orm(num_value = 0)]
     #[default]
     Draft,
@@ -12,9 +12,9 @@ pub enum ArticleState {
     Released,
 }
 
-impl Into<State> for ArticleState {
+impl Into<State> for BlogState {
     fn into(self) -> State {
-        if self.eq(&ArticleState::Draft) {
+        if self.eq(&BlogState::Draft) {
             State::Draft
         } else {
             State::Released
@@ -22,12 +22,12 @@ impl Into<State> for ArticleState {
     }
 }
 
-impl From<State> for ArticleState {
+impl From<State> for BlogState {
     fn from(value: State) -> Self {
         if value.eq(&State::Draft) {
-            ArticleState::Draft
+            BlogState::Draft
         } else {
-            ArticleState::Released
+            BlogState::Released
         }
     }
 }

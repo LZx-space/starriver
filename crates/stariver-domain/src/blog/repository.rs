@@ -1,27 +1,27 @@
 use anyhow::Error;
 use uuid::Uuid;
 
-use crate::blog::aggregate::Article;
-use stariver_infrastructure::model::blog::ArticleSummary;
+use crate::blog::aggregate::Blog;
+use stariver_infrastructure::model::blog::BlogPreview;
 use stariver_infrastructure::model::page::{PageQuery, PageResult};
 
 /// 仓库
-pub trait ArticleRepository {
+pub trait BlogRepository {
     /// 查询一页数据
     fn find_page(
         &self,
         query: PageQuery,
-    ) -> impl Future<Output = Result<PageResult<ArticleSummary>, Error>> + Send;
+    ) -> impl Future<Output = Result<PageResult<BlogPreview>, Error>> + Send;
 
     /// 按ID查找
-    fn find_by_id(&self, id: Uuid) -> impl Future<Output = Result<Option<Article>, Error>> + Send;
+    fn find_by_id(&self, id: Uuid) -> impl Future<Output = Result<Option<Blog>, Error>> + Send;
 
     /// 新增
-    fn add(&self, e: Article) -> impl Future<Output = Result<Article, Error>> + Send;
+    fn add(&self, e: Blog) -> impl Future<Output = Result<Blog, Error>> + Send;
 
     /// 删除
     fn delete_by_id(&self, id: Uuid) -> impl Future<Output = Result<bool, Error>> + Send;
 
     /// 修改
-    fn update(&self, e: Article) -> impl Future<Output = Result<Option<Article>, Error>> + Send;
+    fn update(&self, e: Blog) -> impl Future<Output = Result<Option<Blog>, Error>> + Send;
 }

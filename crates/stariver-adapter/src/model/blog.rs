@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-pub struct ArticleCmd {
+pub struct BlogCmd {
     pub title: String,
     pub body: String,
 }
 
 #[derive(Serialize)]
-pub struct ArticleVo {
+pub struct BlogVo {
     pub title: String,
 
     pub body: String,

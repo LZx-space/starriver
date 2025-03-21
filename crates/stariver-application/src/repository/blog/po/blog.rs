@@ -1,10 +1,10 @@
-use crate::repository::blog::po::state::ArticleState;
+use crate::repository::blog::po::state::BlogState;
 use sea_orm::entity::prelude::*;
 use time::OffsetDateTime;
 
 /// 文章
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "article")]
+#[sea_orm(table_name = "blog")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
@@ -14,7 +14,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub body: String,
 
-    pub state: ArticleState,
+    pub state: BlogState,
 
     pub author_id: String,
 

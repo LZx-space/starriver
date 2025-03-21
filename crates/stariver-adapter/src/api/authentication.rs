@@ -1,7 +1,7 @@
 use actix_web::web::Json;
 use actix_web::{Responder, get};
 
-use crate::user_principal::User;
+use crate::config::user_principal::User;
 use stariver_infrastructure::security::authentication::core::principal::Principal;
 
 #[get("/session/user")]

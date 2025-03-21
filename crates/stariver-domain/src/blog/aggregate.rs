@@ -13,7 +13,7 @@ pub struct Blog {
     pub title: String,
     pub body: String,
     pub state: State,
-    pub author_id: String,
+    pub blogger_id: String,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,
 }

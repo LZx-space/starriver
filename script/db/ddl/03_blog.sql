@@ -1,3 +1,5 @@
+DROP TABLE public."blog";
+
 create table public.blog
 (
     id         uuid primary key                                   not null,

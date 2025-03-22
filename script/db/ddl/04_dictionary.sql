@@ -1,8 +1,4 @@
--- public."dictionary" definition
-
--- Drop table
-
--- DROP TABLE public."dictionary";
+DROP TABLE public."dictionary";
 
 CREATE TABLE public."dictionary"
 (

@@ -1,3 +1,5 @@
+DROP TABLE public."user";
+
 create table public."user"
 (
     id        uuid primary key         not null,

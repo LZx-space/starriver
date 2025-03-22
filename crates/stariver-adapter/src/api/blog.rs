@@ -38,11 +38,7 @@ pub async fn find_one(state: web::Data<AppState>, id: Path<Uuid>) -> impl Respon
 pub async fn insert(state: web::Data<AppState>, cmd: Json<BlogCmd>) -> impl Responder {
     let cmd = cmd.into_inner();
     let blog = cmd_2_new_entity(cmd, "LZx".to_string());
-    state
-        .blog_application
-        .add(blog)
-        .await
-        .map(|e| Json(e))
+    state.blog_application.add(blog).await.map(|e| Json(e))
 }
 
 #[put("/blogs/{id}")]
@@ -58,11 +54,7 @@ pub async fn update(
         ()
     }
     let blog = cmd_2_update_entity(cmd, to_update.unwrap());
-    state
-        .blog_application
-        .update(blog)
-        .await
-        .map(|e| Json(e))
+    state.blog_application.update(blog).await.map(|e| Json(e))
 }
 
 #[delete("/blogs/{id}")]

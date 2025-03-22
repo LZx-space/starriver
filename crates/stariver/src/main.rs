@@ -43,16 +43,15 @@ async fn main() -> std::io::Result<()> {
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
-
+    let app_data = web::Data::new(AppState::new(conn));
     HttpServer::new(move || {
-        let app_state = AppState::new(conn);
         App::new()
+            .app_data(app_data.clone())
             .wrap(AuthenticationTransform::new(
-                UserAuthenticator::new(UserRepositoryImpl::new(conn)),
+                UserAuthenticator::new(UserRepositoryImpl::new(app_data.conn)),
                 UsernameFlow {},
             ))
             .wrap(middleware::ErrorHandlers::new())
-            .app_data(web::Data::new(app_state))
             .service(authentication::validate_authenticated)
             .service(user::insert)
             .service(blog::page)

@@ -9,15 +9,11 @@ use time::OffsetDateTime;
 
 pub struct UserRepositoryImpl {
     conn: &'static DatabaseConnection,
-    password_salt: &'static str,
 }
 
 impl UserRepositoryImpl {
     pub fn new(conn: &'static DatabaseConnection) -> Self {
-        UserRepositoryImpl {
-            conn,
-            password_salt: "stariver",
-        }
+        UserRepositoryImpl { conn }
     }
 }
 

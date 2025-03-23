@@ -2,8 +2,8 @@ use argon2::password_hash::{PasswordHashString, SaltString};
 use argon2::{Argon2, PasswordHasher, PasswordVerifier, password_hash};
 use password_hash::errors::Result;
 
-pub fn to_password_hash_string_struct(hashed_password: &String) -> Result<PasswordHashString> {
-    PasswordHashString::new(hashed_password.as_str())
+pub fn from_hashed_password(hashed_password: &str) -> Result<PasswordHashString> {
+    PasswordHashString::new(hashed_password)
 }
 
 pub fn hash_password(password: &str, salt: &str) -> Result<PasswordHashString> {
@@ -13,7 +13,7 @@ pub fn hash_password(password: &str, salt: &str) -> Result<PasswordHashString> {
     Ok(hash.serialize())
 }
 
-pub fn verify_password(password: &str, password_hash_string: PasswordHashString) -> Result<()> {
+pub fn verify_password(password: &str, password_hash_string: &PasswordHashString) -> Result<()> {
     let argon2 = Argon2::default();
     argon2.verify_password(password.as_bytes(), &password_hash_string.password_hash())
 }

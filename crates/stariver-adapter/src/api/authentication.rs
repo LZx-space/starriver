@@ -6,6 +6,6 @@ use stariver_infrastructure::security::authentication::core::principal::Principa
 
 #[get("/session/user")]
 pub async fn validate_authenticated(user: User) -> impl Responder {
-    let string = user.id();
-    Json(String::from(string).clone().to_string())
+    let username = user.id().as_str();
+    Json(String::from(username))
 }

@@ -3,8 +3,9 @@ use super::po::user::{ActiveModel, Column};
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
-use stariver_domain::user::aggregate::{Password, User, Username};
+use stariver_domain::user::entity::User;
 use stariver_domain::user::repository::UserRepository;
+use stariver_domain::user::value_object::{Password, Username};
 use time::OffsetDateTime;
 
 pub struct UserRepositoryImpl {

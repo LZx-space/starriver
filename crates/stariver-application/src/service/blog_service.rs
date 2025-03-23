@@ -1,6 +1,6 @@
 use crate::repository::blog::blog_repository::BlogRepositoryImpl;
 use sea_orm::DatabaseConnection;
-use stariver_domain::blog::aggregate::Blog;
+use stariver_domain::blog::entity::Blog;
 use stariver_domain::blog::repository::BlogRepository;
 use stariver_infrastructure::model::blog::BlogPreview;
 use stariver_infrastructure::model::err::CodedErr;

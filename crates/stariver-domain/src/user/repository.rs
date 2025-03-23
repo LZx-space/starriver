@@ -1,4 +1,4 @@
-use crate::user::aggregate::User;
+use crate::user::entity::User;
 use anyhow::Error;
 
 pub trait UserRepository {

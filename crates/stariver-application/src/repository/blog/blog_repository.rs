@@ -4,7 +4,7 @@ use super::po::blog::Entity;
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
-use stariver_domain::blog::aggregate::Blog;
+use stariver_domain::blog::entity::Blog;
 use stariver_domain::blog::repository::BlogRepository;
 use stariver_infrastructure::model::blog::BlogPreview;
 use stariver_infrastructure::model::page::{PageQuery, PageResult};

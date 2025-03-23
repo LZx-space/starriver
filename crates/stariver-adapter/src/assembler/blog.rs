@@ -1,7 +1,7 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use stariver_domain::blog::aggregate::Blog;
+use stariver_domain::blog::entity::Blog;
 use stariver_domain::blog::value_object::State::Draft;
 
 use crate::model::blog::BlogCmd;

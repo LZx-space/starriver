@@ -11,7 +11,7 @@ use stariver_infrastructure::security::authentication::core::credential::{Creden
 use stariver_infrastructure::security::authentication::core::principal::{
     Principal, SimpleAuthority,
 };
-use stariver_infrastructure::security::authentication::util::{
+use stariver_infrastructure::security::authentication::password_hasher::{
     from_hashed_password, verify_password,
 };
 use std::fmt::Debug;

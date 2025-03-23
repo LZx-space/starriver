@@ -1,3 +1,4 @@
+use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::{PasswordHashString, SaltString};
 use argon2::{Argon2, PasswordHasher, PasswordVerifier, password_hash};
 use password_hash::errors::Result;
@@ -6,9 +7,9 @@ pub fn from_hashed_password(hashed_password: &str) -> Result<PasswordHashString>
     PasswordHashString::new(hashed_password)
 }
 
-pub fn hash_password(password: &str, salt: &str) -> Result<PasswordHashString> {
+pub fn hash_password(password: &str) -> Result<PasswordHashString> {
     let argon2 = Argon2::default();
-    let salt_string = SaltString::encode_b64(salt.as_bytes())?;
+    let salt_string = SaltString::generate(&mut OsRng);
     let hash = argon2.hash_password(password.as_bytes(), &salt_string)?;
     Ok(hash.serialize())
 }

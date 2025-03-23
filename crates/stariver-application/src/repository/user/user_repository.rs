@@ -3,9 +3,8 @@ use super::po::user::{ActiveModel, Column};
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
-use stariver_domain::user::aggregate::User;
+use stariver_domain::user::aggregate::{Password, User, Username};
 use stariver_domain::user::repository::UserRepository;
-use stariver_infrastructure::security::authentication::util::hash_password;
 use time::OffsetDateTime;
 
 pub struct UserRepositoryImpl {
@@ -24,31 +23,31 @@ impl UserRepositoryImpl {
 
 impl UserRepository for UserRepositoryImpl {
     async fn insert(&self, user: User) -> Result<User, Error> {
-        let model = hash_password(&user.password, self.password_salt)
-            .map_err(|e| Error::msg(e.to_string()))
-            .map(|e| ActiveModel {
+        Result::map(
+            ActiveModel {
                 id: Set(user.id),
-                username: Set(user.username),
-                password: Set(e.to_string()),
+                username: Set(user.username.as_str().to_string()),
+                password: Set(user.password.hashed_password_string().to_string()),
                 create_at: Set(OffsetDateTime::now_utc()),
                 update_at: Set(None),
-            });
-
-        match model {
-            Ok(am) => am
-                .insert(self.conn)
-                .await
-                .map(|m| User {
+            }
+            .insert(self.conn)
+            .await,
+            |m| {
+                let username = Username::new(m.username.as_str()).expect("Username");
+                let password =
+                    Password::new_by_hashed_password_string(m.password.as_str()).expect("Password");
+                User {
                     id: m.id,
-                    username: m.username,
-                    password: String::new(),
+                    username,
+                    password,
                     state: Default::default(),
                     created_at: m.create_at,
-                    login_records: vec![],
-                })
-                .map_err(|e| Error::new(e)),
-            Err(err) => Err(err),
-        }
+                    login_events: vec![],
+                }
+            },
+        )
+        .map_err(Error::from)
     }
 
     async fn update(&self, user: User) -> Option<Error> {
@@ -61,13 +60,18 @@ impl UserRepository for UserRepositoryImpl {
             .one(self.conn)
             .await
             .map(|e| {
-                e.map(|m| User {
-                    id: m.id,
-                    username: m.username,
-                    password: m.password,
-                    state: Default::default(),
-                    created_at: m.create_at,
-                    login_records: vec![],
+                e.map(|m| {
+                    let username = Username::new(m.username.as_str()).expect("Username");
+                    let password = Password::new_by_hashed_password_string(m.password.as_str())
+                        .expect("Password");
+                    User {
+                        id: m.id,
+                        username,
+                        password,
+                        state: Default::default(),
+                        created_at: m.create_at,
+                        login_events: vec![],
+                    }
                 })
             })
             .map_err(|e| Error::new(e))

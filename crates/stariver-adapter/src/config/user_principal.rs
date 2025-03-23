@@ -2,6 +2,7 @@ use sea_orm::DatabaseConnection;
 use sea_orm::prelude::async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use stariver_application::repository::user::user_repository::UserRepositoryImpl as DomainUserRepoImpl;
+use stariver_domain::user::aggregate::{Password, Username};
 use stariver_domain::user::repository::UserRepository as DomainUserRepo;
 use stariver_infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
@@ -11,7 +12,7 @@ use stariver_infrastructure::security::authentication::core::principal::{
     Principal, SimpleAuthority,
 };
 use stariver_infrastructure::security::authentication::util::{
-    to_password_hash_string_struct, verify_password,
+    from_hashed_password, verify_password,
 };
 use std::fmt::Debug;
 use tracing::{error, info};
@@ -41,15 +42,15 @@ impl UsernamePasswordCredential {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    username: String,
-    #[serde(skip_serializing, default)]
-    password: String,
+    username: Username,
+    #[serde(skip_serializing)]
+    password: Password,
     #[serde(default)]
     authorities: Vec<SimpleAuthority>,
 }
 
 impl Principal for User {
-    type Id = String;
+    type Id = Username;
     type Authority = SimpleAuthority;
 
     fn id(&self) -> &Self::Id {
@@ -58,16 +59,6 @@ impl Principal for User {
 
     fn authorities(&self) -> Vec<&Self::Authority> {
         vec![]
-    }
-}
-
-impl User {
-    pub fn username(&self) -> &String {
-        &self.username
-    }
-
-    pub fn password(&self) -> &String {
-        &self.password
     }
 }
 
@@ -131,19 +122,13 @@ impl Authenticator for UserAuthenticator {
         credential: &Self::Credential,
     ) -> Result<Self::Principal, AuthenticationError> {
         let username = &credential.username;
+        let password = &credential.password;
         // 查找用户
         let user = self.user_repository.find_by_id(username).await?;
         // 验证密码
-        let password_hash_string =
-            to_password_hash_string_struct(user.password()).map_err(|e| {
-                error!(
-                    "{}'s password was not hashed: {}",
-                    user.username(),
-                    e.to_string()
-                );
-                AuthenticationError::BadPassword
-            })?;
-        verify_password(credential.password.as_str(), password_hash_string)
+        let password_hash_string = from_hashed_password(user.password.hashed_password_string())
+            .map_err(|e| AuthenticationError::BadPassword)?;
+        verify_password(password.as_str(), &password_hash_string)
             .map(|_| user)
             .map_err(|_| AuthenticationError::BadPassword)
     }

@@ -16,9 +16,16 @@ impl UserApplication {
         }
     }
 
-    pub async fn insert(&self, user: User) -> Result<User, CodedErr> {
+    pub async fn register_user(&self, username: &str, password: &str) -> Result<User, CodedErr> {
+        // todo add publish register event
+        let user = User::new_with_username_and_password(username, password, "stariver");
+        if user.is_err() {
+            return Err(CodedErr::new_with_system_self_reason(
+                user.unwrap_err().to_string(),
+            ));
+        }
         self.repo
-            .insert(user)
+            .insert(user.unwrap())
             .await
             .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
     }

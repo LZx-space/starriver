@@ -4,6 +4,7 @@ use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+/// The user aggregate. User is the aggregate root.
 #[derive(Debug, Serialize)]
 pub struct User {
     pub id: Uuid,

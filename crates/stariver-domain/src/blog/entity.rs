@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::blog::value_object::State;
 use crate::blog::value_object::State::{Draft, Released};
 
-/// 文章
+/// The blog aggregate. Blog is the aggregate root.
 #[derive(Debug, Serialize)]
 pub struct Blog {
     pub id: Uuid,

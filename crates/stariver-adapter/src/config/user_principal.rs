@@ -2,8 +2,8 @@ use sea_orm::DatabaseConnection;
 use sea_orm::prelude::async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use stariver_application::repository::user::user_repository::UserRepositoryImpl as DomainUserRepoImpl;
-use stariver_domain::user::aggregate::{Password, Username};
 use stariver_domain::user::repository::UserRepository as DomainUserRepo;
+use stariver_domain::user::value_object::{Password, Username};
 use stariver_infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };

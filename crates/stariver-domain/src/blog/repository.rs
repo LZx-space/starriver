@@ -1,7 +1,7 @@
 use anyhow::Error;
 use uuid::Uuid;
 
-use crate::blog::aggregate::Blog;
+use crate::blog::entity::Blog;
 use stariver_infrastructure::model::blog::BlogPreview;
 use stariver_infrastructure::model::page::{PageQuery, PageResult};
 

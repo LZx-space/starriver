@@ -1,6 +1,6 @@
 use crate::repository::user::user_repository::UserRepositoryImpl;
 use sea_orm::DatabaseConnection;
-use stariver_domain::user::aggregate::User;
+use stariver_domain::user::entity::User;
 use stariver_domain::user::repository::UserRepository;
 use stariver_infrastructure::model::err::CodedErr;
 

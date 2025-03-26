@@ -1,0 +1,15 @@
+[package]
+name = "starriver-application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+starriver-domain = { path = "../starriver-domain" }
+starriver-infrastructure = { path = "../starriver-infrastructure" }
+
+anyhow = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }

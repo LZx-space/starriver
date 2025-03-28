@@ -1,1 +1,1 @@
-CREATE DATABASE stariver;
+CREATE DATABASE starriver;

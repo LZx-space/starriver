@@ -1,5 +1,5 @@
-use super::po::user::Entity;
 use super::po::user::{ActiveModel, Column};
+use super::po::user::{Entity, Model};
 use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
@@ -30,19 +30,7 @@ impl UserRepository for UserRepositoryImpl {
             }
             .insert(self.conn)
             .await,
-            |m| {
-                let username = Username::new(m.username.as_str()).expect("Username");
-                let password =
-                    Password::new_by_hashed_password_string(m.password.as_str()).expect("Password");
-                User {
-                    id: m.id,
-                    username,
-                    password,
-                    state: Default::default(),
-                    created_at: m.create_at,
-                    login_events: vec![],
-                }
-            },
+            model_to_entity,
         )
         .map_err(Error::from)
     }
@@ -51,26 +39,28 @@ impl UserRepository for UserRepositoryImpl {
         todo!()
     }
 
+
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, Error> {
         Entity::find()
             .filter(Column::Username.eq(username))
             .one(self.conn)
             .await
-            .map(|e| {
-                e.map(|m| {
-                    let username = Username::new(m.username.as_str()).expect("Username");
-                    let password = Password::new_by_hashed_password_string(m.password.as_str())
-                        .expect("Password");
-                    User {
-                        id: m.id,
-                        username,
-                        password,
-                        state: Default::default(),
-                        created_at: m.create_at,
-                        login_events: vec![],
-                    }
-                })
-            })
+            .map(|e| e.map(model_to_entity))
             .map_err(|e| Error::new(e))
+    }
+}
+
+#[inline]
+fn model_to_entity(m: Model) -> User {
+    let username = Username::new(m.username.as_str()).expect("Username");
+    let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())
+        .expect("Password");
+    User {
+        id: m.id,
+        username,
+        password,
+        state: Default::default(),
+        created_at: m.create_at,
+        login_events: vec![],
     }
 }

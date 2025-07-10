@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use starriver_infrastructure::security::authentication::password_hasher::{
     from_hashed_password, hash_password, verify_password,
 };
+use time::OffsetDateTime;
+use crate::user::entity::LoginEvent;
 
 #[derive(Debug, Default, Serialize)]
 pub enum State {
@@ -11,7 +13,7 @@ pub enum State {
     UnVerified,
     Activated,
     Disabled,
-    Expired,
+    Expired, // 
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,22 +36,28 @@ impl Username {
 pub struct Password {
     #[serde(skip_serializing)]
     hashed_string: String,
+    set_at: OffsetDateTime,
 }
 
 impl Password {
-    pub fn new_by_raw_password(raw_password: &str) -> Result<Self, Error> {
+    pub fn create_password(raw_password: &str) -> Result<Self, Error> {
         hash_password(raw_password)
             .map_err(|e| Error::msg(e.to_string()))
             .map(|e| Password {
                 hashed_string: e.to_string(),
+                set_at: OffsetDateTime::now_utc(),
             })
     }
 
-    pub fn new_by_hashed_password_string(hashed_password: &str) -> Result<Self, Error> {
-        from_hashed_password(hashed_password)
+    pub fn restore_by_hashed_pwd(
+        hashed_string: &str,
+        set_at: OffsetDateTime,
+    ) -> Result<Self, Error> {
+        from_hashed_password(hashed_string)
             .map_err(|e| Error::msg(e.to_string()))
             .map(|e| Password {
                 hashed_string: e.to_string(),
+                set_at,
             })
     }
 
@@ -58,15 +66,24 @@ impl Password {
             PasswordHashString::new(&self.hashed_string).map_err(|e| Error::msg(e.to_string()))?;
         verify_password(input, &password_hash_string)
             .map(|_| ())
-            .map_err(|e| Error::msg("cannot verify password"))
+            .map_err(|e| Error::msg(e))
     }
 
     pub fn hashed_password_string(&self) -> &str {
         &self.hashed_string
     }
+    
+    pub fn set_at(&self) -> OffsetDateTime {
+        self.set_at
+    }
 }
 
 // ----- Login Event --------------------------------------
+
+pub struct RecentLoginEvents {
+    pub login_events: Vec<LoginEvent>,
+}
+
 #[derive(Debug, Serialize)]
 pub enum LoginResult {
     Success,

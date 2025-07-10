@@ -1,13 +1,15 @@
 use crate::config::user_principal::{User, UserAuthenticator, UsernamePasswordCredential};
-use actix_web::cookie::Cookie;
 use actix_web::cookie::time::{Duration, OffsetDateTime};
+use actix_web::cookie::Cookie;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
 use actix_web::{FromRequest, HttpMessage, HttpResponse};
 use serde::Deserialize;
 use starriver_infrastructure::model::err::CodedErr;
-use starriver_infrastructure::security::authentication::core::authenticator::AuthenticationError;
+use starriver_infrastructure::security::authentication::core::authenticator::{
+    AuthenticationError, Authenticator,
+};
 use starriver_infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
 use starriver_infrastructure::security::authentication::web::flow::AuthenticationFlow;
 use std::ops::{Add, Not};
@@ -21,16 +23,16 @@ impl AuthenticationFlow for UsernameFlow {
     type Principal = User;
     type Authenticator = UserAuthenticator;
 
+    fn is_authenticate_request(&self, req: &Self::Request) -> bool {
+        req.uri().path().eq("/login") && req.method().eq(&Method::POST)
+    }
+
     fn is_access_require_authentication(&self, req: &Self::Request) -> bool {
         req.uri().path().eq("/users").not() && req.method().eq(&Method::POST).not()
     }
 
-    fn is_authenticated(&self, req: &Self::Request) -> bool {
+    async fn is_authenticated(&self, req: &Self::Request) -> bool {
         req.cookie("id").is_some()
-    }
-
-    fn is_authenticate_request(&self, req: &Self::Request) -> bool {
-        req.uri().path().eq("/login") && req.method().eq(&Method::POST)
     }
 
     async fn extract_credential(
@@ -44,6 +46,14 @@ impl AuthenticationFlow for UsernameFlow {
             .map(|e| e.into_inner())
             .map_err(|e| AuthenticationError::Unknown)
             .and_then(|e| UsernamePasswordCredential::new(e.username, e.password))
+    }
+
+    async fn authenticate(
+        &self,
+        authenticator: &Self::Authenticator,
+        credential: &Self::Credential,
+    ) -> Result<Self::Principal, AuthenticationError> {
+        authenticator.authenticate(credential).await
     }
 
     async fn on_unauthenticated(
@@ -114,7 +124,7 @@ mod tests {
         let req = TestRequest::default()
             .cookie(Cookie::new("id", "test"))
             .to_srv_request();
-        assert!(flow.is_authenticated(&req));
+        assert_eq!(async { flow.is_authenticated(&req).await }.await, true);
     }
 
     #[actix_web::test]

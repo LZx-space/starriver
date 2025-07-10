@@ -1,23 +1,27 @@
 use std::env;
-use std::io::{BufWriter, stdout};
+use std::io::{stdout, BufWriter};
 use std::net::IpAddr;
 
-use actix_web::{App, HttpServer, middleware, web};
+use actix_web::{middleware, web, App, HttpServer};
 use ferris_says::say;
+use mimalloc::MiMalloc;
 use starriver_adapter::api::blog;
 use starriver_adapter::api::dictionary;
 use starriver_adapter::api::{authentication, user};
 use starriver_adapter::config::app_state::AppState;
-use starriver_adapter::config::user_principal::{UserAuthenticator, UserRepositoryImpl};
-use starriver_adapter::config::username_flow::UsernameFlow;
-use starriver_infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use starriver_infrastructure::util::db::db_conn;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::Layer;
 use tracing_subscriber::fmt::layer;
 use tracing_subscriber::fmt::time::LocalTime;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
+use starriver_adapter::config::user_principal::{UserAuthenticator, UserRepositoryImpl};
+use starriver_adapter::config::username_flow::UsernameFlow;
+use starriver_infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

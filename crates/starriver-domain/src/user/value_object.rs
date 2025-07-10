@@ -1,3 +1,4 @@
+use crate::user::entity::LoginEvent;
 use anyhow::Error;
 use argon2::password_hash::PasswordHashString;
 use serde::{Deserialize, Serialize};
@@ -5,7 +6,6 @@ use starriver_infrastructure::security::authentication::password_hasher::{
     from_hashed_password, hash_password, verify_password,
 };
 use time::OffsetDateTime;
-use crate::user::entity::LoginEvent;
 
 #[derive(Debug, Default, Serialize)]
 pub enum State {
@@ -13,7 +13,7 @@ pub enum State {
     UnVerified,
     Activated,
     Disabled,
-    Expired, // 
+    Expired, //
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -72,7 +72,7 @@ impl Password {
     pub fn hashed_password_string(&self) -> &str {
         &self.hashed_string
     }
-    
+
     pub fn set_at(&self) -> OffsetDateTime {
         self.set_at
     }

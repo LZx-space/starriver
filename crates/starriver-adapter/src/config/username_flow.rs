@@ -1,6 +1,6 @@
 use crate::config::user_principal::{User, UserAuthenticator, UsernamePasswordCredential};
-use actix_web::cookie::time::{Duration, OffsetDateTime};
 use actix_web::cookie::Cookie;
+use actix_web::cookie::time::{Duration, OffsetDateTime};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;

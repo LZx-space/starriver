@@ -1,19 +1,17 @@
-use std::future::{Ready, ready};
-use std::marker::PhantomData;
-use std::pin::Pin;
-use std::rc::Rc;
-use std::task::{Context, Poll};
-
-use actix_web::Error;
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-
 use crate::model::err::CodedErr;
 use crate::security::authentication::core::authenticator::Authenticator;
 use crate::security::authentication::web::flow::AuthenticationFlow;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
+use actix_web::Error;
+use futures_util::future::LocalBoxFuture;
+use std::future::{ready, Ready};
+use std::marker::PhantomData;
+use std::sync::Arc;
+use std::task::{Context, Poll};
 
 pub struct AuthenticationTransform<A, F, C, P> {
-    pub authenticator: Rc<A>,
-    pub authentication_flow: Rc<F>,
+    pub authenticator: Arc<A>,
+    pub authentication_flow: Arc<F>,
     _c: PhantomData<C>,
     _p: PhantomData<P>,
 }
@@ -21,8 +19,8 @@ pub struct AuthenticationTransform<A, F, C, P> {
 impl<A, F, C, P> AuthenticationTransform<A, F, C, P> {
     pub fn new(authenticator: A, authentication_flow: F) -> Self {
         AuthenticationTransform {
-            authenticator: Rc::new(authenticator),
-            authentication_flow: Rc::new(authentication_flow),
+            authenticator: Arc::new(authenticator),
+            authentication_flow: Arc::new(authentication_flow),
             _c: Default::default(),
             _p: Default::default(),
         }
@@ -32,14 +30,16 @@ impl<A, F, C, P> AuthenticationTransform<A, F, C, P> {
 impl<S, A, F, C, P> Transform<S, ServiceRequest> for AuthenticationTransform<A, F, C, P>
 where
     S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
-    A: Authenticator<Credential = C, Principal = P> + 'static,
+    A: Authenticator<Credential = C, Principal = P> + Send + Sync + 'static,
     F: AuthenticationFlow<
             Request = ServiceRequest,
             Response = ServiceResponse,
             Credential = C,
             Principal = P,
             Authenticator = A,
-        > + 'static,
+        > + Send
+        + Sync
+        + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
@@ -49,7 +49,7 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthenticationService {
-            service: Rc::new(service),
+            service: Arc::new(service),
             authenticator: self.authenticator.clone(),
             authentication_flow: self.authentication_flow.clone(),
             _c: PhantomData::<C>::default(),
@@ -59,9 +59,9 @@ where
 }
 
 pub struct AuthenticationService<S, A, F, C, P> {
-    service: Rc<S>,
-    authenticator: Rc<A>,
-    authentication_flow: Rc<F>,
+    service: Arc<S>,
+    authenticator: Arc<A>,
+    authentication_flow: Arc<F>,
     _c: PhantomData<C>,
     _p: PhantomData<P>,
 }
@@ -69,37 +69,37 @@ pub struct AuthenticationService<S, A, F, C, P> {
 impl<S, A, F, C, P> Service<ServiceRequest> for AuthenticationService<S, A, F, C, P>
 where
     S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
-    A: Authenticator + 'static,
+    A: Authenticator + Send + Sync + 'static,
     F: AuthenticationFlow<
             Request = ServiceRequest,
             Response = ServiceResponse,
             Credential = C,
             Principal = P,
             Authenticator = A,
-        > + 'static,
+        > + Send
+        + Sync
+        + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)
     }
 
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
-        let service = Rc::clone(&self.service);
-        let authenticator = Rc::clone(&self.authenticator);
-        let authentication_flow = Rc::clone(&self.authentication_flow);
+        let service = Arc::clone(&self.service);
+        let authenticator = Arc::clone(&self.authenticator);
+        let authentication_flow = Arc::clone(&self.authentication_flow);
         Box::pin(async move {
-            let authenticator = authenticator.as_ref();
-            let authentication_flow = authentication_flow.as_ref();
             if authentication_flow.is_authenticate_request(&req) {
                 let credential = authentication_flow
                     .extract_credential(&mut req)
                     .await
                     .map_err(|e| Error::from(CodedErr::new("1000".to_string(), e.to_string())))?;
                 return match authentication_flow
-                    .authenticate(authenticator, &credential)
+                    .authenticate(authenticator.as_ref(), &credential)
                     .await
                 {
                     Ok(principal) => authentication_flow
@@ -113,7 +113,7 @@ where
                 };
             }
             if authentication_flow.is_access_require_authentication(&req)
-                && !authentication_flow.is_authenticated(&req)
+                && !authentication_flow.is_authenticated(&req).await
             {
                 return authentication_flow
                     .on_unauthenticated(&req)

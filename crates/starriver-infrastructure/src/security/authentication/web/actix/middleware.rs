@@ -1,10 +1,10 @@
 use crate::model::err::CodedErr;
 use crate::security::authentication::core::authenticator::Authenticator;
 use crate::security::authentication::web::flow::AuthenticationFlow;
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::Error;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use futures_util::future::LocalBoxFuture;
-use std::future::{ready, Ready};
+use std::future::{Ready, ready};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::task::{Context, Poll};

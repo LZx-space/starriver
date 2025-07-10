@@ -39,7 +39,6 @@ impl UserRepository for UserRepositoryImpl {
         todo!()
     }
 
-
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, Error> {
         Entity::find()
             .filter(Column::Username.eq(username))

@@ -18,7 +18,7 @@ impl UserApplication {
 
     pub async fn register_user(&self, username: &str, password: &str) -> Result<User, CodedErr> {
         // todo add publish register event
-        let user = User::new_with_username_and_password(username, password)
+        let user = User::create_user(username, password)
             .map_err(|e| CodedErr::new_with_system_self_reason(e.to_string()))?;
         self.repo
             .insert(user)

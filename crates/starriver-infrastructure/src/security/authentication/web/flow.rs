@@ -13,11 +13,11 @@ pub trait AuthenticationFlow {
 
     type Authenticator: Authenticator<Credential = Self::Credential, Principal = Self::Principal>;
 
+    fn is_authenticate_request(&self, req: &Self::Request) -> bool;
+
     fn is_access_require_authentication(&self, req: &Self::Request) -> bool;
 
-    fn is_authenticated(&self, req: &Self::Request) -> bool;
-
-    fn is_authenticate_request(&self, req: &Self::Request) -> bool;
+    async fn is_authenticated(&self, req: &Self::Request) -> bool;
 
     async fn extract_credential(
         &self,

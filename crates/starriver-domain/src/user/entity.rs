@@ -1,3 +1,4 @@
+use crate::user::specification::PasswordSpecification;
 use crate::user::value_object::{LoginResult, Password, State, Username};
 use anyhow::Error;
 use serde::Serialize;
@@ -17,9 +18,9 @@ pub struct User {
 }
 
 impl User {
-    pub fn new_with_username_and_password(username: &str, password: &str) -> Result<Self, Error> {
+    pub fn create_user(username: &str, password: &str) -> Result<Self, Error> {
         let username = Username::new(username)?;
-        let password = Password::new_by_raw_password(password)?;
+        let password = Password::create_password(password)?;
         Ok(User {
             id: Uuid::now_v7(),
             username,
@@ -28,6 +29,14 @@ impl User {
             created_at: OffsetDateTime::now_utc(),
             login_events: vec![],
         })
+    }
+
+    pub fn restore(
+        username: &str,
+        password: &str,
+        password_specification: PasswordSpecification,
+    ) -> Result<Self, Error> {
+        todo!()
     }
 }
 

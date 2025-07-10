@@ -13,6 +13,7 @@ ferris-says = "^0"
 actix-web = { workspace = true }
 
 dotenvy = "^0"
+mimalloc = { version = "*", features = ["secure"] }
 
 starriver-adapter = { path = "../starriver-adapter" }
 starriver-infrastructure = { path = "../starriver-infrastructure" }

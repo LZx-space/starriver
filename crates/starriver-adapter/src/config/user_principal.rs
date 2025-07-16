@@ -1,5 +1,4 @@
 use sea_orm::DatabaseConnection;
-use sea_orm::prelude::async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use starriver_application::repository::user::user_repository::UserRepositoryImpl as DomainUserRepoImpl;
 use starriver_domain::user::repository::UserRepository as DomainUserRepo;
@@ -15,7 +14,7 @@ use starriver_infrastructure::security::authentication::password_hasher::{
     from_hashed_password, verify_password,
 };
 use std::fmt::Debug;
-use tracing::{error, info};
+use tracing::{error, warn};
 
 pub struct UsernamePasswordCredential {
     username: String,
@@ -62,9 +61,11 @@ impl Principal for User {
     }
 }
 
-#[async_trait]
 pub trait UserRepository {
-    async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError>;
+    fn find_by_id(
+        &self,
+        user_id: &String,
+    ) -> impl Future<Output = Result<User, AuthenticationError>> + Send;
 }
 
 pub struct UserRepositoryImpl {
@@ -79,11 +80,10 @@ impl UserRepositoryImpl {
     }
 }
 
-#[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError> {
         let user = self.delegate.find_by_username(user_id).await.map_err(|e| {
-            error!("Failed to find user by username: {}", e);
+            warn!("Failed to find user by username: {}", e);
             AuthenticationError::Unknown
         })?;
         match user {
@@ -93,7 +93,7 @@ impl UserRepository for UserRepositoryImpl {
                 authorities: vec![],
             }),
             None => {
-                info!("User not found with username: {}", user_id);
+                warn!("User not found with username: {}", user_id);
                 Err(AuthenticationError::UsernameNotFound)
             }
         }
@@ -112,24 +112,34 @@ impl UserAuthenticator {
     }
 }
 
-#[async_trait]
 impl Authenticator for UserAuthenticator {
     type Credential = UsernamePasswordCredential;
     type Principal = User;
 
-    async fn authenticate(
+    fn authenticate(
         &self,
         credential: &Self::Credential,
-    ) -> Result<Self::Principal, AuthenticationError> {
+    ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send {
         let username = &credential.username;
         let password = &credential.password;
-        // 查找用户
-        let user = self.user_repository.find_by_id(username).await?;
-        // 验证密码
-        let password_hash_string = from_hashed_password(user.password.hashed_password_string())
-            .map_err(|e| AuthenticationError::BadPassword)?;
-        verify_password(password.as_str(), &password_hash_string)
-            .map(|_| user)
-            .map_err(|_| AuthenticationError::BadPassword)
+        async move {
+            // 查找用户
+            let user = self.user_repository.find_by_id(username).await?;
+            // 验证密码
+            let password_hash_string = from_hashed_password(user.password.hashed_password_string())
+                .map_err(|e| {
+                    error!(
+                        "bad hashed password string in {} repository, {}",
+                        username, e
+                    );
+                    AuthenticationError::BadPassword
+                })?;
+            verify_password(password.as_str(), &password_hash_string)
+                .map(|_| user)
+                .map_err(|e| {
+                    error!("verify {} hashed password error: {}", username, e);
+                    AuthenticationError::BadPassword
+                })
+        }
     }
 }

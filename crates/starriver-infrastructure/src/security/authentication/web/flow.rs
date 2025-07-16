@@ -15,37 +15,37 @@ pub trait AuthenticationFlow {
 
     fn is_authenticate_request(&self, req: &Self::Request) -> bool;
 
-    fn is_access_require_authentication(&self, req: &Self::Request) -> bool;
+    fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool>;
 
-    async fn is_authenticated(&self, req: &Self::Request) -> bool;
+    fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool>;
 
-    async fn extract_credential(
+    fn extract_credential(
         &self,
         req: &mut Self::Request,
-    ) -> Result<Self::Credential, AuthenticationError>;
+    ) -> impl Future<Output = Result<Self::Credential, AuthenticationError>>;
 
-    async fn authenticate(
+    fn authenticate(
         &self,
         authenticator: &Self::Authenticator,
         credential: &Self::Credential,
-    ) -> Result<Self::Principal, AuthenticationError> {
-        authenticator.authenticate(credential).await
+    ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> {
+        async move { authenticator.authenticate(&credential).await }
     }
 
-    async fn on_unauthenticated(
+    fn on_unauthenticated(
         &self,
         req: &Self::Request,
-    ) -> Result<Self::Response, AuthenticationError>;
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>>;
 
-    async fn on_authenticate_success(
+    fn on_authenticate_success(
         &self,
         req: &Self::Request,
         principal: Self::Principal,
-    ) -> Result<Self::Response, AuthenticationError>;
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>>;
 
-    async fn on_authenticate_failure(
+    fn on_authenticate_failure(
         &self,
         req: &Self::Request,
         err: AuthenticationError,
-    ) -> Result<Self::Response, AuthenticationError>;
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>>;
 }

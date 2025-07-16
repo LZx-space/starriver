@@ -1,18 +1,18 @@
 use crate::config::user_principal::{User, UserAuthenticator, UsernamePasswordCredential};
-use actix_web::cookie::Cookie;
 use actix_web::cookie::time::{Duration, OffsetDateTime};
+use actix_web::cookie::Cookie;
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
 use actix_web::{FromRequest, HttpMessage, HttpResponse};
+use futures_util::FutureExt;
 use serde::Deserialize;
 use starriver_infrastructure::model::err::CodedErr;
-use starriver_infrastructure::security::authentication::core::authenticator::{
-    AuthenticationError, Authenticator,
-};
+use starriver_infrastructure::security::authentication::core::authenticator::AuthenticationError;
 use starriver_infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
 use starriver_infrastructure::security::authentication::web::flow::AuthenticationFlow;
 use std::ops::{Add, Not};
+use tracing::error;
 
 pub struct UsernameFlow {}
 
@@ -27,73 +27,85 @@ impl AuthenticationFlow for UsernameFlow {
         req.uri().path().eq("/login") && req.method().eq(&Method::POST)
     }
 
-    fn is_access_require_authentication(&self, req: &Self::Request) -> bool {
-        req.uri().path().eq("/users").not() && req.method().eq(&Method::POST).not()
+    fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool> {
+        let path = req.uri().path().to_owned();
+        let method = req.method().to_owned();
+        async move { path.eq("/users").not() && method.eq(&Method::POST).not() }.boxed_local()
     }
 
-    async fn is_authenticated(&self, req: &Self::Request) -> bool {
-        req.cookie("id").is_some()
+    fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool> {
+        async move { req.cookie("id").is_some() }.boxed_local()
     }
 
-    async fn extract_credential(
+    fn extract_credential(
         &self,
         req: &mut Self::Request,
-    ) -> Result<UsernamePasswordCredential, AuthenticationError> {
-        let http_req = req.request().clone();
-        let payload = &mut req.take_payload();
-        Form::<FormLoginCmd>::from_request(&http_req, payload)
-            .await
-            .map(|e| e.into_inner())
-            .map_err(|e| AuthenticationError::Unknown)
-            .and_then(|e| UsernamePasswordCredential::new(e.username, e.password))
+    ) -> impl Future<Output = Result<UsernamePasswordCredential, AuthenticationError>> {
+        async {
+            let http_req = req.request().clone();
+            let payload = &mut req.take_payload();
+            Form::<FormLoginCmd>::from_request(&http_req, payload)
+                .await
+                .map(|e| e.into_inner())
+                .map_err(|e| {
+                    error!("convert payload to login form error {}", e);
+                    AuthenticationError::Unknown
+                })
+                .and_then(|e| UsernamePasswordCredential::new(e.username, e.password))
+        }
+        .boxed_local()
     }
 
-    async fn authenticate(
-        &self,
-        authenticator: &Self::Authenticator,
-        credential: &Self::Credential,
-    ) -> Result<Self::Principal, AuthenticationError> {
-        authenticator.authenticate(credential).await
-    }
-
-    async fn on_unauthenticated(
+    fn on_unauthenticated(
         &self,
         req: &Self::Request,
-    ) -> Result<Self::Response, AuthenticationError> {
-        Ok(ServiceResponse::from_err(
-            ErrUnauthorized {},
-            req.request().to_owned(),
-        ))
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
+        async {
+            Ok(ServiceResponse::from_err(
+                ErrUnauthorized {},
+                req.request().to_owned(),
+            ))
+        }
+        .boxed_local()
     }
 
-    async fn on_authenticate_success(
+    fn on_authenticate_success(
         &self,
         req: &Self::Request,
         principal: User,
-    ) -> Result<Self::Response, AuthenticationError> {
-        serde_json::to_string(&principal)
-            .map_err(|e| AuthenticationError::Unknown)
-            .map(|json| {
-                let http_response = HttpResponse::build(StatusCode::OK)
-                    .cookie(
-                        Cookie::build("id", json)
-                            .http_only(true)
-                            .expires(OffsetDateTime::now_utc().add(Duration::hours(1)))
-                            .secure(false)
-                            .finish(),
-                    )
-                    .finish();
-                ServiceResponse::new(req.request().clone(), http_response)
-            })
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
+        async move {
+            serde_json::to_string(&principal)
+                .map_err(|e| {
+                    error!("serializer principal error {}", e);
+                    AuthenticationError::Unknown
+                })
+                .map(|json| {
+                    let http_response = HttpResponse::build(StatusCode::OK)
+                        .cookie(
+                            Cookie::build("id", json)
+                                .http_only(true)
+                                .expires(OffsetDateTime::now_utc().add(Duration::hours(1)))
+                                .secure(false)
+                                .finish(),
+                        )
+                        .finish();
+                    ServiceResponse::new(req.request().clone(), http_response)
+                })
+        }
+        .boxed_local()
     }
 
-    async fn on_authenticate_failure(
+    fn on_authenticate_failure(
         &self,
         req: &Self::Request,
         e: AuthenticationError,
-    ) -> Result<Self::Response, AuthenticationError> {
-        let err = CodedErr::new("A00001".to_string(), e.to_string());
-        Ok(ServiceResponse::from_err(err, req.request().to_owned()))
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
+        async move {
+            let err = CodedErr::new("A00001".to_string(), e.to_string());
+            Ok(ServiceResponse::from_err(err, req.request().to_owned()))
+        }
+        .boxed_local()
     }
 }
 
@@ -115,7 +127,7 @@ mod tests {
             .uri("/not_users")
             .method(Method::GET)
             .to_srv_request();
-        assert!(flow.is_access_require_authentication(&req));
+        assert!(flow.is_access_require_authentication(&req).await);
     }
 
     #[actix_web::test]

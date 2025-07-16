@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// 主体：能够进行身份验证的用户或应用程序
 /// [`Principal`]的ID与[`Credential`]的ID并非同一个概念
-pub trait Principal: Debug {
+pub trait Principal: Send {
     type Id;
 
     type Authority: Authority;
@@ -14,7 +14,7 @@ pub trait Principal: Debug {
     fn authorities(&self) -> Vec<&Self::Authority>;
 }
 
-pub trait Authority {
+pub trait Authority: Send {
     fn name(&self) -> &String;
 }
 

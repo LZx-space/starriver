@@ -77,7 +77,7 @@ impl AuthenticationFlow for UsernameFlow {
         async move {
             serde_json::to_string(&principal)
                 .map_err(|e| {
-                    error!("serializer principal error {}", e);
+                    error!("serialize principal error {}", e);
                     AuthenticationError::Unknown
                 })
                 .map(|json| {

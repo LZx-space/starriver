@@ -3,9 +3,9 @@ use crate::security::authentication::core::authenticator::Authenticator;
 use crate::security::authentication::web::flow::AuthenticationFlow;
 use actix_web::Error;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
-use futures_util::future::LocalBoxFuture;
 use std::future::{Ready, ready};
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
@@ -82,7 +82,7 @@ where
 {
     type Response = ServiceResponse;
     type Error = S::Error;
-    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)

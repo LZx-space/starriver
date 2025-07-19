@@ -10,7 +10,6 @@ unsafe_code = "forbid"
 
 [dependencies]
 actix-web = { workspace = true }
-futures-util = { workspace = true }
 
 time = { workspace = true }
 sea-orm = { workspace = true }

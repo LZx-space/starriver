@@ -1,11 +1,10 @@
 use crate::config::user_principal::{User, UserAuthenticator, UsernamePasswordCredential};
-use actix_web::cookie::time::{Duration, OffsetDateTime};
 use actix_web::cookie::Cookie;
+use actix_web::cookie::time::{Duration, OffsetDateTime};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::{Method, StatusCode};
 use actix_web::web::Form;
 use actix_web::{FromRequest, HttpMessage, HttpResponse};
-use futures_util::FutureExt;
 use serde::Deserialize;
 use starriver_infrastructure::model::err::CodedErr;
 use starriver_infrastructure::security::authentication::core::authenticator::AuthenticationError;
@@ -30,11 +29,11 @@ impl AuthenticationFlow for UsernameFlow {
     fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool> {
         let path = req.uri().path().to_owned();
         let method = req.method().to_owned();
-        async move { path.eq("/users").not() && method.eq(&Method::POST).not() }.boxed_local()
+        async move { path.eq("/users").not() && method.eq(&Method::POST).not() }
     }
 
     fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool> {
-        async move { req.cookie("id").is_some() }.boxed_local()
+        async move { req.cookie("id").is_some() }
     }
 
     fn extract_credential(
@@ -53,7 +52,6 @@ impl AuthenticationFlow for UsernameFlow {
                 })
                 .and_then(|e| UsernamePasswordCredential::new(e.username, e.password))
         }
-        .boxed_local()
     }
 
     fn on_unauthenticated(
@@ -66,7 +64,6 @@ impl AuthenticationFlow for UsernameFlow {
                 req.request().to_owned(),
             ))
         }
-        .boxed_local()
     }
 
     fn on_authenticate_success(
@@ -93,7 +90,6 @@ impl AuthenticationFlow for UsernameFlow {
                     ServiceResponse::new(req.request().clone(), http_response)
                 })
         }
-        .boxed_local()
     }
 
     fn on_authenticate_failure(
@@ -105,7 +101,6 @@ impl AuthenticationFlow for UsernameFlow {
             let err = CodedErr::new("A00001".to_string(), e.to_string());
             Ok(ServiceResponse::from_err(err, req.request().to_owned()))
         }
-        .boxed_local()
     }
 }
 

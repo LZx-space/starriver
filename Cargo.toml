@@ -1,11 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/starriver",
-    "crates/starriver-adapter",
-    "crates/starriver-application",
-    "crates/starriver-domain",
-    "crates/starriver-infrastructure",
+    "crates/*",
 ]
 [workspace.package]
 version = "0.1.0"

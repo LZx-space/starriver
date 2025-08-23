@@ -20,18 +20,16 @@ impl UserRepositoryImpl {
 
 impl UserRepository for UserRepositoryImpl {
     async fn insert(&self, user: User) -> Result<User, Error> {
-        Result::map(
-            ActiveModel {
-                id: Set(user.id),
-                username: Set(user.username.as_str().to_string()),
-                password: Set(user.password.hashed_password_string().to_string()),
-                create_at: Set(OffsetDateTime::now_utc()),
-                update_at: Set(None),
-            }
-            .insert(self.conn)
-            .await,
-            model_to_entity,
-        )
+        ActiveModel {
+            id: Set(user.id),
+            username: Set(user.username.as_str().to_string()),
+            password: Set(user.password.hashed_password_string().to_string()),
+            create_at: Set(OffsetDateTime::now_utc()),
+            update_at: Set(None),
+        }
+        .insert(self.conn)
+        .await
+        .map(model_to_entity)
         .map_err(Error::from)
     }
 

@@ -144,6 +144,7 @@ impl Authenticator for UserAuthenticator {
     }
 }
 
+#[cfg(test)]
 pub mod test {
     use super::*;
 

@@ -1,8 +1,7 @@
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-
-use actix_web::ResponseError;
-use actix_web::http::StatusCode;
 
 #[derive(Debug)]
 pub struct CodedErr {
@@ -79,8 +78,8 @@ impl Error for CodedErr {}
 pub trait CodedErrData: Display + Debug {}
 
 ///
-impl ResponseError for CodedErr {
-    fn status_code(&self) -> StatusCode {
-        self.determine_http_status()
+impl IntoResponse for CodedErr {
+    fn into_response(self) -> Response {
+        self.determine_http_status().into_response()
     }
 }

@@ -74,23 +74,4 @@ pub fn tree_test() {
     for x in vec {
         println!("{}", x.id());
     }
-    let t2 = T2 {
-        id: "".to_string(),
-        t_vec: vec![],
-    };
-    let vec1 = t2.try_1();
-    let vec2 = t2.try_1();
-    println!("{:?}", vec1);
-    println!("{:?}", vec2);
-}
-
-pub struct T2 {
-    id: String,
-    t_vec: Vec<String>,
-}
-
-impl T2 {
-    pub fn try_1(&self) -> Vec<&str> {
-        self.t_vec.iter().map(|e| e.as_str()).collect()
-    }
 }

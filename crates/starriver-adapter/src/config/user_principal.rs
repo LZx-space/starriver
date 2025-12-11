@@ -143,3 +143,18 @@ impl Authenticator for UserAuthenticator {
         }
     }
 }
+
+pub mod test {
+    use super::*;
+
+    #[test]
+    pub fn test_user_serialize() {
+        let password = Password::create_password("password").unwrap();
+        let user = User {
+            username: Username::new("username").unwrap(),
+            password,
+            authorities: vec![],
+        };
+        println!("{}", serde_json::to_string(&user).unwrap());
+    }
+}

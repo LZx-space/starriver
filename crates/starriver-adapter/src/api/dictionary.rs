@@ -1,25 +1,23 @@
-use actix_web::web::{Json, Query};
-use actix_web::{Responder, get, post, web};
-
 use crate::config::app_state::AppState;
+use axum::Json;
+use axum::extract::{Query, State};
+use axum::response::IntoResponse;
 use starriver_infrastructure::model::err::CodedErr;
 use starriver_infrastructure::model::page::PageQuery;
 use starriver_infrastructure::service::dictionary::dictionary_service::{
     DataType, DictionaryEntry,
 };
 
-#[get("/dictionary-entries")]
 pub async fn list_dictionary_entry(
-    state: web::Data<AppState>,
+    state: State<AppState>,
     query: Query<PageQuery>,
-) -> impl Responder {
-    let page = state.dictionary.page(query.into_inner()).await;
+) -> impl IntoResponse {
+    let page = state.dictionary.page(query.0).await;
     page.map(|u| Json(u))
         .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
 }
 
-#[post("/dictionary-entries")]
-pub async fn add_dictionary_entry(state: web::Data<AppState>) -> impl Responder {
+pub async fn add_dictionary_entry(state: State<AppState>) -> impl IntoResponse {
     let entry =
         DictionaryEntry::new("66".to_string(), DataType::I8, "测试".to_string()).expect("123");
     match state.dictionary.insert(entry).await {

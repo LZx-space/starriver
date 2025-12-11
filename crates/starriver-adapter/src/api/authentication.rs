@@ -1,11 +1,10 @@
-use actix_web::web::Json;
-use actix_web::{Responder, get};
-
 use crate::config::user_principal::User;
+use axum::Json;
+use axum::response::IntoResponse;
 use starriver_infrastructure::security::authentication::core::principal::Principal;
 
-#[get("/session/user")]
-pub async fn validate_authenticated(user: User) -> impl Responder {
+#[axum::debug_handler]
+pub async fn validate_authenticated(user: User) -> impl IntoResponse {
     let username = user.id().as_str();
     Json(String::from(username))
 }

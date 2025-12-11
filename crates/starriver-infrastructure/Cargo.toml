@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-actix-web = { workspace = true }
+axum = { workspace = true }
 anyhow = { workspace = true }
 argon2 = { workspace = true }
 hmac = "^0"
@@ -17,4 +17,3 @@ sha2 = "^0"
 time = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
-

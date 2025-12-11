@@ -1,43 +1,34 @@
-use std::future::{Ready, ready};
-
 use crate::config::user_principal::User;
-use actix_web::dev::Payload;
-use actix_web::{FromRequest, HttpRequest};
-use starriver_infrastructure::security::authentication::core::principal_extract::Extractor;
-use starriver_infrastructure::security::authentication::web::actix::error::ErrUnauthorized;
+use axum::extract::{FromRequest, Request};
+use axum::http::StatusCode;
+use axum_extra::extract::CookieJar;
 use tracing::error;
 
-impl Extractor for User {
-    type Payload = HttpRequest;
-    type Error = actix_web::Error;
-    type Future = Ready<Result<Self, Self::Error>>;
+impl<S> FromRequest<S> for User
+where
+    S: Send + Sync,
+{
+    type Rejection = StatusCode;
 
-    fn from_payload(payload: &Self::Payload) -> Self::Future {
-        Self::extract(payload)
-    }
-}
+    fn from_request(
+        req: Request,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        async move {
+            let cookie_jar = CookieJar::from_request(req, state).await.map_err(|_| {
+                error!("提取cookie失败");
+                StatusCode::UNAUTHORIZED
+            })?;
 
-impl FromRequest for User {
-    type Error = actix_web::Error;
-    type Future = Ready<Result<Self, Self::Error>>;
+            let id_cookie = cookie_jar.get("id").ok_or_else(|| {
+                error!("缺少 `id` Cookie");
+                StatusCode::UNAUTHORIZED
+            })?;
 
-    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        let req = req.clone();
-        let cookie = req.cookie("id");
-        match cookie {
-            None => {
-                let unauthorized = ErrUnauthorized {};
-                ready(Err(unauthorized.into()))
-            }
-            Some(cookie) => {
-                let value = cookie.value();
-                let result = serde_json::from_str::<User>(value).map_err(|e| {
-                    error!("parse cookie err, {}", e);
-                    let unauthorized = ErrUnauthorized {};
-                    unauthorized.into()
-                });
-                ready(result)
-            }
+            serde_json::from_str::<User>(id_cookie.value()).map_err(|e| {
+                error!("解析cookie失败, {}", e);
+                StatusCode::UNAUTHORIZED
+            })
         }
     }
 }

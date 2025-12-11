@@ -1,18 +1,16 @@
-use std::env;
-use std::io::{BufWriter, stdout};
-use std::net::IpAddr;
-
-use actix_web::{App, HttpServer, middleware, web};
+use axum::Router;
+use axum::routing::{get, post};
 use ferris_says::say;
 use mimalloc::MiMalloc;
 use starriver_adapter::api::blog;
 use starriver_adapter::api::dictionary;
 use starriver_adapter::api::{authentication, user};
 use starriver_adapter::config::app_state::AppState;
-use starriver_adapter::config::user_principal::{UserAuthenticator, UserRepositoryImpl};
-use starriver_adapter::config::username_flow::UsernameFlow;
-use starriver_infrastructure::security::authentication::web::actix::middleware::AuthenticationTransform;
 use starriver_infrastructure::util::db::db_conn;
+use std::env;
+use std::io::{BufWriter, stdout};
+use std::net::IpAddr;
+use tokio::net::TcpListener;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::Layer;
 use tracing_subscriber::fmt::layer;
@@ -23,8 +21,8 @@ use tracing_subscriber::util::SubscriberInitExt;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+#[tokio::main]
+async fn main() {
     say_hello();
     dotenvy::dotenv().expect(".env file not found");
 
@@ -47,28 +45,23 @@ async fn main() -> std::io::Result<()> {
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
-    let app_data = web::Data::new(AppState::new(conn));
-    HttpServer::new(move || {
-        App::new()
-            .app_data(app_data.clone())
-            .wrap(AuthenticationTransform::new(
-                UserAuthenticator::new(UserRepositoryImpl::new(app_data.conn)),
-                UsernameFlow {},
-            ))
-            .wrap(middleware::ErrorHandlers::new())
-            .service(authentication::validate_authenticated)
-            .service(user::insert)
-            .service(blog::page)
-            .service(blog::find_one)
-            .service(blog::insert)
-            .service(blog::update)
-            .service(blog::delete)
-            .service(dictionary::list_dictionary_entry)
-            .service(dictionary::add_dictionary_entry)
-    })
-    .bind(addrs)?
-    .run()
-    .await
+    let router = Router::new()
+        .route("/session/user", get(authentication::validate_authenticated))
+        .route("/users", post(user::insert))
+        .route("/blogs", get(blog::page).post(blog::insert))
+        .route(
+            "/blogs/{id}",
+            get(blog::find_one).put(blog::update).delete(blog::delete),
+        )
+        .route(
+            "/dictionary-entries",
+            get(dictionary::list_dictionary_entry).post(dictionary::add_dictionary_entry),
+        )
+        .with_state(AppState::new(conn));
+    let listener = TcpListener::bind(&addrs)
+        .await
+        .expect("Can't bind to address");
+    axum::serve(listener, router).await.unwrap();
 }
 
 fn say_hello() {

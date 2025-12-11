@@ -10,7 +10,8 @@ unsafe_code = "forbid"
 
 [dependencies]
 ferris-says = "^0"
-actix-web = { workspace = true }
+axum = { workspace = true }
+tokio = { workspace = true }
 
 dotenvy = "^0"
 mimalloc = { version = "*", features = ["secure"] }

@@ -6,10 +6,11 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.88.0"
+rust-version = "1.91.1"
 
 [workspace.dependencies]
-actix-web = "^4"
+axum = { version = "^0", features = ["macros"] }
+axum-extra = { version = "0.12.2", features = ["cookie"] }
 anyhow = "^1"
 argon2 = "^0"
 serde = { version = "^1", features = ["derive"] }
@@ -17,6 +18,7 @@ serde_json = "^1"
 sea-orm = { version = "^1", default-features = false, features = ["macros", "with-bigdecimal", "with-json", "with-rust_decimal", "with-time", "with-uuid", "sqlx-postgres", "runtime-tokio-rustls"] }
 time = { version = "^0", features = ["serde-human-readable", "serde-well-known"] }
 thiserror = "^2"
+tokio = { version = "^1", features = ["full"] }
 tracing = "^0"
 tracing-subscriber = { version = "^0", features = ["local-time"] }
 tracing-appender = "^0"

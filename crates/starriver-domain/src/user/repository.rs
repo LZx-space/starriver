@@ -4,7 +4,7 @@ use anyhow::Error;
 pub trait UserRepository {
     fn insert(&self, user: User) -> impl Future<Output = Result<User, Error>> + Send;
 
-    fn update(&self, user: User) -> impl Future<Output = Option<Error>> + Send;
+    fn update(&self, user: User) -> impl Future<Output = Result<User, Error>> + Send;
 
     fn find_by_username(
         &self,

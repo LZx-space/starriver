@@ -33,8 +33,18 @@ impl UserRepository for UserRepositoryImpl {
         .map_err(Error::from)
     }
 
-    async fn update(&self, user: User) -> Option<Error> {
-        todo!()
+    async fn update(&self, user: User) -> Result<User, Error> {
+        ActiveModel {
+            id: Set(user.id),
+            username: Set(user.username.as_str().to_string()),
+            password: Set(user.password.hashed_password_string().to_string()),
+            create_at: Set(OffsetDateTime::now_utc()),
+            update_at: Set(None),
+        }
+        .update(self.conn)
+        .await
+        .map(model_to_entity)
+        .map_err(Error::from)
     }
 
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, Error> {

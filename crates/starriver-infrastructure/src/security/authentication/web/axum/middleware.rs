@@ -89,15 +89,17 @@ where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
     S::Error: Into<CodedErr>,
     S::Future: Send + 'static,
-    A: Authenticator<Credential = C, Principal = P>,
+    A: Authenticator<Credential = C, Principal = P> + Send + Sync + 'static,
     F: AuthenticationFlow<
             Request = Request<Body>,
             Response = Response,
             Credential = C,
             Principal = P,
             Authenticator = A,
-        >,
-    C: Credential,
+        > + Send
+        + Sync
+        + 'static,
+    C: Credential + Send + Sync + 'static,
     P: Principal,
 {
     type Response = Response;
@@ -109,8 +111,42 @@ where
         self.service.poll_ready(cx).map_err(|e| e.into())
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let mut service = self.service.clone();
-        Box::pin(async move { service.call(req).await.map_err(|e| e.into()) })
+        let authenticator = self.authenticator.clone();
+        let authentication_flow = self.authentication_flow.clone();
+        Box::pin(async move {
+            if authentication_flow.is_authenticate_request(&req) {
+                let credential = authentication_flow
+                    .extract_credential(&mut req)
+                    .await
+                    .map_err(|e| CodedErr::new("1000".to_string(), e.to_string()))?;
+                return match authentication_flow
+                    .authenticate(&authenticator, &credential)
+                    .await
+                {
+                    Ok(principal) => authentication_flow
+                        .on_authenticate_success(&req, principal)
+                        .await
+                        .map_err(|e| CodedErr::new("1000".to_string(), e.to_string())),
+                    Err(err) => authentication_flow
+                        .on_authenticate_failure(&req, err)
+                        .await
+                        .map_err(|e| CodedErr::new("1000".to_string(), e.to_string())),
+                };
+            }
+
+            if authentication_flow
+                .is_access_require_authentication(&req)
+                .await
+                && !authentication_flow.is_authenticated(&req).await
+            {
+                return authentication_flow
+                    .on_unauthenticated(&req)
+                    .await
+                    .map_err(|e| CodedErr::new("1000".to_string(), e.to_string()));
+            }
+            service.call(req).await.map_err(|e| e.into())
+        })
     }
 }

@@ -28,11 +28,11 @@ impl Dictionary {
     }
 
     pub async fn update(&self, e: DictionaryEntry) -> Option<DbErr> {
-        todo!()
+        self.repo.update(e).await
     }
 
     pub async fn delete(&self, e: DictionaryEntry) -> Option<DbErr> {
-        todo!()
+        self.repo.delete(e).await
     }
 }
 

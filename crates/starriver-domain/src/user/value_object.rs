@@ -15,8 +15,7 @@ pub enum State {
     Disabled,
     Expired, //
 }
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Username(String);
 
 impl Username {
@@ -31,8 +30,7 @@ impl Username {
         &self.0
     }
 }
-
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Password {
     #[serde(skip_serializing)]
     hashed_string: String,

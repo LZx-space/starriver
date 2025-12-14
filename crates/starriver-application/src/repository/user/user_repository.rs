@@ -8,6 +8,7 @@ use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::value_object::{Password, Username};
 use time::OffsetDateTime;
 
+#[derive(Clone)]
 pub struct UserRepositoryImpl {
     conn: &'static DatabaseConnection,
 }

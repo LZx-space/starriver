@@ -18,7 +18,7 @@ pub trait Authority: Send {
     fn name(&self) -> &String;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimpleAuthority {
     name: String,
 }

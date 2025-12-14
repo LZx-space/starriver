@@ -1,3 +1,6 @@
+use axum::extract::{FromRequest, Request};
+use axum::http::StatusCode;
+use axum_extra::extract::CookieJar;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use starriver_application::repository::user::user_repository::UserRepositoryImpl as DomainUserRepoImpl;
@@ -16,15 +19,10 @@ use starriver_infrastructure::security::authentication::password_hasher::{
 use std::fmt::Debug;
 use tracing::{error, warn};
 
+#[derive(Clone)]
 pub struct UsernamePasswordCredential {
     username: String,
     password: String,
-}
-
-impl Credential for UsernamePasswordCredential {
-    fn request_details(&self) -> Ctx {
-        Ctx {}
-    }
 }
 
 impl UsernamePasswordCredential {
@@ -39,7 +37,15 @@ impl UsernamePasswordCredential {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl Credential for UsernamePasswordCredential {
+    fn request_details(&self) -> Ctx {
+        Ctx {}
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     username: Username,
     #[serde(skip_serializing)]
@@ -61,6 +67,37 @@ impl Principal for User {
     }
 }
 
+impl<S> FromRequest<S> for User
+where
+    S: Send + Sync,
+{
+    type Rejection = StatusCode;
+
+    fn from_request(
+        req: Request,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        async move {
+            let cookie_jar = CookieJar::from_request(req, state).await.map_err(|_| {
+                error!("提取cookie失败");
+                StatusCode::UNAUTHORIZED
+            })?;
+
+            let id_cookie = cookie_jar.get("id").ok_or_else(|| {
+                error!("缺少 `id` Cookie");
+                StatusCode::UNAUTHORIZED
+            })?;
+
+            serde_json::from_str::<User>(id_cookie.value()).map_err(|e| {
+                error!("解析cookie失败, {}", e);
+                StatusCode::UNAUTHORIZED
+            })
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 pub trait UserRepository {
     fn find_by_id(
         &self,
@@ -68,6 +105,7 @@ pub trait UserRepository {
     ) -> impl Future<Output = Result<User, AuthenticationError>> + Send;
 }
 
+#[derive(Clone)]
 pub struct UserRepositoryImpl {
     delegate: DomainUserRepoImpl,
 }
@@ -100,6 +138,9 @@ impl UserRepository for UserRepositoryImpl {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+#[derive(Clone)]
 pub struct UserAuthenticator {
     user_repository: UserRepositoryImpl,
 }

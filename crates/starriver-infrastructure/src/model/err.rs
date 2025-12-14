@@ -1,5 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use std::convert::Infallible;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
@@ -81,5 +82,19 @@ pub trait CodedErrData: Display + Debug {}
 impl IntoResponse for CodedErr {
     fn into_response(self) -> Response {
         self.determine_http_status().into_response()
+    }
+}
+
+impl Into<Infallible> for CodedErr {
+    fn into(self) -> Infallible {
+        panic!("Unexpected CodedErr: {}", self)
+    }
+}
+
+impl From<Infallible> for CodedErr {
+    fn from(_: Infallible) -> Self {
+        // Infallible 表示永远不会出错，所以这个分支实际上永远不会被执行
+        // 但如果真的执行了，说明有逻辑错误
+        panic!("Unexpected Infallible error")
     }
 }

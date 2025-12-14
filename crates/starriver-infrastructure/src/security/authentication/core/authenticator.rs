@@ -3,7 +3,7 @@ use crate::security::authentication::core::principal::Principal;
 use std::fmt::Debug;
 use thiserror::Error;
 
-pub trait Authenticator: Send {
+pub trait Authenticator {
     type Credential: Credential;
 
     type Principal: Principal;

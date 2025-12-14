@@ -22,3 +22,4 @@ starriver-infrastructure = { path = "../starriver-infrastructure" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
+tower = { workspace = true }

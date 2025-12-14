@@ -22,6 +22,7 @@ tokio = { version = "^1", features = ["full"] }
 tracing = "^0"
 tracing-subscriber = { version = "^0", features = ["local-time"] }
 tracing-appender = "^0"
+tower = { version = "^0" }
 uuid = { version = "^1", features = ["v7", "fast-rng", "macro-diagnostics"] }
 
 [profile.dev]

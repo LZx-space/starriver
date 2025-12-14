@@ -52,11 +52,27 @@ impl Repository {
     }
 
     pub async fn update(&self, e: DictionaryEntry) -> Option<DbErr> {
-        todo!()
+        let model = ActiveModel {
+            id: Set(e.id),
+            value: Set(e.value),
+            data_type: Set(e.data_type.to_string()),
+            comment: Set(e.comment),
+            create_at: Set(e.create_at),
+            update_at: Set(Some(OffsetDateTime::now_utc())),
+        };
+        model.update(self.conn).await.err()
     }
 
     pub async fn delete(&self, e: DictionaryEntry) -> Option<DbErr> {
-        todo!()
+        let model = ActiveModel {
+            id: Set(e.id),
+            value: Set(e.value),
+            data_type: Set(e.data_type.to_string()),
+            comment: Set(e.comment),
+            create_at: Set(e.create_at),
+            update_at: Set(Some(OffsetDateTime::now_utc())),
+        };
+        model.delete(self.conn).await.err()
     }
 }
 

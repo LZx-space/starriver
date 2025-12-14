@@ -3,7 +3,7 @@ use crate::user::value_object::Password;
 use std::ops::Add;
 use time::{Duration, OffsetDateTime};
 
-pub(crate) struct PasswordSpecification {
+pub struct PasswordSpecification {
     validity_duration: Duration,
     accumulate_bad_password_times_duration: Duration,
     max_bad_password_times: usize,

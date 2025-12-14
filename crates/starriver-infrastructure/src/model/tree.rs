@@ -10,60 +10,33 @@ pub trait ChildrenNode<T> {
     fn children(&mut self) -> Vec<&T>;
 }
 
-/// 节点
-#[derive(Debug)]
-pub struct Node1<T> {
-    id: T,
-    name: String,
-    children: Vec<Node1<T>>,
-}
-
-impl<T> ID<T> for Node1<T> {
-    fn id(&self) -> &T {
-        &self.id
-    }
-}
-
-impl<T> ChildrenNode<Node1<T>> for Node1<T> {
-    fn children(&mut self) -> Vec<&Node1<T>> {
-        self.children.iter().collect()
-    }
-}
-
-/// 节点
-#[derive(Debug)]
-pub struct Node2<T> {
-    id: T,
-}
-
-impl<T> ID<T> for Node2<T> {
-    fn id(&self) -> &T {
-        &self.id
-    }
-}
-
-impl<T> ParentNode<Node2<T>> for Node2<T> {
-    fn parent(&mut self) -> Option<&Node2<T>> {
-        todo!()
-    }
-}
-
-impl<T> ChildrenNode<Node2<T>> for Node2<T> {
-    fn children(&mut self) -> Vec<&Node2<T>> {
-        todo!()
-    }
-}
-
 #[test]
 pub fn tree_test() {
+    /// 节点
+    #[derive(Debug)]
+    pub struct Node1<T> {
+        id: T,
+        children: Vec<Node1<T>>,
+    }
+
+    impl<T> ID<T> for Node1<T> {
+        fn id(&self) -> &T {
+            &self.id
+        }
+    }
+
+    impl<T> ChildrenNode<Node1<T>> for Node1<T> {
+        fn children(&mut self) -> Vec<&Node1<T>> {
+            self.children.iter().collect()
+        }
+    }
+
     let node2 = Node1 {
         id: 2,
-        name: "".to_string(),
         children: vec![],
     };
     let mut node1 = Node1 {
         id: 1,
-        name: "".to_string(),
         children: vec![node2],
     };
     let i = node1.id();

@@ -10,7 +10,7 @@ rust-version = "1.91.1"
 
 [workspace.dependencies]
 axum = { version = "^0", features = ["macros"] }
-axum-extra = { version = "0.12.2", features = ["cookie"] }
+axum-extra = { version = "^0", features = ["cookie"] }
 anyhow = "^1"
 argon2 = "^0"
 serde = { version = "^1", features = ["derive"] }

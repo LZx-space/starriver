@@ -116,7 +116,7 @@ where
         let authenticator = self.authenticator.clone();
         let authentication_flow = self.authentication_flow.clone();
         Box::pin(async move {
-            if authentication_flow.is_authenticate_request(&req) {
+            if authentication_flow.is_authenticate_request(&req).await {
                 let credential = authentication_flow
                     .extract_credential(&mut req)
                     .await

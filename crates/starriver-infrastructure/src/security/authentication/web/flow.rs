@@ -14,7 +14,7 @@ pub trait AuthenticationFlow {
     type Authenticator: Authenticator<Credential = Self::Credential, Principal = Self::Principal>
         + Sync;
 
-    fn is_authenticate_request(&self, req: &Self::Request) -> bool;
+    fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> + Send;
 
     fn is_access_require_authentication(
         &self,
@@ -23,6 +23,7 @@ pub trait AuthenticationFlow {
 
     fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool> + Send + Sync;
 
+    /// Extracts the credential from the request. if the request is authentication request
     fn extract_credential(
         &self,
         req: &mut Self::Request,

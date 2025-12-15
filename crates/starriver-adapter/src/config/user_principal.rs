@@ -19,6 +19,7 @@ use starriver_infrastructure::security::authentication::password_hasher::{
 use std::fmt::Debug;
 use tracing::{error, warn};
 
+/// 区别与用户提交的用户名&密码，该类型能包含更多的信心，比如IP等随HTTP请求携带的其他信息
 #[derive(Clone)]
 pub struct UsernamePasswordCredential {
     username: String,

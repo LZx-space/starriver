@@ -13,6 +13,7 @@ use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
+use tower::ServiceBuilder;
 
 use tokio::net::TcpListener;
 use tracing::level_filters::LevelFilter;
@@ -53,7 +54,7 @@ async fn main() {
         UserAuthenticator::new(UserRepositoryImpl::new(conn)),
         UsernameFlow {},
     );
-
+    let service_builder = ServiceBuilder::new().layer(authentication_layer);
     let router = Router::new()
         .route("/session/user", get(authentication::validate_authenticated))
         .route("/users", post(user::insert))
@@ -66,7 +67,7 @@ async fn main() {
             "/dictionary-entries",
             get(dictionary::list_dictionary_entry).post(dictionary::add_dictionary_entry),
         )
-        .layer(authentication_layer)
+        .layer(service_builder)
         .with_state(AppState::new(conn));
     let listener = TcpListener::bind(&addrs)
         .await

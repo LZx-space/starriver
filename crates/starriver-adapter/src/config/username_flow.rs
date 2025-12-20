@@ -11,7 +11,10 @@ use starriver_infrastructure::model::err::CodedErr;
 use starriver_infrastructure::security::authentication::core::authenticator::AuthenticationError;
 use starriver_infrastructure::security::authentication::web::flow::AuthenticationFlow;
 use std::future::Future;
-use std::ops::{Add, Not};
+use std::{
+    future::ready,
+    ops::{Add, Not},
+};
 use time::{Duration, OffsetDateTime};
 use tracing::error;
 
@@ -25,8 +28,8 @@ impl AuthenticationFlow for UsernameFlow {
     type Principal = User;
     type Authenticator = UserAuthenticator;
 
-    fn is_authenticate_request(&self, req: &Self::Request) -> bool {
-        req.uri().path().eq("/login") && req.method().eq(&Method::POST)
+    fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> + Send {
+        ready(req.uri().path().eq("/login") && req.method().eq(&Method::POST))
     }
 
     fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool> {
@@ -44,7 +47,7 @@ impl AuthenticationFlow for UsernameFlow {
         &self,
         req: &mut Self::Request,
     ) -> impl Future<Output = Result<UsernamePasswordCredential, AuthenticationError>> {
-        async { todo!() }
+        async move { todo!() }
     }
 
     fn on_unauthenticated(
@@ -172,7 +175,7 @@ mod tests {
             .method(Method::POST)
             .body(Body::empty())
             .unwrap();
-        assert!(flow.is_authenticate_request(&req));
+        assert!(flow.is_authenticate_request(&req).await);
 
         // 测试非登录请求
         let req = Request::builder()
@@ -180,7 +183,7 @@ mod tests {
             .method(Method::GET)
             .body(Body::empty())
             .unwrap();
-        assert!(!flow.is_authenticate_request(&req));
+        assert!(!flow.is_authenticate_request(&req).await);
 
         // 测试非登录路径
         let req = Request::builder()
@@ -188,7 +191,7 @@ mod tests {
             .method(Method::POST)
             .body(Body::empty())
             .unwrap();
-        assert!(!flow.is_authenticate_request(&req));
+        assert!(!flow.is_authenticate_request(&req).await);
     }
 
     #[tokio::test]

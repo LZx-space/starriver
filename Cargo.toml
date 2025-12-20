@@ -10,7 +10,7 @@ rust-version = "1.91.1"
 
 [workspace.dependencies]
 axum = { version = "^0", features = ["macros"] }
-axum-extra = { version = "^0", features = ["cookie"] }
+axum-extra = { version = "^0", features = ["cookie","form"] }
 anyhow = "^1"
 argon2 = "^0"
 serde = { version = "^1", features = ["derive"] }
@@ -23,6 +23,7 @@ tracing = "^0"
 tracing-subscriber = { version = "^0", features = ["local-time"] }
 tracing-appender = "^0"
 tower = { version = "^0" }
+tower-http = { version = "^0", features = ["full"] }
 uuid = { version = "^1", features = ["v7", "fast-rng", "macro-diagnostics"] }
 
 [profile.dev]

@@ -30,16 +30,14 @@ impl<A, F, C, P> AuthenticationTransform<A, F, C, P> {
 impl<S, A, F, C, P> Transform<S, ServiceRequest> for AuthenticationTransform<A, F, C, P>
 where
     S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
-    A: Authenticator<Credential = C, Principal = P> + Send + Sync + 'static,
+    A: Authenticator<Credential = C, Principal = P> + 'static,
     F: AuthenticationFlow<
             Request = ServiceRequest,
             Response = ServiceResponse,
             Credential = C,
             Principal = P,
             Authenticator = A,
-        > + Send
-        + Sync
-        + 'static,
+        > + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;
@@ -69,16 +67,14 @@ pub struct AuthenticationService<S, A, F, C, P> {
 impl<S, A, F, C, P> Service<ServiceRequest> for AuthenticationService<S, A, F, C, P>
 where
     S: Service<ServiceRequest, Response = ServiceResponse, Error = Error> + 'static,
-    A: Authenticator + Send + Sync + 'static,
+    A: Authenticator<Credential = C, Principal = P> + 'static,
     F: AuthenticationFlow<
             Request = ServiceRequest,
             Response = ServiceResponse,
             Credential = C,
             Principal = P,
             Authenticator = A,
-        > + Send
-        + Sync
-        + 'static,
+        > + 'static,
 {
     type Response = ServiceResponse;
     type Error = S::Error;

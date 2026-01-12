@@ -11,6 +11,7 @@ unsafe_code = "forbid"
 [dependencies]
 ferris-says = "^0"
 axum = { workspace = true }
+axum-extra = { workspace = true }
 tokio = { workspace = true }
 
 dotenvy = "^0"

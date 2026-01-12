@@ -76,7 +76,7 @@ impl Display for CodedErr {
 
 impl Error for CodedErr {}
 
-pub trait CodedErrData: Display + Debug {}
+pub trait CodedErrData: Display + Debug + Send + Sync {}
 
 ///
 impl IntoResponse for CodedErr {

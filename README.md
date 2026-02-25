@@ -22,9 +22,9 @@ To get started:
 This project follows DDD principles:
 
 - **Adapter Layer**: Web controllers (REST API endpoints), Authentication and authorization, etc.
-- **Application Layer**: Handles use cases and orchestrates domain logic，**`Provides implementations for repositories`**
+- **Application Layer**: Handles use cases and orchestrates domain logic, **`Provides implementations for repositories`**.
 - **Domain Layer**: Contains entities, value objects, aggregates, and domain services.
-- **Infrastructure Layer**: Common model and services, Security implementations, Shared models and error types，etc.
+- **Infrastructure Layer**: Common model and services, Security implementations, Shared models and error types, etc.
 
 This structure promotes separation of concerns and testability.
 

@@ -41,7 +41,11 @@ impl AuthenticationFlow for UsernameFlow {
     fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool> {
         let path = req.uri().path().to_owned();
         let method = req.method().to_owned();
-        async move { path.eq("/users").not() && method.eq(&Method::POST).not() }
+        async move {
+            path.starts_with("/static").not()
+                && path.eq("/users").not()
+                && method.eq(&Method::POST).not()
+        }
     }
 
     fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool> {

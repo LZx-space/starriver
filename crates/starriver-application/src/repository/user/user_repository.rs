@@ -1,11 +1,11 @@
 use super::po::user::{ActiveModel, Column};
 use super::po::user::{Entity, Model};
-use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::value_object::{Password, Username};
+use starriver_infrastructure::error::error::AppError;
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -20,7 +20,7 @@ impl UserRepositoryImpl {
 }
 
 impl UserRepository for UserRepositoryImpl {
-    async fn insert(&self, user: User) -> Result<User, Error> {
+    async fn insert(&self, user: User) -> Result<User, AppError> {
         ActiveModel {
             id: Set(user.id),
             username: Set(user.username.as_str().to_string()),
@@ -31,10 +31,10 @@ impl UserRepository for UserRepositoryImpl {
         .insert(self.conn)
         .await
         .map(model_to_entity)
-        .map_err(Error::from)
+        .map_err(AppError::from)
     }
 
-    async fn update(&self, user: User) -> Result<User, Error> {
+    async fn update(&self, user: User) -> Result<User, AppError> {
         ActiveModel {
             id: Set(user.id),
             username: Set(user.username.as_str().to_string()),
@@ -45,16 +45,16 @@ impl UserRepository for UserRepositoryImpl {
         .update(self.conn)
         .await
         .map(model_to_entity)
-        .map_err(Error::from)
+        .map_err(AppError::from)
     }
 
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, Error> {
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
         Entity::find()
             .filter(Column::Username.eq(username))
             .one(self.conn)
             .await
             .map(|e| e.map(model_to_entity))
-            .map_err(|e| Error::new(e))
+            .map_err(AppError::from)
     }
 }
 

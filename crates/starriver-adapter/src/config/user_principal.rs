@@ -9,7 +9,9 @@ use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
-use starriver_infrastructure::security::authentication::core::credential::{Credential, Ctx};
+use starriver_infrastructure::security::authentication::core::credential::{
+    AuthenticationContext, Credential,
+};
 use starriver_infrastructure::security::authentication::core::principal::{
     Principal, SimpleAuthority,
 };
@@ -38,11 +40,7 @@ impl UsernamePasswordCredential {
     }
 }
 
-impl Credential for UsernamePasswordCredential {
-    fn request_details(&self) -> Ctx {
-        Ctx {}
-    }
-}
+impl Credential for UsernamePasswordCredential {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,8 +158,9 @@ impl Authenticator for UserAuthenticator {
 
     fn authenticate(
         &self,
-        credential: &Self::Credential,
+        ctx: &AuthenticationContext<Self::Credential>,
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send {
+        let credential = &ctx.credential;
         let username = &credential.username;
         let password = &credential.password;
         async move {

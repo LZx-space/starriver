@@ -2,8 +2,8 @@ use crate::repository::blog::blog_repository::BlogRepositoryImpl;
 use sea_orm::DatabaseConnection;
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
+use starriver_infrastructure::error::error::{AppError, Cause};
 use starriver_infrastructure::model::blog::BlogPreview;
-use starriver_infrastructure::model::err::CodedErr;
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use uuid::Uuid;
 
@@ -19,38 +19,38 @@ impl BlogApplication {
         }
     }
 
-    pub async fn page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, CodedErr> {
+    pub async fn page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, AppError> {
         self.repo
             .find_page(q)
             .await
-            .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
+            .map_err(|e| AppError::new(Cause::DbError, e.to_string()))
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, CodedErr> {
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, AppError> {
         self.repo
             .find_by_id(id)
             .await
-            .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
+            .map_err(|e| AppError::new(Cause::DbError, e.to_string()))
     }
 
-    pub async fn add(&self, e: Blog) -> Result<Blog, CodedErr> {
+    pub async fn add(&self, e: Blog) -> Result<Blog, AppError> {
         self.repo
             .add(e)
             .await
-            .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
+            .map_err(|e| AppError::new(Cause::DbError, e.to_string()))
     }
 
-    pub async fn delete_by_id(&self, id: Uuid) -> Result<bool, CodedErr> {
+    pub async fn delete_by_id(&self, id: Uuid) -> Result<bool, AppError> {
         self.repo
             .delete_by_id(id)
             .await
-            .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
+            .map_err(|e| AppError::new(Cause::DbError, e.to_string()))
     }
 
-    pub async fn update(&self, e: Blog) -> Result<Option<Blog>, CodedErr> {
+    pub async fn update(&self, e: Blog) -> Result<Option<Blog>, AppError> {
         self.repo
             .update(e)
             .await
-            .map_err(|e| CodedErr::new("B0000".to_string(), e.to_string()))
+            .map_err(|e| AppError::new(Cause::DbError, e.to_string()))
     }
 }

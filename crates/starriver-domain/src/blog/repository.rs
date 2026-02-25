@@ -1,4 +1,4 @@
-use anyhow::Error;
+use starriver_infrastructure::error::error::AppError;
 use uuid::Uuid;
 
 use crate::blog::entity::Blog;
@@ -11,17 +11,17 @@ pub trait BlogRepository {
     fn find_page(
         &self,
         query: PageQuery,
-    ) -> impl Future<Output = Result<PageResult<BlogPreview>, Error>> + Send;
+    ) -> impl Future<Output = Result<PageResult<BlogPreview>, AppError>> + Send;
 
     /// 按ID查找
-    fn find_by_id(&self, id: Uuid) -> impl Future<Output = Result<Option<Blog>, Error>> + Send;
+    fn find_by_id(&self, id: Uuid) -> impl Future<Output = Result<Option<Blog>, AppError>> + Send;
 
     /// 新增
-    fn add(&self, e: Blog) -> impl Future<Output = Result<Blog, Error>> + Send;
+    fn add(&self, e: Blog) -> impl Future<Output = Result<Blog, AppError>> + Send;
 
     /// 删除
-    fn delete_by_id(&self, id: Uuid) -> impl Future<Output = Result<bool, Error>> + Send;
+    fn delete_by_id(&self, id: Uuid) -> impl Future<Output = Result<bool, AppError>> + Send;
 
     /// 修改
-    fn update(&self, e: Blog) -> impl Future<Output = Result<Option<Blog>, Error>> + Send;
+    fn update(&self, e: Blog) -> impl Future<Output = Result<Option<Blog>, AppError>> + Send;
 }

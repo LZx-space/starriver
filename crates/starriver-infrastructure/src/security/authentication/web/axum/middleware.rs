@@ -8,10 +8,10 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
+use crate::error::error::{AppError, Cause};
 use crate::security::authentication::core::credential::Credential;
 use crate::security::authentication::core::principal::Principal;
 
-use crate::model::err::CodedErr;
 use crate::security::authentication::core::authenticator::Authenticator;
 use crate::security::authentication::web::flow::AuthenticationFlow;
 
@@ -49,7 +49,7 @@ where
 impl<S, A, F, C, P> Layer<S> for AuthenticationLayer<A, F, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
-    S::Error: Into<CodedErr>,
+    S::Error: Into<AppError>,
     A: Authenticator<Credential = C, Principal = P>,
     F: AuthenticationFlow<
             Request = Request<Body>,
@@ -87,7 +87,7 @@ pub struct AuthenticationService<S, A, F, C, P> {
 impl<S, A, F, C, P> Service<Request<Body>> for AuthenticationService<S, A, F, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
-    S::Error: Into<CodedErr>,
+    S::Error: Into<AppError>,
     S::Future: Send + 'static,
     A: Authenticator<Credential = C, Principal = P> + Send + Sync + 'static,
     F: AuthenticationFlow<
@@ -103,7 +103,7 @@ where
     P: Principal,
 {
     type Response = Response;
-    type Error = CodedErr;
+    type Error = AppError;
     type Future =
         Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
@@ -111,28 +111,25 @@ where
         self.service.poll_ready(cx).map_err(|e| e.into())
     }
 
-    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         let mut service = self.service.clone();
         let authenticator = self.authenticator.clone();
         let authentication_flow = self.authentication_flow.clone();
         Box::pin(async move {
             if authentication_flow.is_authenticate_request(&req).await {
-                let credential = authentication_flow
-                    .extract_credential(&mut req)
+                let ctx = authentication_flow
+                    .extract_credential(req)
                     .await
-                    .map_err(|e| CodedErr::new("1000".to_string(), e.to_string()))?;
-                return match authentication_flow
-                    .authenticate(&authenticator, &credential)
-                    .await
-                {
+                    .map_err(|e| AppError::new(Cause::ClientBadRequest, e.to_string()))?;
+                return match authentication_flow.authenticate(&authenticator, &ctx).await {
                     Ok(principal) => authentication_flow
-                        .on_authenticate_success(&req, principal)
+                        .on_authenticate_success(&ctx, principal)
                         .await
-                        .map_err(|e| CodedErr::new("1000".to_string(), e.to_string())),
+                        .map_err(|e| AppError::new(Cause::InnerError, e.to_string())),
                     Err(err) => authentication_flow
-                        .on_authenticate_failure(&req, err)
+                        .on_authenticate_failure(&ctx, err)
                         .await
-                        .map_err(|e| CodedErr::new("1000".to_string(), e.to_string())),
+                        .map_err(|e| AppError::new(Cause::InnerError, e.to_string())),
                 };
             }
 
@@ -142,9 +139,9 @@ where
                 && !authentication_flow.is_authenticated(&req).await
             {
                 return authentication_flow
-                    .on_unauthenticated(&req)
+                    .on_unauthenticated(req)
                     .await
-                    .map_err(|e| CodedErr::new("1000".to_string(), e.to_string()));
+                    .map_err(|e| AppError::new(Cause::InnerError, e.to_string()));
             }
             service.call(req).await.map_err(|e| e.into())
         })

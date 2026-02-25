@@ -1,4 +1,4 @@
-use crate::security::authentication::core::credential::Credential;
+use crate::security::authentication::core::credential::{AuthenticationContext, Credential};
 use crate::security::authentication::core::principal::Principal;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -11,7 +11,7 @@ pub trait Authenticator {
     /// 认证
     fn authenticate(
         &self,
-        credential: &Self::Credential,
+        ctx: &AuthenticationContext<Self::Credential>,
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send;
 }
 

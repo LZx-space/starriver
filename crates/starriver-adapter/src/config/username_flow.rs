@@ -7,9 +7,15 @@ use axum::{
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use serde::Deserialize;
-use starriver_infrastructure::model::err::CodedErr;
-use starriver_infrastructure::security::authentication::core::authenticator::AuthenticationError;
-use starriver_infrastructure::security::authentication::web::flow::AuthenticationFlow;
+use starriver_infrastructure::{
+    error::error::AppError,
+    security::authentication::{
+        core::credential::AuthenticationContext, web::flow::AuthenticationFlow,
+    },
+};
+use starriver_infrastructure::{
+    error::error::Cause, security::authentication::core::authenticator::AuthenticationError,
+};
 use std::future::Future;
 use std::{
     future::ready,
@@ -45,14 +51,15 @@ impl AuthenticationFlow for UsernameFlow {
 
     fn extract_credential(
         &self,
-        req: &mut Self::Request,
-    ) -> impl Future<Output = Result<UsernamePasswordCredential, AuthenticationError>> {
+        req: Self::Request,
+    ) -> impl Future<Output = Result<AuthenticationContext<Self::Credential>, AuthenticationError>>
+    {
         async move { todo!() }
     }
 
     fn on_unauthenticated(
         &self,
-        _req: &Self::Request,
+        _req: Self::Request,
     ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
         async {
             let response = Response::builder()
@@ -68,7 +75,7 @@ impl AuthenticationFlow for UsernameFlow {
 
     fn on_authenticate_success(
         &self,
-        _req: &Self::Request,
+        _req: &AuthenticationContext<Self::Credential>,
         principal: User,
     ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
         async move {
@@ -102,11 +109,11 @@ impl AuthenticationFlow for UsernameFlow {
 
     fn on_authenticate_failure(
         &self,
-        _req: &Self::Request,
+        _req: &AuthenticationContext<Self::Credential>,
         err: AuthenticationError,
     ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
         async move {
-            let coded_err = CodedErr::new("A00001".to_string(), err.to_string());
+            let coded_err = AppError::new(Cause::ClientBadRequest, err.to_string());
             let response = coded_err.into_response();
             Ok(response)
         }
@@ -198,7 +205,7 @@ mod tests {
     async fn test_on_unauthenticated() {
         let flow = UsernameFlow {};
         let req = Request::builder().body(Body::empty()).unwrap();
-        let result = flow.on_unauthenticated(&req).await;
+        let result = flow.on_unauthenticated(req).await;
         assert!(result.is_ok());
 
         let response = result.unwrap();

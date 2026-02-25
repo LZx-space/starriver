@@ -17,6 +17,7 @@ use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
+use tower_http::services::ServeDir;
 
 use tower::ServiceBuilder;
 
@@ -61,6 +62,7 @@ async fn main() {
         UsernameFlow {},
     );
 
+    let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
     let service_builder = ServiceBuilder::new()
         .layer(handle_error_layer)
         .layer(authentication_layer);
@@ -76,6 +78,7 @@ async fn main() {
             "/dictionary-entries",
             get(dictionary::list_dictionary_entry).post(dictionary::add_dictionary_entry),
         )
+        .nest_service("/static", serve_dir)
         .layer(service_builder)
         .with_state(AppState::new(conn));
     let listener = TcpListener::bind(&addrs)

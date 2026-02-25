@@ -1,4 +1,7 @@
 use axum::Router;
+use axum::error_handling::HandleErrorLayer;
+
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use ferris_says::say;
 use mimalloc::MiMalloc;
@@ -8,11 +11,13 @@ use starriver_adapter::api::{authentication, user};
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::user_principal::{UserAuthenticator, UserRepositoryImpl};
 use starriver_adapter::config::username_flow::UsernameFlow;
+use starriver_infrastructure::error::error::AppError;
 use starriver_infrastructure::security::authentication::web::axum::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
+
 use tower::ServiceBuilder;
 
 use tokio::net::TcpListener;
@@ -50,11 +55,15 @@ async fn main() {
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
+    let handle_error_layer = HandleErrorLayer::new(handle_error);
     let authentication_layer = AuthenticationLayer::new(
         UserAuthenticator::new(UserRepositoryImpl::new(conn)),
         UsernameFlow {},
     );
-    let service_builder = ServiceBuilder::new().layer(authentication_layer);
+
+    let service_builder = ServiceBuilder::new()
+        .layer(handle_error_layer)
+        .layer(authentication_layer);
     let router = Router::new()
         .route("/session/user", get(authentication::validate_authenticated))
         .route("/users", post(user::insert))
@@ -80,6 +89,12 @@ fn say_hello() {
     let width = out.len();
     let mut writer = BufWriter::new(stdout());
     say(out, width, &mut writer).unwrap()
+}
+
+async fn handle_error(error: AppError) -> Response {
+    // todo 记录错误
+    eprintln!("异常：{}", error);
+    error.into_response()
 }
 
 fn http_server_bind_addrs() -> (IpAddr, u16) {

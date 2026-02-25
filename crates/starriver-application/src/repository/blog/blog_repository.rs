@@ -1,11 +1,11 @@
 use super::po::blog::ActiveModel;
 use super::po::blog::Column;
 use super::po::blog::Entity;
-use anyhow::Error;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
+use starriver_infrastructure::error::error::AppError;
 use starriver_infrastructure::model::blog::BlogPreview;
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use time::OffsetDateTime;
@@ -16,7 +16,7 @@ pub struct BlogRepositoryImpl {
 }
 
 impl BlogRepository for BlogRepositoryImpl {
-    async fn find_page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, Error> {
+    async fn find_page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, AppError> {
         let blogs = Entity::find()
             .select_only()
             .columns([Column::Id, Column::Title, Column::CreateAt])
@@ -24,16 +24,18 @@ impl BlogRepository for BlogRepositoryImpl {
             .limit(q.page_size)
             .into_model::<BlogPreview>()
             .all(self.conn)
-            .await?;
+            .await
+            .map_err(AppError::from)?;
         let record_total = Entity::find()
             .select_only()
             .column(Column::Id)
             .count(self.conn)
-            .await?;
+            .await
+            .map_err(AppError::from)?;
         Ok(PageResult::new(q.page, q.page_size, record_total, blogs))
     }
 
-    async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, Error> {
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, AppError> {
         Entity::find_by_id(id)
             .one(self.conn)
             .await
@@ -48,10 +50,10 @@ impl BlogRepository for BlogRepositoryImpl {
                     update_at: e.update_at,
                 })
             })
-            .map_err(Error::from)
+            .map_err(AppError::from)
     }
 
-    async fn add(&self, e: Blog) -> Result<Blog, Error> {
+    async fn add(&self, e: Blog) -> Result<Blog, AppError> {
         ActiveModel {
             id: Set(e.id),
             title: Set(e.title),
@@ -72,18 +74,18 @@ impl BlogRepository for BlogRepositoryImpl {
             create_at: e.create_at,
             update_at: e.update_at,
         })
-        .map_err(Error::from)
+        .map_err(AppError::from)
     }
 
-    async fn delete_by_id(&self, id: Uuid) -> Result<bool, Error> {
+    async fn delete_by_id(&self, id: Uuid) -> Result<bool, AppError> {
         Entity::delete_by_id(id)
             .exec(self.conn)
             .await
             .map(|e| e.rows_affected > 0)
-            .map_err(Error::from)
+            .map_err(AppError::from)
     }
 
-    async fn update(&self, e: Blog) -> Result<Option<Blog>, Error> {
+    async fn update(&self, e: Blog) -> Result<Option<Blog>, AppError> {
         let exist = Entity::find_by_id(e.id).one(self.conn).await;
         match exist {
             Ok(op) => match op {
@@ -106,10 +108,10 @@ impl BlogRepository for BlogRepositoryImpl {
                                 update_at: updated.update_at,
                             })
                         })
-                        .map_err(Error::from)
+                        .map_err(AppError::from)
                 }
             },
-            Err(err) => Err(Error::from(err)),
+            Err(err) => Err(AppError::from(err)),
         }
     }
 }

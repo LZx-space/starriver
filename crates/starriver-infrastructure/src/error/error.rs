@@ -23,9 +23,7 @@ impl AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status_code = self.cause.to_http_status();
-        let body = serde_json::to_string(&self).unwrap();
-        println!("body-{}", body);
-        (status_code, body).into_response()
+        (status_code, self.message).into_response()
     }
 }
 

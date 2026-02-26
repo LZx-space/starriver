@@ -82,19 +82,18 @@ impl AuthenticationFlow for UsernameFlow {
         }
     }
 
-    fn on_unauthenticated(
-        &self,
-        _req: Self::Request,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
+    fn on_unauthenticated(&self, _req: Self::Request) -> impl Future<Output = Self::Response> {
         async {
-            let response = Response::builder()
+            Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
                 .body(Body::empty())
-                .map_err(|e| {
+                .unwrap_or_else(|e| {
                     error!("build unauthenticated response error: {}", e);
-                    AuthenticationError::Unknown
-                })?;
-            Ok(response)
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .unwrap()
+                })
         }
     }
 
@@ -102,13 +101,19 @@ impl AuthenticationFlow for UsernameFlow {
         &self,
         _req: &AuthenticationContext<Self::Credential>,
         principal: User,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
+    ) -> impl Future<Output = Self::Response> {
         async move {
             // 序列化用户信息
-            let json = serde_json::to_string(&principal).map_err(|e| {
-                error!("serialize principal error: {}", e);
-                AuthenticationError::Unknown
-            })?;
+            let json = match serde_json::to_string(&principal) {
+                Ok(json) => json,
+                Err(e) => {
+                    error!("serialize principal error: {}", e);
+                    return Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .unwrap();
+                }
+            };
 
             // 创建cookie
             let cookie = Cookie::build(("id", json))
@@ -119,16 +124,17 @@ impl AuthenticationFlow for UsernameFlow {
                 .build();
 
             // 构建响应
-            let response = Response::builder()
+            Response::builder()
                 .status(StatusCode::OK)
                 .header(header::SET_COOKIE, cookie.to_string())
                 .body(Body::empty())
-                .map_err(|e| {
+                .unwrap_or_else(|e| {
                     error!("build authentication success response error: {}", e);
-                    AuthenticationError::Unknown
-                })?;
-
-            Ok(response)
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .unwrap()
+                })
         }
     }
 
@@ -136,11 +142,10 @@ impl AuthenticationFlow for UsernameFlow {
         &self,
         _req: &AuthenticationContext<Self::Credential>,
         err: AuthenticationError,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> {
+    ) -> impl Future<Output = Self::Response> {
         async move {
-            let coded_err = AppError::new(Cause::ClientBadRequest, err.to_string());
-            let response = coded_err.into_response();
-            Ok(response)
+            let error = AppError::new(Cause::ClientBadRequest, err.to_string());
+            error.into_response()
         }
     }
 }
@@ -230,10 +235,7 @@ mod tests {
     async fn test_on_unauthenticated() {
         let flow = UsernameFlow {};
         let req = Request::builder().body(Body::empty()).unwrap();
-        let result = flow.on_unauthenticated(req).await;
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
+        let response = flow.on_unauthenticated(req).await;
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 }

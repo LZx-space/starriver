@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
-use crate::error::error::{AppError, Cause};
+use crate::error::error::{ApiError, Cause};
 use crate::security::authentication::core::credential::Credential;
 use crate::security::authentication::core::principal::Principal;
 
@@ -49,7 +49,7 @@ where
 impl<S, A, F, C, P> Layer<S> for AuthenticationLayer<A, F, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
-    S::Error: Into<AppError>,
+    S::Error: Into<ApiError>,
     A: Authenticator<Credential = C, Principal = P>,
     F: AuthenticationFlow<
             Request = Request<Body>,
@@ -87,7 +87,7 @@ pub struct AuthenticationService<S, A, F, C, P> {
 impl<S, A, F, C, P> Service<Request<Body>> for AuthenticationService<S, A, F, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
-    S::Error: Into<AppError>,
+    S::Error: Into<ApiError>,
     S::Future: Send + 'static,
     A: Authenticator<Credential = C, Principal = P> + Send + Sync + 'static,
     F: AuthenticationFlow<
@@ -103,7 +103,7 @@ where
     P: Principal,
 {
     type Response = Response;
-    type Error = AppError;
+    type Error = ApiError;
     type Future =
         Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
@@ -120,7 +120,7 @@ where
                 let ctx = authentication_flow
                     .extract_credential(req)
                     .await
-                    .map_err(|e| AppError::new(Cause::ClientBadRequest, e.to_string()))?;
+                    .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
                 return match authentication_flow.authenticate(&authenticator, &ctx).await {
                     Ok(principal) => Ok(authentication_flow
                         .on_authenticate_success(&ctx, principal)

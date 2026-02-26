@@ -12,7 +12,7 @@ use starriver_adapter::api::{authentication, user};
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::user_principal::{UserAuthenticator, UserRepositoryImpl};
 use starriver_adapter::config::username_flow::UsernameFlow;
-use starriver_infrastructure::error::error::AppError;
+use starriver_infrastructure::error::error::ApiError;
 use starriver_infrastructure::security::authentication::web::axum::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
 use std::env;
@@ -96,7 +96,7 @@ fn say_hello() {
     say(out, width, &mut writer).unwrap()
 }
 
-async fn handle_error(request_headers: HeaderMap, error: AppError) -> Response {
+async fn handle_error(request_headers: HeaderMap, error: ApiError) -> Response {
     error!(name: "global error handler", "error：{}, headers: {:#?}", error, request_headers);
     // let is_document_request = request_headers
     //     .get("Accept")

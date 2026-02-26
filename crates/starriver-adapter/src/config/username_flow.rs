@@ -12,7 +12,7 @@ use axum_extra::extract::{
 };
 use serde::Deserialize;
 use starriver_infrastructure::{
-    error::error::AppError,
+    error::error::ApiError,
     security::authentication::{
         core::credential::{AuthenticationContext, RequestMetadata},
         web::flow::AuthenticationFlow,
@@ -144,7 +144,7 @@ impl AuthenticationFlow for UsernameFlow {
         err: AuthenticationError,
     ) -> impl Future<Output = Self::Response> {
         async move {
-            let error = AppError::new(Cause::ClientBadRequest, err.to_string());
+            let error = ApiError::new(Cause::ClientBadRequest, err.to_string());
             error.into_response()
         }
     }

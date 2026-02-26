@@ -1,6 +1,7 @@
 use axum::Router;
 use axum::error_handling::HandleErrorLayer;
 
+use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use ferris_says::say;
@@ -95,8 +96,20 @@ fn say_hello() {
     say(out, width, &mut writer).unwrap()
 }
 
-async fn handle_error(error: AppError) -> Response {
-    error!(name: "global error handler", "error：{}", error);
+async fn handle_error(request_headers: HeaderMap, error: AppError) -> Response {
+    error!(name: "global error handler", "error：{}, headers: {:#?}", error, request_headers);
+    // let is_document_request = request_headers
+    //     .get("Accept")
+    //     .filter(|header| {
+    //         header
+    //             .to_str()
+    //             .map(|accept| accept.contains("text/html"))
+    //             .unwrap_or(false)
+    //     })
+    //     .is_some();
+    // if is_document_request {
+    //     return Redirect::to("/").into_response();
+    // }
     error.into_response()
 }
 

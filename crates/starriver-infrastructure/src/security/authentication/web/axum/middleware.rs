@@ -122,14 +122,10 @@ where
                     .await
                     .map_err(|e| AppError::new(Cause::ClientBadRequest, e.to_string()))?;
                 return match authentication_flow.authenticate(&authenticator, &ctx).await {
-                    Ok(principal) => authentication_flow
+                    Ok(principal) => Ok(authentication_flow
                         .on_authenticate_success(&ctx, principal)
-                        .await
-                        .map_err(|e| AppError::new(Cause::InnerError, e.to_string())),
-                    Err(err) => authentication_flow
-                        .on_authenticate_failure(&ctx, err)
-                        .await
-                        .map_err(|e| AppError::new(Cause::InnerError, e.to_string())),
+                        .await),
+                    Err(err) => Ok(authentication_flow.on_authenticate_failure(&ctx, err).await),
                 };
             }
 
@@ -138,10 +134,7 @@ where
                 .await
                 && !authentication_flow.is_authenticated(&req).await
             {
-                return authentication_flow
-                    .on_unauthenticated(req)
-                    .await
-                    .map_err(|e| AppError::new(Cause::InnerError, e.to_string()));
+                return Ok(authentication_flow.on_unauthenticated(req).await);
             }
             service.call(req).await.map_err(|e| e.into())
         })

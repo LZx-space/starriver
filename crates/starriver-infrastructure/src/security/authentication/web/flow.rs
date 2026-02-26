@@ -37,20 +37,18 @@ pub trait AuthenticationFlow {
         async move { authenticator.authenticate(&ctx).await }
     }
 
-    fn on_unauthenticated(
-        &self,
-        req: Self::Request,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send;
+    fn on_unauthenticated(&self, req: Self::Request)
+    -> impl Future<Output = Self::Response> + Send;
 
     fn on_authenticate_success(
         &self,
         ctx: &AuthenticationContext<Self::Credential>,
         principal: Self::Principal,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send;
+    ) -> impl Future<Output = Self::Response> + Send;
 
     fn on_authenticate_failure(
         &self,
         ctx: &AuthenticationContext<Self::Credential>,
         err: AuthenticationError,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send;
+    ) -> impl Future<Output = Self::Response> + Send;
 }

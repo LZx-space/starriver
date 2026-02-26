@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// 主体：能够进行身份验证的用户或应用程序
 /// [`Principal`]的ID与[`Credential`]的ID并非同一个概念
-pub trait Principal: Send {
+pub trait Principal: Send + Sync {
     type Id;
 
     type Authority: Authority;

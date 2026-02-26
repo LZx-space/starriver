@@ -17,5 +17,6 @@ serde_json = { workspace = true }
 sha2 = "^0"
 time = { workspace = true }
 thiserror = { workspace = true }
+tracing = { workspace = true }
 tower = { workspace = true }
 uuid = { workspace = true }

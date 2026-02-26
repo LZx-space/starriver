@@ -1,8 +1,6 @@
 use axum::Router;
 use axum::error_handling::HandleErrorLayer;
 
-use axum::http::HeaderMap;
-use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use ferris_says::say;
 use mimalloc::MiMalloc;
@@ -12,14 +10,13 @@ use starriver_adapter::api::{authentication, user};
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::user_principal::{UserAuthenticator, UserRepositoryImpl};
 use starriver_adapter::config::username_flow::UsernameFlow;
-use starriver_infrastructure::error::error::ApiError;
+use starriver_infrastructure::error::middleware::handle_api_error;
 use starriver_infrastructure::security::authentication::web::axum::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
 use tower_http::services::ServeDir;
-use tracing::error;
 
 use tower::ServiceBuilder;
 
@@ -58,7 +55,6 @@ async fn main() {
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
-    let handle_error_layer = HandleErrorLayer::new(handle_error);
     let authentication_layer = AuthenticationLayer::new(
         UserAuthenticator::new(UserRepositoryImpl::new(conn)),
         UsernameFlow {},
@@ -66,7 +62,7 @@ async fn main() {
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
     let service_builder = ServiceBuilder::new()
-        .layer(handle_error_layer)
+        .layer(HandleErrorLayer::new(handle_api_error))
         .layer(authentication_layer);
     let router = Router::new()
         .route("/session/user", get(authentication::validate_authenticated))
@@ -94,23 +90,6 @@ fn say_hello() {
     let width = out.len();
     let mut writer = BufWriter::new(stdout());
     say(out, width, &mut writer).unwrap()
-}
-
-async fn handle_error(request_headers: HeaderMap, error: ApiError) -> Response {
-    error!(name: "global error handler", "error：{}, headers: {:#?}", error, request_headers);
-    // let is_document_request = request_headers
-    //     .get("Accept")
-    //     .filter(|header| {
-    //         header
-    //             .to_str()
-    //             .map(|accept| accept.contains("text/html"))
-    //             .unwrap_or(false)
-    //     })
-    //     .is_some();
-    // if is_document_request {
-    //     return Redirect::to("/").into_response();
-    // }
-    error.into_response()
 }
 
 fn http_server_bind_addrs() -> (IpAddr, u16) {

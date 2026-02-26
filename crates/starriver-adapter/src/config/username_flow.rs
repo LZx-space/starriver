@@ -2,15 +2,20 @@ use crate::config::user_principal::{User, UserAuthenticator, UsernamePasswordCre
 
 use axum::{
     body::Body,
+    extract::FromRequest,
     http::{Method, Request, Response, StatusCode, header},
     response::IntoResponse,
 };
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::{
+    Form,
+    cookie::{Cookie, CookieJar},
+};
 use serde::Deserialize;
 use starriver_infrastructure::{
     error::error::AppError,
     security::authentication::{
-        core::credential::AuthenticationContext, web::flow::AuthenticationFlow,
+        core::credential::{AuthenticationContext, RequestMetadata},
+        web::flow::AuthenticationFlow,
     },
 };
 use starriver_infrastructure::{
@@ -22,7 +27,7 @@ use std::{
     ops::{Add, Not},
 };
 use time::{Duration, OffsetDateTime};
-use tracing::error;
+use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct UsernameFlow {}
@@ -58,7 +63,23 @@ impl AuthenticationFlow for UsernameFlow {
         req: Self::Request,
     ) -> impl Future<Output = Result<AuthenticationContext<Self::Credential>, AuthenticationError>>
     {
-        async move { todo!() }
+        async move {
+            // 提取表单数据
+            let form = Form::<FormLoginCmd>::from_request(req, &())
+                .await
+                .map_err(|_| AuthenticationError::Unknown)?;
+            info!(name: "login", "form login cmd: {:?}", form.0);
+            // 创建凭证
+            let credential = UsernamePasswordCredential::new(form.0.username, form.0.password)
+                .map_err(|e| {
+                    error!(name: "login", "new credential error: {}", e);
+                    e
+                })?;
+
+            // 创建认证上下文
+            let ctx = AuthenticationContext::new(credential, RequestMetadata::default());
+            Ok(ctx)
+        }
     }
 
     fn on_unauthenticated(

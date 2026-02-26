@@ -18,6 +18,7 @@ use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
 use tower_http::services::ServeDir;
+use tracing::error;
 
 use tower::ServiceBuilder;
 
@@ -95,8 +96,7 @@ fn say_hello() {
 }
 
 async fn handle_error(error: AppError) -> Response {
-    // todo 记录错误
-    eprintln!("异常：{}", error);
+    error!(name: "global error handler", "error：{}", error);
     error.into_response()
 }
 

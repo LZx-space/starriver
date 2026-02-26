@@ -7,9 +7,9 @@ pub trait AuthenticationFlow {
 
     type Response;
 
-    type Credential: Credential + Send + Sync;
+    type Credential: Credential;
 
-    type Principal: Principal + Send + Sync;
+    type Principal: Principal;
 
     type Authenticator: Authenticator<Credential = Self::Credential, Principal = Self::Principal>
         + Sync;
@@ -21,15 +21,13 @@ pub trait AuthenticationFlow {
         req: &Self::Request,
     ) -> impl Future<Output = bool> + Send;
 
-    fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool> + Send + Sync;
+    fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool> + Send;
 
     /// Extracts the credential from the request. if the request is authentication request
     fn extract_credential(
         &self,
         req: Self::Request,
-    ) -> impl Future<Output = Result<AuthenticationContext<Self::Credential>, AuthenticationError>>
-    + Send
-    + Sync;
+    ) -> impl Future<Output = Result<AuthenticationContext<Self::Credential>, AuthenticationError>> + Send;
 
     fn authenticate(
         &self,
@@ -42,17 +40,17 @@ pub trait AuthenticationFlow {
     fn on_unauthenticated(
         &self,
         req: Self::Request,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send + Sync;
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send;
 
     fn on_authenticate_success(
         &self,
         ctx: &AuthenticationContext<Self::Credential>,
         principal: Self::Principal,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send + Sync;
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send;
 
     fn on_authenticate_failure(
         &self,
         ctx: &AuthenticationContext<Self::Credential>,
         err: AuthenticationError,
-    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send + Sync;
+    ) -> impl Future<Output = Result<Self::Response, AuthenticationError>> + Send;
 }

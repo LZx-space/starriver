@@ -89,10 +89,11 @@ impl AuthenticationFlow for UsernameFlow {
                 .body(Body::empty())
                 .unwrap_or_else(|e| {
                     error!("build unauthenticated response error: {}", e);
-                    Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::empty())
-                        .unwrap()
+                    ApiError::new(
+                        Cause::InnerError,
+                        "build unauthenticated response error".to_string(),
+                    )
+                    .into_response()
                 })
         }
     }
@@ -108,10 +109,11 @@ impl AuthenticationFlow for UsernameFlow {
                 Ok(json) => json,
                 Err(e) => {
                     error!("serialize principal error: {}", e);
-                    return Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::empty())
-                        .unwrap();
+                    return ApiError::new(
+                        Cause::InnerError,
+                        "serialize principal error".to_string(),
+                    )
+                    .into_response();
                 }
             };
 
@@ -130,10 +132,11 @@ impl AuthenticationFlow for UsernameFlow {
                 .body(Body::empty())
                 .unwrap_or_else(|e| {
                     error!("build authentication success response error: {}", e);
-                    Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::empty())
-                        .unwrap()
+                    ApiError::new(
+                        Cause::InnerError,
+                        "build authentication success response error".to_string(),
+                    )
+                    .into_response()
                 })
         }
     }
@@ -144,7 +147,16 @@ impl AuthenticationFlow for UsernameFlow {
         err: AuthenticationError,
     ) -> impl Future<Output = Self::Response> {
         async move {
-            let error = ApiError::new(Cause::ClientBadRequest, err.to_string());
+            let cause = match err {
+                AuthenticationError::UsernameNotFound => Cause::ClientBadRequest,
+                AuthenticationError::BadPassword => Cause::ClientBadRequest,
+                _ => Cause::InnerError,
+            };
+            let message = match cause {
+                Cause::InnerError => "authentication failed",
+                _ => "username or password incorrect",
+            };
+            let error = ApiError::new(cause, message.to_string());
             error.into_response()
         }
     }

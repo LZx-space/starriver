@@ -1,9 +1,8 @@
 use axum::body::Body;
 use axum::http::Request;
 use axum::response::Response;
-use std::future::Future;
+use futures_util::future::BoxFuture;
 use std::marker::PhantomData;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
@@ -104,8 +103,7 @@ where
 {
     type Response = Response;
     type Error = ApiError;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
+    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx).map_err(|e| e.into())

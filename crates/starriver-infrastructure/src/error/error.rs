@@ -134,7 +134,10 @@ mod test {
                 status_code.is_client_error() || status_code.is_server_error(),
                 "自定义的错误，仅该映射到400-499(客户端错误) || 500-599（服务器错误）"
             );
-            assert!(code.to_string().starts_with(status_code.as_str()), "c");
+            assert!(
+                code.to_string().starts_with(status_code.as_str()),
+                "错误码必须以返回的Http状态码开头"
+            );
         });
     }
 }

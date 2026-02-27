@@ -16,8 +16,7 @@ sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = "^0"
-strum = "^0"
-strum_macros = "^0"
+strum = { version = "^0", features = ["derive"] }
 time = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

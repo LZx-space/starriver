@@ -6,7 +6,7 @@ use axum::{
 };
 use sea_orm::DbErr;
 use serde::Serialize;
-use strum_macros::EnumIter;
+use strum::EnumIter;
 
 #[derive(Serialize)]
 pub struct ApiError {
@@ -122,7 +122,7 @@ impl Cause {
 
 #[cfg(test)]
 mod test {
-    use sea_orm::Iterable;
+    use strum::IntoEnumIterator;
 
     use crate::error::error::Cause;
 
@@ -134,10 +134,7 @@ mod test {
                 status_code.is_client_error() || status_code.is_server_error(),
                 "自定义的错误，仅该映射到400-499(客户端错误) || 500-599（服务器错误）"
             );
-            assert!(
-                code.to_string().starts_with(status_code.as_str()),
-                "错误码必须以返回的Http状态码开头"
-            );
+            assert!(code.to_string().starts_with(status_code.as_str()), "c");
         });
     }
 }

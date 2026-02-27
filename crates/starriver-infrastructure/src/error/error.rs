@@ -2,10 +2,11 @@ use std::{convert::Infallible, fmt::Display};
 
 use axum::{
     http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Response},
 };
 use sea_orm::DbErr;
 use serde::Serialize;
+use strum_macros::EnumIter;
 
 #[derive(Serialize)]
 pub struct ApiError {
@@ -13,7 +14,6 @@ pub struct ApiError {
     message: String,
 }
 
-// -------------------------------------------
 impl ApiError {
     pub fn new(cause: Cause, message: String) -> Self {
         ApiError { cause, message }
@@ -22,8 +22,14 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let status_code = self.cause.to_http_status();
-        (status_code, self.message).into_response()
+        let (status_code, code) = self.cause.to_http_status();
+        let json = ApiErrorResponse::<()> {
+            code: code,
+            message: self.message,
+            data: None,
+        }
+        .into_response();
+        (status_code, json).into_response()
     }
 }
 
@@ -35,7 +41,8 @@ impl From<Infallible> for ApiError {
 
 impl Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.cause.to_http_status(), self.message)
+        let (status, code) = self.cause.to_http_status();
+        write!(f, "({}, {}, {})", status, code, self.message)
     }
 }
 
@@ -45,52 +52,56 @@ impl From<DbErr> for ApiError {
     }
 }
 
+// ----------------------------------------------------------------------------------------
+#[derive(Serialize)]
+pub struct ApiErrorResponse<T: Serialize> {
+    pub code: u16,
+    pub message: String,
+    pub data: Option<T>,
+}
+
+impl<T: Serialize> IntoResponse for ApiErrorResponse<T> {
+    fn into_response(self) -> Response {
+        let json_response = serde_json::to_string(&self).unwrap_or_else(|_| {
+            serde_json::json!({
+                "code": 500,
+                "message": "Failed to serialize response",
+                "data": null
+            })
+            .to_string()
+        });
+
+        (
+            StatusCode::from_u16(self.code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+            [(axum::http::header::CONTENT_TYPE, "application/json")],
+            json_response,
+        )
+            .into_response()
+    }
+}
+
+// ----------------------------------------------------------------------------------------
 #[derive(Serialize)]
 pub struct PageError {
     cause: Cause,
     message: String,
 }
 
-// -------------------------------------------
-impl PageError {
-    pub fn new(cause: Cause, message: String) -> Self {
-        PageError { cause, message }
-    }
-}
-
 impl IntoResponse for PageError {
     fn into_response(self) -> Response {
-        let status_code = self.cause.to_http_status();
-        if StatusCode::NOT_FOUND.eq(&status_code) {
-            return Redirect::to("/static/404.html").into_response();
-        } else {
-            let msg = self.message;
-            let uri = format!("{}{}", "/static/error.html?error=", msg);
-            return Redirect::to(uri.as_str()).into_response();
-        }
-    }
-}
-
-impl From<Infallible> for PageError {
-    fn from(_: Infallible) -> Self {
-        PageError::new(Cause::ClientBadRequest, "Infallible".to_string())
+        todo!()
     }
 }
 
 impl Display for PageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.cause.to_http_status(), self.message)
+        let (status, code) = self.cause.to_http_status();
+        write!(f, "({}, {}, {})", status, code, self.message)
     }
 }
 
-impl From<DbErr> for PageError {
-    fn from(err: DbErr) -> Self {
-        PageError::new(Cause::DbError, err.to_string())
-    }
-}
-
-// ------------------------------------------
-#[derive(Serialize)]
+// ----------------------------------------------------------------------------------------
+#[derive(Serialize, EnumIter)]
 pub enum Cause {
     ClientBadRequest,
     DbError,
@@ -99,33 +110,34 @@ pub enum Cause {
 }
 
 impl Cause {
-    fn to_http_status(&self) -> StatusCode {
+    fn to_http_status(&self) -> (StatusCode, u16) {
         match self {
-            Cause::ClientBadRequest => StatusCode::BAD_REQUEST,
-            Cause::DbError => StatusCode::INTERNAL_SERVER_ERROR,
-            Cause::InnerError => StatusCode::INTERNAL_SERVER_ERROR,
-            Cause::ThirdParty => StatusCode::INTERNAL_SERVER_ERROR,
+            Cause::ClientBadRequest => (StatusCode::BAD_REQUEST, 40001),
+            Cause::DbError => (StatusCode::INTERNAL_SERVER_ERROR, 50001),
+            Cause::InnerError => (StatusCode::INTERNAL_SERVER_ERROR, 50002),
+            Cause::ThirdParty => (StatusCode::INTERNAL_SERVER_ERROR, 50003),
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use axum::response::IntoResponse;
+    use sea_orm::Iterable;
 
-    use crate::error::error::ApiError;
+    use crate::error::error::Cause;
 
     #[test]
-    pub fn serialize_err() {
-        let err_1 = ApiError::new(super::Cause::ClientBadRequest, "测试一下&str".to_string());
-        println!("1-{:#?}", err_1.into_response());
-        #[derive(serde::Serialize)]
-        struct T {
-            a: usize,
-        }
-        let t = T { a: 12 };
-        let json = serde_json::to_string(&t).unwrap();
-        let err_1 = ApiError::new(super::Cause::ClientBadRequest, json);
-        println!("2-{:#?}", err_1.into_response());
+    pub fn ensure_correct_status_code() {
+        Cause::iter().for_each(|cause| {
+            let (status_code, code) = cause.to_http_status();
+            assert!(
+                status_code.is_client_error() || status_code.is_server_error(),
+                "自定义的错误，仅该映射到400-499(客户端错误) || 500-599（服务器错误）"
+            );
+            assert!(
+                code.to_string().starts_with(status_code.as_str()),
+                "错误码必须以返回的Http状态码开头"
+            );
+        });
     }
 }

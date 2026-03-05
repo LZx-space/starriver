@@ -2,7 +2,7 @@ use crate::config::app_state::AppState;
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::response::IntoResponse;
-use starriver_application::blog::BlogCmd;
+use starriver_application::blog_dto::BlogCmd;
 use starriver_infrastructure::error::error::ApiError;
 use starriver_infrastructure::model::page::PageQuery;
 use uuid::Uuid;

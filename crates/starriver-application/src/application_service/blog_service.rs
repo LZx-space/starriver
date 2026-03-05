@@ -1,9 +1,7 @@
-use crate::assembler::blog::{cmd_2_update_entity, entity_2_vo};
-use crate::blog::{BlogPreview, BlogVo};
-use crate::dto::assembler::blog::cmd_2_new_entity;
-use crate::dto::blog::BlogCmd;
-use crate::query_service::blog_query_service::{BlogQueryService, BlogQueryServiceImpl};
-use crate::repository::blog::blog_repository::DefualtBlogRepository;
+use crate::assembler::blog_assembler::{cmd_2_new_entity, cmd_2_update_entity, entity_2_vo};
+use crate::dto::blog_dto::{BlogCmd, BlogPreview, BlogVo};
+use crate::query_service::blog_query_service::{BlogQueryService, DefaultBlogQueryService};
+use crate::repository::blog::blog_repository::DefaultBlogRepository;
 use sea_orm::DatabaseConnection;
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
@@ -12,16 +10,16 @@ use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use uuid::Uuid;
 
 pub struct BlogApplication {
-    repo: DefualtBlogRepository,
-    query_service: BlogQueryServiceImpl,
+    repo: DefaultBlogRepository,
+    query_service: DefaultBlogQueryService,
 }
 
 impl BlogApplication {
     /// 新建
     pub fn new(conn: &'static DatabaseConnection) -> BlogApplication {
         BlogApplication {
-            repo: DefualtBlogRepository { conn },
-            query_service: BlogQueryServiceImpl { conn },
+            repo: DefaultBlogRepository { conn },
+            query_service: DefaultBlogQueryService { conn },
         }
     }
 

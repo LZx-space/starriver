@@ -1,5 +1,6 @@
 /// 应用层服务，供上层调用
 mod application_service;
+mod assembler;
 mod dto;
 /// 不涉及领域模型的数据查询
 mod query_service;

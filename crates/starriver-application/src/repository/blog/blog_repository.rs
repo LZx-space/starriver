@@ -8,11 +8,11 @@ use starriver_infrastructure::error::error::ApiError;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-pub struct DefualtBlogRepository {
+pub struct DefaultBlogRepository {
     pub conn: &'static DatabaseConnection,
 }
 
-impl BlogRepository for DefualtBlogRepository {
+impl BlogRepository for DefaultBlogRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, ApiError> {
         Entity::find_by_id(id)
             .one(self.conn)

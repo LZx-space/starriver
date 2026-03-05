@@ -1,3 +1,2 @@
-pub mod assembler;
-pub mod blog;
-pub mod user;
+pub mod blog_dto;
+pub mod user_dto;

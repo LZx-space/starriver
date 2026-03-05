@@ -5,7 +5,7 @@ use starriver_infrastructure::{
 };
 
 use crate::{
-    blog::BlogPreview,
+    blog_dto::BlogPreview,
     repository::blog::po::blog::{Column, Entity},
 };
 
@@ -17,11 +17,11 @@ pub trait BlogQueryService {
     ) -> impl Future<Output = Result<PageResult<BlogPreview>, ApiError>> + Send;
 }
 
-pub struct BlogQueryServiceImpl {
+pub struct DefaultBlogQueryService {
     pub conn: &'static DatabaseConnection,
 }
 
-impl BlogQueryService for BlogQueryServiceImpl {
+impl BlogQueryService for DefaultBlogQueryService {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, ApiError> {
         let blogs = Entity::find()
             .select_only()

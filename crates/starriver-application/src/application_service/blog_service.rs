@@ -1,30 +1,32 @@
 use crate::assembler::blog::{cmd_2_update_entity, entity_2_vo};
-use crate::blog::BlogVo;
+use crate::blog::{BlogPreview, BlogVo};
 use crate::dto::assembler::blog::cmd_2_new_entity;
 use crate::dto::blog::BlogCmd;
-use crate::repository::blog::blog_repository::BlogRepositoryImpl;
+use crate::query_service::blog_query_service::{BlogQueryService, BlogQueryServiceImpl};
+use crate::repository::blog::blog_repository::DefualtBlogRepository;
 use sea_orm::DatabaseConnection;
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::error::{ApiError, Cause};
-use starriver_infrastructure::model::blog::BlogPreview;
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use uuid::Uuid;
 
 pub struct BlogApplication {
-    repo: BlogRepositoryImpl,
+    repo: DefualtBlogRepository,
+    query_service: BlogQueryServiceImpl,
 }
 
 impl BlogApplication {
     /// 新建
     pub fn new(conn: &'static DatabaseConnection) -> BlogApplication {
         BlogApplication {
-            repo: BlogRepositoryImpl { conn },
+            repo: DefualtBlogRepository { conn },
+            query_service: BlogQueryServiceImpl { conn },
         }
     }
 
     pub async fn page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, ApiError> {
-        self.repo.find_page(q).await
+        self.query_service.find_page(q).await
     }
 
     pub async fn find_by_id(&self, id: Uuid) -> Result<BlogVo, ApiError> {

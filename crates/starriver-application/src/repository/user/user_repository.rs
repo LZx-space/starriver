@@ -9,17 +9,11 @@ use starriver_infrastructure::error::error::ApiError;
 use time::OffsetDateTime;
 
 #[derive(Clone)]
-pub struct UserRepositoryImpl {
-    conn: &'static DatabaseConnection,
+pub struct DefaultUserRepository {
+    pub conn: &'static DatabaseConnection,
 }
 
-impl UserRepositoryImpl {
-    pub fn new(conn: &'static DatabaseConnection) -> Self {
-        UserRepositoryImpl { conn }
-    }
-}
-
-impl UserRepository for UserRepositoryImpl {
+impl UserRepository for DefaultUserRepository {
     async fn insert(&self, user: User) -> Result<User, ApiError> {
         ActiveModel {
             id: Set(user.id),

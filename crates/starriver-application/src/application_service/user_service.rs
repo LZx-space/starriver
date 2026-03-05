@@ -1,4 +1,4 @@
-use crate::repository::user::user_repository::UserRepositoryImpl;
+use crate::repository::user::user_repository::DefaultUserRepository;
 use sea_orm::DatabaseConnection;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
@@ -6,14 +6,14 @@ use starriver_infrastructure::error::error::{ApiError, Cause};
 
 #[derive(Clone)]
 pub struct UserApplication {
-    repo: UserRepositoryImpl,
+    repo: DefaultUserRepository,
 }
 
 impl UserApplication {
     /// 新建
     pub fn new(conn: &'static DatabaseConnection) -> UserApplication {
         UserApplication {
-            repo: UserRepositoryImpl::new(conn),
+            repo: DefaultUserRepository { conn },
         }
     }
 

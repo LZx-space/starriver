@@ -8,4 +8,4 @@ mod repository;
 
 pub use application_service::*;
 pub use dto::*;
-pub use repository::user::user_repository::UserRepositoryImpl;
+pub use repository::user::user_repository::DefaultUserRepository;

@@ -1,1 +1,1 @@
-mod blog_query_service;
+pub mod blog_query_service;

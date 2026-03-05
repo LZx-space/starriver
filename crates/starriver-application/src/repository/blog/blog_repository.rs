@@ -1,42 +1,18 @@
 use super::po::blog::ActiveModel;
-use super::po::blog::Column;
 use super::po::blog::Entity;
 use sea_orm::ActiveValue::Set;
-use sea_orm::prelude::Expr;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::error::ApiError;
-use starriver_infrastructure::model::blog::BlogPreview;
-use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-pub struct BlogRepositoryImpl {
+pub struct DefualtBlogRepository {
     pub conn: &'static DatabaseConnection,
 }
 
-impl BlogRepository for BlogRepositoryImpl {
-    async fn find_page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, ApiError> {
-        let blogs = Entity::find()
-            .select_only()
-            .columns([Column::Id, Column::Title, Column::CreateAt])
-            .column_as(Expr::cust("SUBSTRING(body, 1, 5)"), Column::Body)
-            .offset(q.page * q.page_size)
-            .limit(q.page_size)
-            .into_model::<BlogPreview>()
-            .all(self.conn)
-            .await
-            .map_err(ApiError::from)?;
-        let record_total = Entity::find()
-            .select_only()
-            .column(Column::Id)
-            .count(self.conn)
-            .await
-            .map_err(ApiError::from)?;
-        Ok(PageResult::new(q.page, q.page_size, record_total, blogs))
-    }
-
+impl BlogRepository for DefualtBlogRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, ApiError> {
         Entity::find_by_id(id)
             .one(self.conn)

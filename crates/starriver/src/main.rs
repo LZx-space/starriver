@@ -8,8 +8,10 @@ use starriver_adapter::api::blog;
 use starriver_adapter::api::dictionary;
 use starriver_adapter::api::{authentication, user};
 use starriver_adapter::config::app_state::AppState;
-use starriver_adapter::config::user_principal::{UserAuthenticator, UserRepositoryImpl};
-use starriver_adapter::config::username_flow::UsernameFlow;
+use starriver_adapter::config::username_password_authentictor::{
+    DefaultUserRepository, UsernamePasswordAuthenticator,
+};
+use starriver_adapter::config::username_password_flow::UsernamePasswordFlow;
 use starriver_infrastructure::error::middleware::handle_api_error;
 use starriver_infrastructure::security::authentication::web::axum::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
@@ -60,8 +62,8 @@ async fn main() {
     let service_builder = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(handle_api_error))
         .layer(AuthenticationLayer::new(
-            UserAuthenticator::new(UserRepositoryImpl::new(conn)),
-            UsernameFlow {},
+            UsernamePasswordAuthenticator::new(DefaultUserRepository::new(conn)),
+            UsernamePasswordFlow {},
         ));
     let router = Router::new()
         .route("/session/user", get(authentication::validate_authenticated))

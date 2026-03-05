@@ -102,19 +102,19 @@ pub trait UserRepository {
     ) -> impl Future<Output = Result<User, AuthenticationError>> + Send;
 }
 
-pub struct UserRepositoryImpl {
+pub struct DefaultUserRepository {
     delegate: UserApplication,
 }
 
-impl UserRepositoryImpl {
+impl DefaultUserRepository {
     pub fn new(conn: &'static DatabaseConnection) -> Self {
-        UserRepositoryImpl {
+        DefaultUserRepository {
             delegate: UserApplication::new(conn),
         }
     }
 }
 
-impl UserRepository for UserRepositoryImpl {
+impl UserRepository for DefaultUserRepository {
     async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError> {
         let user = self.delegate.find_by_username(user_id).await.map_err(|e| {
             warn!("Failed to find user by username: {}", e);
@@ -136,19 +136,19 @@ impl UserRepository for UserRepositoryImpl {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-pub struct UserAuthenticator {
-    user_repository: UserRepositoryImpl,
+pub struct UsernamePasswordAuthenticator {
+    user_repository: DefaultUserRepository,
 }
 
-impl UserAuthenticator {
-    pub fn new(repo: UserRepositoryImpl) -> UserAuthenticator {
-        UserAuthenticator {
+impl UsernamePasswordAuthenticator {
+    pub fn new(repo: DefaultUserRepository) -> UsernamePasswordAuthenticator {
+        UsernamePasswordAuthenticator {
             user_repository: repo,
         }
     }
 }
 
-impl Authenticator for UserAuthenticator {
+impl Authenticator for UsernamePasswordAuthenticator {
     type Credential = UsernamePasswordCredential;
     type Principal = User;
 

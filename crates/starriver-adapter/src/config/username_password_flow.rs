@@ -1,4 +1,6 @@
-use crate::config::user_principal::{User, UserAuthenticator, UsernamePasswordCredential};
+use crate::config::username_password_authentictor::{
+    User, UsernamePasswordAuthenticator, UsernamePasswordCredential,
+};
 
 use axum::{
     body::Body,
@@ -29,14 +31,14 @@ use std::{
 use time::{Duration, OffsetDateTime};
 use tracing::{error, info};
 
-pub struct UsernameFlow {}
+pub struct UsernamePasswordFlow {}
 
-impl AuthenticationFlow for UsernameFlow {
+impl AuthenticationFlow for UsernamePasswordFlow {
     type Request = Request<Body>;
     type Response = Response<Body>;
     type Credential = UsernamePasswordCredential;
     type Principal = User;
-    type Authenticator = UserAuthenticator;
+    type Authenticator = UsernamePasswordAuthenticator;
 
     fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> + Send {
         ready(req.uri().path().eq("/login") && req.method().eq(&Method::POST))
@@ -172,7 +174,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_access_require_authentication() {
-        let flow = UsernameFlow {};
+        let flow = UsernamePasswordFlow {};
 
         // 测试需要认证的路径
         let req = Request::builder()
@@ -193,7 +195,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_authenticated() {
-        let flow = UsernameFlow {};
+        let flow = UsernamePasswordFlow {};
 
         // 测试有cookie的情况
         let cookie = Cookie::new("id", "test_value");
@@ -211,7 +213,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_authenticate_request() {
-        let flow = UsernameFlow {};
+        let flow = UsernamePasswordFlow {};
 
         // 测试登录请求
         let req = Request::builder()
@@ -240,7 +242,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_on_unauthenticated() {
-        let flow = UsernameFlow {};
+        let flow = UsernamePasswordFlow {};
         let req = Request::builder().body(Body::empty()).unwrap();
         let response = flow.on_unauthenticated(req).await;
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);

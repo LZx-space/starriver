@@ -18,7 +18,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 starriver-application = { path = "../starriver-application" }
-starriver-domain = { path = "../starriver-domain" }
 starriver-infrastructure = { path = "../starriver-infrastructure" }
 tracing = { workspace = true }
 tokio = { workspace = true }

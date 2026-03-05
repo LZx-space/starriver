@@ -30,7 +30,7 @@ impl UserRepository for UserRepositoryImpl {
         }
         .insert(self.conn)
         .await
-        .map(model_to_entity)
+        .map(model_to_entity)?
         .map_err(ApiError::from)
     }
 
@@ -44,31 +44,31 @@ impl UserRepository for UserRepositoryImpl {
         }
         .update(self.conn)
         .await
-        .map(model_to_entity)
+        .map(model_to_entity)?
         .map_err(ApiError::from)
     }
 
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        Entity::find()
+        let model = Entity::find()
             .filter(Column::Username.eq(username))
             .one(self.conn)
             .await
-            .map(|e| e.map(model_to_entity))
-            .map_err(ApiError::from)
+            .map_err(ApiError::from)?;
+        let user = model.map(model_to_entity).transpose()?;
+        Ok(user)
     }
 }
 
 #[inline]
-fn model_to_entity(m: Model) -> User {
-    let username = Username::new(m.username.as_str()).expect("Username");
-    let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())
-        .expect("Password");
-    User {
+fn model_to_entity(m: Model) -> Result<User, ApiError> {
+    let username = Username::new(m.username.as_str())?;
+    let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
+    Ok(User {
         id: m.id,
         username,
         password,
         state: Default::default(),
         created_at: m.create_at,
         login_events: vec![],
-    }
+    })
 }

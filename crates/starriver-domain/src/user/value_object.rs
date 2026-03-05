@@ -1,9 +1,11 @@
 use crate::user::entity::LoginEvent;
-use anyhow::Error;
 use argon2::password_hash::PasswordHashString;
 use serde::{Deserialize, Serialize};
-use starriver_infrastructure::security::authentication::password_hasher::{
-    from_hashed_password, hash_password, verify_password,
+use starriver_infrastructure::{
+    error::error::{ApiError, Cause},
+    security::authentication::password_hasher::{
+        from_hashed_password, hash_password, verify_password,
+    },
 };
 use time::OffsetDateTime;
 
@@ -19,9 +21,12 @@ pub enum State {
 pub struct Username(String);
 
 impl Username {
-    pub fn new(username: &str) -> Result<Self, Error> {
+    pub fn new(username: &str) -> Result<Self, ApiError> {
         if username.len() < 3 || username.len() > 20 {
-            return Err(Error::msg("must be less than 20 characters"));
+            return Err(ApiError::new(
+                Cause::ClientBadRequest,
+                "must be less than 20 characters",
+            ));
         }
         Ok(Self(username.to_string()))
     }
@@ -38,9 +43,9 @@ pub struct Password {
 }
 
 impl Password {
-    pub fn create_password(raw_password: &str) -> Result<Self, Error> {
+    pub fn create_password(raw_password: &str) -> Result<Self, ApiError> {
         hash_password(raw_password)
-            .map_err(|e| Error::msg(e.to_string()))
+            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
             .map(|e| Password {
                 hashed_string: e.to_string(),
                 set_at: OffsetDateTime::now_utc(),
@@ -50,21 +55,20 @@ impl Password {
     pub fn restore_by_hashed_pwd(
         hashed_string: &str,
         set_at: OffsetDateTime,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ApiError> {
         from_hashed_password(hashed_string)
-            .map_err(|e| Error::msg(e.to_string()))
+            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
             .map(|e| Password {
                 hashed_string: e.to_string(),
                 set_at,
             })
     }
 
-    pub fn verify_password(&self, input: &str) -> Result<(), Error> {
-        let password_hash_string =
-            PasswordHashString::new(&self.hashed_string).map_err(|e| Error::msg(e.to_string()))?;
+    pub fn verify_password(&self, input: &str) -> Result<(), ApiError> {
+        let password_hash_string = PasswordHashString::new(&self.hashed_string)
+            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
         verify_password(input, &password_hash_string)
-            .map(|_| ())
-            .map_err(|e| Error::msg(e))
+            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
     }
 
     pub fn hashed_password_string(&self) -> &str {

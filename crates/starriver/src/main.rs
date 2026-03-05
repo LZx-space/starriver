@@ -55,15 +55,14 @@ async fn main() {
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
-    let authentication_layer = AuthenticationLayer::new(
-        UserAuthenticator::new(UserRepositoryImpl::new(conn)),
-        UsernameFlow {},
-    );
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
     let service_builder = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(handle_api_error))
-        .layer(authentication_layer);
+        .layer(AuthenticationLayer::new(
+            UserAuthenticator::new(UserRepositoryImpl::new(conn)),
+            UsernameFlow {},
+        ));
     let router = Router::new()
         .route("/session/user", get(authentication::validate_authenticated))
         .route("/users", post(user::insert))
@@ -77,8 +76,8 @@ async fn main() {
             get(dictionary::list_dictionary_entry).post(dictionary::add_dictionary_entry),
         )
         .nest_service("/static", serve_dir)
-        .layer(service_builder)
-        .with_state(AppState::new(conn));
+        .with_state(AppState::new(conn))
+        .layer(service_builder);
     let listener = TcpListener::bind(&addrs)
         .await
         .expect("Can't bind to address");

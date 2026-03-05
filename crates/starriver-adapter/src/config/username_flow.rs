@@ -29,7 +29,6 @@ use std::{
 use time::{Duration, OffsetDateTime};
 use tracing::{error, info};
 
-#[derive(Clone)]
 pub struct UsernameFlow {}
 
 impl AuthenticationFlow for UsernameFlow {

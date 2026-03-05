@@ -15,8 +15,11 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    pub fn new(cause: Cause, message: String) -> Self {
-        ApiError { cause, message }
+    pub fn new<S: Into<String>>(cause: Cause, message: S) -> Self {
+        ApiError {
+            cause,
+            message: message.into(),
+        }
     }
 }
 
@@ -35,7 +38,7 @@ impl IntoResponse for ApiError {
 
 impl From<Infallible> for ApiError {
     fn from(_: Infallible) -> Self {
-        ApiError::new(Cause::ClientBadRequest, "Infallible".to_string())
+        ApiError::new(Cause::ClientBadRequest, "Infallible")
     }
 }
 

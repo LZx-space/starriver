@@ -9,5 +9,8 @@ pub struct BlogPreview {
 
     pub title: String,
 
+    #[sea_orm(from_alias = "body")]
+    pub summary: String,
+
     pub create_at: OffsetDateTime,
 }

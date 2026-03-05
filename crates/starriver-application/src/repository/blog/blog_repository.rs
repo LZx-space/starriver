@@ -2,6 +2,7 @@ use super::po::blog::ActiveModel;
 use super::po::blog::Column;
 use super::po::blog::Entity;
 use sea_orm::ActiveValue::Set;
+use sea_orm::prelude::Expr;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
@@ -20,6 +21,7 @@ impl BlogRepository for BlogRepositoryImpl {
         let blogs = Entity::find()
             .select_only()
             .columns([Column::Id, Column::Title, Column::CreateAt])
+            .column_as(Expr::cust("SUBSTRING(body, 1, 5)"), Column::Body)
             .offset(q.page * q.page_size)
             .limit(q.page_size)
             .into_model::<BlogPreview>()

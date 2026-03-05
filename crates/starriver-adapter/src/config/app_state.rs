@@ -1,6 +1,6 @@
 use sea_orm::DatabaseConnection;
-use starriver_application::service::blog_service::BlogApplication;
-use starriver_application::service::user_service::UserApplication;
+use starriver_application::blog_service::BlogApplication;
+use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::service::dictionary::dictionary_service::Dictionary;
 use std::sync::Arc;
 

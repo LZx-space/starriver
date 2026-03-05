@@ -14,7 +14,6 @@ use crate::security::authentication::core::principal::Principal;
 use crate::security::authentication::core::authenticator::Authenticator;
 use crate::security::authentication::web::flow::AuthenticationFlow;
 
-#[derive(Clone)]
 pub struct AuthenticationLayer<A, F, C, P> {
     pub authenticator: Arc<A>,
     pub authentication_flow: Arc<F>,
@@ -73,9 +72,22 @@ where
     }
 }
 
+/// 当结构体有泛型时，#[derive(Clone)]会导致泛型也要满足Clone特性，这里则手动实现
+impl<A, F, C, P> Clone for AuthenticationLayer<A, F, C, P> {
+    fn clone(&self) -> Self {
+        Self {
+            authenticator: self.authenticator.clone(),
+            authentication_flow: self.authentication_flow.clone(),
+            _c: self._c.clone(),
+            _p: self._p.clone(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------
+
 /// 认证服务，实现了tower的Service trait
-#[derive(Clone)]
-pub struct AuthenticationService<S, A, F, C, P> {
+pub struct AuthenticationService<S: Clone, A, F, C, P> {
     service: S,
     authenticator: Arc<A>,
     authentication_flow: Arc<F>,
@@ -136,5 +148,17 @@ where
             }
             service.call(req).await.map_err(|e| e.into())
         })
+    }
+}
+
+impl<S: Clone, A, F, C, P> Clone for AuthenticationService<S, A, F, C, P> {
+    fn clone(&self) -> Self {
+        Self {
+            service: self.service.clone(),
+            authenticator: self.authenticator.clone(),
+            authentication_flow: self.authentication_flow.clone(),
+            _c: self._c.clone(),
+            _p: self._p.clone(),
+        }
     }
 }

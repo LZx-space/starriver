@@ -22,15 +22,19 @@ impl PasswordSpecification {
         }
     }
 
-    pub fn during_validity_duration(&self, pwd: &Password) -> bool {
+    /// 检查密码是否在有效期内
+    pub fn is_within_validity(&self, pwd: &Password) -> bool {
         pwd.set_at().add(self.validity_duration) > OffsetDateTime::now_utc()
     }
 
-    pub fn set_account_locked(&mut self, login_events: Vec<LoginEvent>) -> bool {
+    /// 依据尝试密码次数来锁定账户
+    pub fn lock_if_attempts_exceeded(&mut self, login_events: Vec<LoginEvent>) -> bool {
         let now = OffsetDateTime::now_utc();
         login_events
             .iter()
-            .filter(|e| e.login_at.add(self.accumulate_bad_password_times_duration) >= now)
+            .filter(|e| {
+                !e.is_sccuess && e.try_at.add(self.accumulate_bad_password_times_duration) >= now
+            })
             .count()
             > self.max_bad_password_times
     }

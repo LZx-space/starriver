@@ -1,6 +1,4 @@
-use crate::user::specification::PasswordSpecification;
-use crate::user::value_object::{LoginResult, Password, State, Username};
-use anyhow::Error;
+use crate::user::value_object::{Password, State, Username};
 use serde::Serialize;
 use starriver_infrastructure::error::error::ApiError;
 use time::OffsetDateTime;
@@ -34,16 +32,16 @@ impl User {
         })
     }
 
-    pub fn restore(
-        username: &str,
-        password: &str,
-        password_specification: PasswordSpecification,
-    ) -> Result<Self, Error> {
+    pub fn restore(username: &str, password: &str) -> Result<Self, ApiError> {
         todo!()
     }
 
     // 领域能力---------------------------------------------------------------------
     pub fn change_password(&mut self, new_password: &str) -> Result<(), ApiError> {
+        todo!()
+    }
+
+    pub fn add_login_event(&mut self, event: LoginEvent) {
         todo!()
     }
 }
@@ -52,7 +50,9 @@ impl User {
 
 #[derive(Debug, Serialize)]
 pub struct LoginEvent {
-    pub login_at: OffsetDateTime,
+    pub try_at: OffsetDateTime,
     pub ip: String,
-    pub result: LoginResult,
+    pub is_sccuess: bool,
 }
+
+pub struct SecurityEvent {}

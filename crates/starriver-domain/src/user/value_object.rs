@@ -85,9 +85,3 @@ impl Password {
 pub struct RecentLoginEvents {
     pub login_events: Vec<LoginEvent>,
 }
-
-#[derive(Debug, Serialize)]
-pub enum LoginResult {
-    Success,
-    Failure(String),
-}

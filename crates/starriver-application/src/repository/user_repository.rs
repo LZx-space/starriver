@@ -8,7 +8,6 @@ use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::error::error::ApiError;
 use time::OffsetDateTime;
 
-#[derive(Clone)]
 pub struct DefaultUserRepository {
     pub conn: &'static DatabaseConnection,
 }

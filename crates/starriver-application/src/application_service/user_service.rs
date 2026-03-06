@@ -4,7 +4,6 @@ use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
 use starriver_infrastructure::error::error::{ApiError, Cause};
 
-#[derive(Clone)]
 pub struct UserApplication {
     repo: DefaultUserRepository,
 }

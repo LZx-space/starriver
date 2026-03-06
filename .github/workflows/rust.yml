@@ -16,6 +16,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install specified Rust version
+        uses: dtolnay/rust-toolchain@master
+        with:
+          # 支持精确版本、稳定版、beta、nightly，甚至带日期的 nightly 版本
+          toolchain: 1.94.0 
       - name: Build
         run: cargo build --verbose
       - name: Run tests

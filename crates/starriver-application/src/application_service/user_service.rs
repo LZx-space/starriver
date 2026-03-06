@@ -1,4 +1,8 @@
-use crate::repository::user_repository::DefaultUserRepository;
+use crate::{
+    query::user_query_service::{DefaultUserQueryService, UserQueryService},
+    repository::user_repository::DefaultUserRepository,
+    user_dto::SecurityUser,
+};
 use sea_orm::DatabaseConnection;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
@@ -6,6 +10,7 @@ use starriver_infrastructure::error::error::{ApiError, Cause};
 
 pub struct UserApplication {
     repo: DefaultUserRepository,
+    query_service: DefaultUserQueryService,
 }
 
 impl UserApplication {
@@ -13,6 +18,7 @@ impl UserApplication {
     pub fn new(conn: &'static DatabaseConnection) -> UserApplication {
         UserApplication {
             repo: DefaultUserRepository { conn },
+            query_service: DefaultUserQueryService { conn },
         }
     }
 
@@ -23,7 +29,7 @@ impl UserApplication {
         self.repo.insert(user).await
     }
 
-    pub async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        self.repo.find_by_username(username).await
+    pub async fn find_by_username(&self, username: &str) -> Result<Option<SecurityUser>, ApiError> {
+        self.query_service.find_by_username(username).await
     }
 }

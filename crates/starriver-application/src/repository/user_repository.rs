@@ -1,7 +1,7 @@
-use crate::db::user_do::{ActiveModel, Column};
-use crate::db::user_do::{Entity, Model};
+use crate::db::user_do::ActiveModel;
+use crate::db::user_do::Model;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::value_object::{Password, Username};
@@ -37,15 +37,6 @@ impl UserRepository for DefaultUserRepository {
         .update(self.conn)
         .await
         .map(model_to_entity)?
-    }
-
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        Entity::find()
-            .filter(Column::Username.eq(username))
-            .one(self.conn)
-            .await?
-            .map(model_to_entity)
-            .transpose()
     }
 }
 

@@ -122,8 +122,8 @@ impl UserRepository for DefaultUserRepository {
         })?;
         match user {
             Some(u) => Ok(User {
-                username: u.username.as_str().to_string(),
-                password: u.password.hashed_password_string().to_string(),
+                username: u.username,
+                password: u.password,
                 authorities: vec![],
             }),
             None => {

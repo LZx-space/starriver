@@ -24,10 +24,7 @@ use starriver_infrastructure::{
     error::error::Cause, security::authentication::core::authenticator::AuthenticationError,
 };
 use std::future::Future;
-use std::{
-    future::ready,
-    ops::{Add, Not},
-};
+use std::ops::{Add, Not};
 use time::{Duration, OffsetDateTime};
 use tracing::{error, info};
 
@@ -41,12 +38,14 @@ impl AuthenticationFlow for UsernamePasswordFlow {
     type Authenticator = UsernamePasswordAuthenticator;
 
     fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> + Send {
-        ready(req.uri().path().eq("/login") && req.method().eq(&Method::POST))
+        let path = req.uri().path();
+        let method = req.method();
+        async move { path.starts_with("/static").not() && method.eq(&Method::GET).not() }
     }
 
     fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool> {
-        let path = req.uri().path().to_owned();
-        let method = req.method().to_owned();
+        let path = req.uri().path();
+        let method = req.method();
         async move { path.starts_with("/static").not() && method.eq(&Method::GET).not() }
     }
 

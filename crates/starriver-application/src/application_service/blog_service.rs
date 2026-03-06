@@ -1,7 +1,7 @@
 use crate::assembler::blog_assembler::{cmd_2_new_entity, cmd_2_update_entity, entity_2_vo};
-use crate::dto::blog_dto::{BlogCmd, BlogPreview, BlogVo};
-use crate::query_service::blog_query_service::{BlogQueryService, DefaultBlogQueryService};
-use crate::repository::blog::blog_repository::DefaultBlogRepository;
+use crate::dto::blog_dto::{BlogCmd, BlogDetail, BlogSummary};
+use crate::query::blog_query_service::{BlogQueryService, DefaultBlogQueryService};
+use crate::repository::blog_repository::DefaultBlogRepository;
 use sea_orm::DatabaseConnection;
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
@@ -23,15 +23,15 @@ impl BlogApplication {
         }
     }
 
-    pub async fn page(&self, q: PageQuery) -> Result<PageResult<BlogPreview>, ApiError> {
+    pub async fn page(&self, q: PageQuery) -> Result<PageResult<BlogSummary>, ApiError> {
         self.query_service.find_page(q).await
     }
 
-    pub async fn find_by_id(&self, id: Uuid) -> Result<BlogVo, ApiError> {
+    pub async fn find_by_id(&self, id: Uuid) -> Result<BlogDetail, ApiError> {
         self.find_entity_by_id(id).await.map(entity_2_vo)
     }
 
-    pub async fn add(&self, cmd: BlogCmd) -> Result<BlogVo, ApiError> {
+    pub async fn add(&self, cmd: BlogCmd) -> Result<BlogDetail, ApiError> {
         let blog = cmd_2_new_entity(cmd, "LZx".to_string());
         self.repo.add(blog).await.map(entity_2_vo)
     }
@@ -40,7 +40,7 @@ impl BlogApplication {
         self.repo.delete_by_id(id).await
     }
 
-    pub async fn update(&self, id: Uuid, cmd: BlogCmd) -> Result<BlogVo, ApiError> {
+    pub async fn update(&self, id: Uuid, cmd: BlogCmd) -> Result<BlogDetail, ApiError> {
         let existing_blog = self.find_entity_by_id(id).await?;
         let updated_blog = cmd_2_update_entity(cmd, existing_blog);
         self.repo

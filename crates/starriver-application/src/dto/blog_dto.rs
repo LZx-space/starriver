@@ -10,7 +10,7 @@ pub struct BlogCmd {
 }
 
 #[derive(Serialize)]
-pub struct BlogVo {
+pub struct BlogDetail {
     pub title: String,
 
     pub body: String,
@@ -19,7 +19,7 @@ pub struct BlogVo {
 }
 
 #[derive(Serialize, FromQueryResult)]
-pub struct BlogPreview {
+pub struct BlogSummary {
     pub id: Uuid,
 
     pub title: String,

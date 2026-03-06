@@ -1,3 +1,3 @@
 /// 博客
-pub mod blog;
-pub mod user;
+pub mod blog_repository;
+pub mod user_repository;

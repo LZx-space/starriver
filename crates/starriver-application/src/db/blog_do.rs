@@ -1,6 +1,36 @@
+use sea_orm::entity::prelude::*;
 use sea_orm::{DeriveActiveEnum, EnumIter};
+use time::OffsetDateTime;
 
 use starriver_domain::blog::value_object::State;
+
+/// 文章
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "blog")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: Uuid,
+
+    pub title: String,
+
+    #[sea_orm(column_type = "Text")]
+    pub body: String,
+
+    pub state: BlogState,
+
+    pub author_id: String,
+
+    pub create_at: OffsetDateTime,
+
+    pub update_at: Option<OffsetDateTime>,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {}
+
+impl ActiveModelBehavior for ActiveModel {}
+
+// ---------------------------------------------------------
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]

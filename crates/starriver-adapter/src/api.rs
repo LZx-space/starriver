@@ -1,4 +1,4 @@
-pub mod authentication;
-pub mod blog;
-pub mod dictionary;
-pub mod user;
+pub mod authentication_handler;
+pub mod blog_handler;
+pub mod dictionary_handler;
+pub mod user_handler;

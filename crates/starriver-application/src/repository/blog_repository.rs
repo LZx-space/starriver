@@ -1,5 +1,5 @@
-use super::po::blog::ActiveModel;
-use super::po::blog::Entity;
+use crate::db::blog_do::ActiveModel;
+use crate::db::blog_do::Entity;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
 use starriver_domain::blog::entity::Blog;
@@ -23,7 +23,7 @@ impl BlogRepository for DefaultBlogRepository {
                     title: e.title.clone(),
                     body: e.body.clone(),
                     state: e.state.into(),
-                    blogger_id: e.blogger_id,
+                    author_id: e.author_id,
                     create_at: e.create_at,
                     update_at: e.update_at,
                 })
@@ -37,7 +37,7 @@ impl BlogRepository for DefaultBlogRepository {
             title: Set(e.title),
             body: Set(e.body),
             state: Set(Default::default()),
-            blogger_id: Set(e.blogger_id),
+            author_id: Set(e.author_id),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: Set(None),
         }
@@ -48,7 +48,7 @@ impl BlogRepository for DefaultBlogRepository {
             title: e.title,
             body: e.body,
             state: e.state.into(),
-            blogger_id: e.blogger_id,
+            author_id: e.author_id,
             create_at: e.create_at,
             update_at: e.update_at,
         })
@@ -81,7 +81,7 @@ impl BlogRepository for DefaultBlogRepository {
                                 title: updated.title,
                                 body: updated.body,
                                 state: updated.state.into(),
-                                blogger_id: updated.blogger_id,
+                                author_id: updated.author_id,
                                 create_at: updated.create_at,
                                 update_at: updated.update_at,
                             })

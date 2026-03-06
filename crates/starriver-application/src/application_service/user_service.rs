@@ -1,4 +1,4 @@
-use crate::repository::user::user_repository::DefaultUserRepository;
+use crate::repository::user_repository::DefaultUserRepository;
 use sea_orm::DatabaseConnection;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;

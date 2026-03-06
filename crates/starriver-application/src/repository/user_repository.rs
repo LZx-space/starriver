@@ -1,5 +1,5 @@
-use super::po::user::{ActiveModel, Column};
-use super::po::user::{Entity, Model};
+use crate::db::user_do::{ActiveModel, Column};
+use crate::db::user_do::{Entity, Model};
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use starriver_domain::user::entity::User;

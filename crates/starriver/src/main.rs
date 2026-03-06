@@ -4,9 +4,9 @@ use axum::error_handling::HandleErrorLayer;
 use axum::routing::{get, post};
 use ferris_says::say;
 use mimalloc::MiMalloc;
-use starriver_adapter::api::blog;
-use starriver_adapter::api::dictionary;
-use starriver_adapter::api::{authentication, user};
+use starriver_adapter::api::blog_handler;
+use starriver_adapter::api::dictionary_handler;
+use starriver_adapter::api::{authentication_handler, user_handler};
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authentictor::{
     DefaultUserRepository, UsernamePasswordAuthenticator,
@@ -66,16 +66,22 @@ async fn main() {
             UsernamePasswordFlow {},
         ));
     let router = Router::new()
-        .route("/session/user", get(authentication::validate_authenticated))
-        .route("/users", post(user::insert))
-        .route("/blogs", get(blog::page).post(blog::insert))
+        .route(
+            "/session/user",
+            get(authentication_handler::authenticated_user),
+        )
+        .route("/users", post(user_handler::insert))
+        .route("/blogs", get(blog_handler::page).post(blog_handler::insert))
         .route(
             "/blogs/{id}",
-            get(blog::find_one).put(blog::update).delete(blog::delete),
+            get(blog_handler::find_one)
+                .put(blog_handler::update)
+                .delete(blog_handler::delete),
         )
         .route(
             "/dictionary-entries",
-            get(dictionary::list_dictionary_entry).post(dictionary::add_dictionary_entry),
+            get(dictionary_handler::list_dictionary_entry)
+                .post(dictionary_handler::add_dictionary_entry),
         )
         .nest_service("/static", serve_dir)
         .with_state(AppState::new(conn))

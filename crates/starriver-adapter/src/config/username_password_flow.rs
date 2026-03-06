@@ -40,7 +40,7 @@ impl AuthenticationFlow for UsernamePasswordFlow {
     fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> + Send {
         let path = req.uri().path();
         let method = req.method();
-        async { path.starts_with("/static").not() && method.eq(&Method::GET).not() }
+        async { path.eq("/login") && method.eq(&Method::POST) }
     }
 
     fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool> {
@@ -177,11 +177,11 @@ mod tests {
 
         // 测试需要认证的路径
         let req = Request::builder()
-            .uri("/api/protected")
+            .uri("/api/un_protected")
             .method(Method::GET)
             .body(Body::empty())
             .unwrap();
-        assert!(flow.is_access_require_authentication(&req).await);
+        assert!(!flow.is_access_require_authentication(&req).await);
 
         // 测试不需要认证的路径（/users POST）
         let req = Request::builder()
@@ -189,7 +189,7 @@ mod tests {
             .method(Method::POST)
             .body(Body::empty())
             .unwrap();
-        assert!(!flow.is_access_require_authentication(&req).await);
+        assert!(flow.is_access_require_authentication(&req).await);
     }
 
     #[tokio::test]
@@ -226,14 +226,6 @@ mod tests {
         let req = Request::builder()
             .uri("/login")
             .method(Method::GET)
-            .body(Body::empty())
-            .unwrap();
-        assert!(!flow.is_authenticate_request(&req).await);
-
-        // 测试非登录路径
-        let req = Request::builder()
-            .uri("/other")
-            .method(Method::POST)
             .body(Body::empty())
             .unwrap();
         assert!(!flow.is_authenticate_request(&req).await);

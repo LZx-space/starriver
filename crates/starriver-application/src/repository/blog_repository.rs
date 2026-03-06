@@ -56,40 +56,38 @@ impl BlogRepository for DefaultBlogRepository {
     }
 
     async fn delete_by_id(&self, id: Uuid) -> Result<bool, ApiError> {
-        Entity::delete_by_id(id)
+        let result = Entity::delete_by_id(id)
             .exec(self.conn)
-            .await
-            .map(|e| e.rows_affected > 0)
-            .map_err(ApiError::from)
+            .await?
+            .rows_affected
+            > 0;
+        Ok(result)
     }
 
     async fn update(&self, e: Blog) -> Result<Option<Blog>, ApiError> {
-        let exist = Entity::find_by_id(e.id).one(self.conn).await;
+        let exist = Entity::find_by_id(e.id).one(self.conn).await?;
         match exist {
-            Ok(op) => match op {
-                None => Ok(None),
-                Some(found) => {
-                    let mut found: ActiveModel = found.into();
-                    found.title = Set(e.title);
-                    found.body = Set(e.body);
-                    found
-                        .update(self.conn)
-                        .await
-                        .map(|updated| {
-                            Some(Blog {
-                                id: updated.id,
-                                title: updated.title,
-                                body: updated.body,
-                                state: updated.state.into(),
-                                author_id: updated.author_id,
-                                create_at: updated.create_at,
-                                update_at: updated.update_at,
-                            })
+            None => Ok(None),
+            Some(found) => {
+                let mut found: ActiveModel = found.into();
+                found.title = Set(e.title);
+                found.body = Set(e.body);
+                found
+                    .update(self.conn)
+                    .await
+                    .map(|updated| {
+                        Some(Blog {
+                            id: updated.id,
+                            title: updated.title,
+                            body: updated.body,
+                            state: updated.state.into(),
+                            author_id: updated.author_id,
+                            create_at: updated.create_at,
+                            update_at: updated.update_at,
                         })
-                        .map_err(ApiError::from)
-                }
-            },
-            Err(err) => Err(ApiError::from(err)),
+                    })
+                    .map_err(ApiError::from)
+            }
         }
     }
 }

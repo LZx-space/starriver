@@ -25,7 +25,6 @@ impl UserRepository for DefaultUserRepository {
         .insert(self.conn)
         .await
         .map(model_to_entity)?
-        .map_err(ApiError::from)
     }
 
     async fn update(&self, user: User) -> Result<User, ApiError> {
@@ -39,17 +38,15 @@ impl UserRepository for DefaultUserRepository {
         .update(self.conn)
         .await
         .map(model_to_entity)?
-        .map_err(ApiError::from)
     }
 
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        let model = Entity::find()
+        Entity::find()
             .filter(Column::Username.eq(username))
             .one(self.conn)
-            .await
-            .map_err(ApiError::from)?;
-        let user = model.map(model_to_entity).transpose()?;
-        Ok(user)
+            .await?
+            .map(model_to_entity)
+            .transpose()
     }
 }
 

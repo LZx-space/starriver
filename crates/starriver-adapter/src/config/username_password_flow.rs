@@ -40,13 +40,13 @@ impl AuthenticationFlow for UsernamePasswordFlow {
     fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> + Send {
         let path = req.uri().path();
         let method = req.method();
-        async move { path.starts_with("/static").not() && method.eq(&Method::GET).not() }
+        async { path.starts_with("/static").not() && method.eq(&Method::GET).not() }
     }
 
     fn is_access_require_authentication(&self, req: &Self::Request) -> impl Future<Output = bool> {
         let path = req.uri().path();
         let method = req.method();
-        async move { path.starts_with("/static").not() && method.eq(&Method::GET).not() }
+        async { path.starts_with("/static").not() && method.eq(&Method::GET).not() }
     }
 
     fn is_authenticated(&self, req: &Self::Request) -> impl Future<Output = bool> {

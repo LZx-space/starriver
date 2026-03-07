@@ -10,13 +10,7 @@ use starriver_infrastructure::security::authentication::username_password_authen
 };
 
 pub struct UsernamePasswordAuthenticator {
-    user_service: Arc<UserApplication>,
-}
-
-impl UsernamePasswordAuthenticator {
-    pub fn new(user_service: Arc<UserApplication>) -> UsernamePasswordAuthenticator {
-        UsernamePasswordAuthenticator { user_service }
-    }
+    pub user_service: Arc<UserApplication>,
 }
 
 impl Authenticator for UsernamePasswordAuthenticator {

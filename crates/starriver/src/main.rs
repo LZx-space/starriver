@@ -56,13 +56,13 @@ async fn main() {
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
     let app_state = AppState::new(conn);
-    let user_application = app_state.user_application.clone();
+    let user_service = app_state.user_application.clone();
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
     let service_builder = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(handle_api_error))
         .layer(AuthenticationLayer::new(
-            UsernamePasswordAuthenticator::new(user_application),
+            UsernamePasswordAuthenticator { user_service },
             UsernamePasswordFlow {},
         ));
     let router = Router::new()

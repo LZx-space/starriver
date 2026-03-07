@@ -1,30 +1,24 @@
 use crate::user::entity::LoginEvent;
-use crate::user::value_object::Password;
+use starriver_infrastructure::error::error::{ApiError, Cause};
 use std::ops::Add;
 use time::{Duration, OffsetDateTime};
 
 pub struct PasswordSpecification {
-    validity_duration: Duration,
+    min_length: u8,
+    max_length: u8,
     accumulate_bad_password_times_duration: Duration,
     max_bad_password_times: usize,
 }
 
 impl PasswordSpecification {
-    pub fn new(
-        validity_duration: Duration,
-        accumulate_bad_password_times_duration: Duration,
-        max_bad_password_times: usize,
-    ) -> Self {
-        PasswordSpecification {
-            validity_duration,
-            accumulate_bad_password_times_duration,
-            max_bad_password_times,
+    pub fn validate_new_password(&self, password: &str) -> Result<(), ApiError> {
+        if password.len() < self.min_length as usize {
+            return Err(ApiError::new(Cause::ClientBadRequest, "password too short"));
         }
-    }
-
-    /// 检查密码是否在有效期内
-    pub fn is_within_validity(&self, pwd: &Password) -> bool {
-        pwd.set_at().add(self.validity_duration) > OffsetDateTime::now_utc()
+        if password.len() > self.max_length as usize {
+            return Err(ApiError::new(Cause::ClientBadRequest, "password too long"));
+        }
+        Ok(())
     }
 
     /// 依据尝试密码次数来锁定账户
@@ -37,5 +31,16 @@ impl PasswordSpecification {
             })
             .count()
             > self.max_bad_password_times
+    }
+}
+
+impl Default for PasswordSpecification {
+    fn default() -> Self {
+        PasswordSpecification {
+            min_length: 6,
+            max_length: 20,
+            accumulate_bad_password_times_duration: Duration::minutes(10),
+            max_bad_password_times: 5,
+        }
     }
 }

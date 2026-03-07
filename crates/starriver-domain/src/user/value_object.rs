@@ -1,4 +1,3 @@
-use crate::user::entity::LoginEvent;
 use argon2::password_hash::PasswordHashString;
 use serde::{Deserialize, Serialize};
 use starriver_infrastructure::{
@@ -78,10 +77,4 @@ impl Password {
     pub fn set_at(&self) -> OffsetDateTime {
         self.set_at
     }
-}
-
-// ----- Login Event --------------------------------------
-
-pub struct RecentLoginEvents {
-    pub login_events: Vec<LoginEvent>,
 }

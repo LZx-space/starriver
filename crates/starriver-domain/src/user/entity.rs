@@ -25,27 +25,10 @@ pub struct User {
 }
 
 impl User {
-    // 工厂方法---------------------------------------------------------------------
-    pub fn create_user(username: &str, password: &str) -> Result<Self, ApiError> {
-        let username = Username::new(username)?;
-        let password = Password::create_password(password)?;
-        Ok(User {
-            id: Uuid::now_v7(),
-            username,
-            password,
-            state: Default::default(),
-            created_at: OffsetDateTime::now_utc(),
-            login_events: vec![],
-        })
-    }
-
-    pub fn restore(username: &str, password: &str) -> Result<Self, ApiError> {
-        todo!()
-    }
-
     // 领域能力---------------------------------------------------------------------
     pub fn change_password(&mut self, new_password: &str) -> Result<(), ApiError> {
-        todo!()
+        self.password = Password::create_password(new_password)?;
+        Ok(())
     }
 
     /// 通过密码认证

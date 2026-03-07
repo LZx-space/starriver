@@ -1,14 +1,31 @@
-use crate::user::repository::UserRepository;
+use starriver_infrastructure::error::error::ApiError;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
-pub struct UserFactory<T> {
-    repo: T,
-}
+use crate::user::{
+    entity::User,
+    specification::PasswordSpecification,
+    value_object::{Password, Username},
+};
 
-impl<T> UserFactory<T>
-where
-    T: UserRepository,
-{
-    pub async fn new(repo: T) -> Self {
-        UserFactory { repo }
+pub struct UserFactory {}
+
+impl UserFactory {
+    pub fn create_user(
+        username: &str,
+        password: &str,
+        password_specification: PasswordSpecification,
+    ) -> Result<User, ApiError> {
+        let username = Username::new(username)?;
+        password_specification.validate_new_password(password)?;
+        let password = Password::create_password(password)?;
+        Ok(User {
+            id: Uuid::now_v7(),
+            username,
+            password,
+            state: Default::default(),
+            created_at: OffsetDateTime::now_utc(),
+            login_events: vec![],
+        })
     }
 }

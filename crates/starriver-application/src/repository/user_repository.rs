@@ -11,6 +11,7 @@ use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::error::error::ApiError;
+use starriver_infrastructure::error::error::Cause;
 use time::OffsetDateTime;
 
 pub struct DefaultUserRepository {
@@ -28,9 +29,17 @@ impl UserRepository for DefaultUserRepository {
     }
 
     async fn insert(&self, user: User) -> Result<User, ApiError> {
+        let username = user.username.as_str();
+        let found = self.find_by_username(username).await?;
+        if found.is_some() {
+            return Err(ApiError::new(
+                Cause::ClientBadRequest,
+                "username already exists",
+            ));
+        }
         ActiveModel {
             id: Set(user.id),
-            username: Set(user.username.as_str().to_string()),
+            username: Set(username.to_string()),
             password: Set(user.password.hashed_password_string().to_string()),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: Set(None),

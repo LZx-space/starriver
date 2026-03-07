@@ -44,8 +44,7 @@ impl From<Infallible> for ApiError {
 
 impl Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (status, code) = self.cause.to_http_status();
-        write!(f, "({}, {}, {})", status, code, self.message)
+        write!(f, "{}", self.message)
     }
 }
 

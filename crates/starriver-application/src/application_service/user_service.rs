@@ -25,7 +25,10 @@ impl UserApplication {
 
     pub async fn register_user(&self, username: &str, password: &str) -> Result<(), ApiError> {
         let user = UserFactory::create_user(username, password, PasswordSpecification::default())
-            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
+            .map_err(|e| {
+            error!("create_user error: {}", e);
+            ApiError::new(Cause::ClientBadRequest, e.to_string())
+        })?;
         self.repo.insert(user).await.map(|_| ())
     }
 

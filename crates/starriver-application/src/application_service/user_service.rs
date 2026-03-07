@@ -26,7 +26,7 @@ impl UserApplication {
     pub async fn register_user(&self, username: &str, password: &str) -> Result<(), ApiError> {
         let user = UserFactory::create_user(username, password, PasswordSpecification::default())
             .map_err(|e| {
-            error!("create_user error: {}", e);
+            error!("register user error: {}", e);
             ApiError::new(Cause::ClientBadRequest, e.to_string())
         })?;
         self.repo.insert(user).await.map(|_| ())
@@ -38,11 +38,12 @@ impl UserApplication {
     ) -> Result<AuthenticatedUser, AuthenticationError> {
         let username = credential.username.as_str();
         let password = credential.password.as_str();
-        let user = self.repo.find_by_username(username).await.map_err(|e| {
-            error!("find_by_username error: {}", e);
+        let opt = self.repo.find_by_username(username).await.map_err(|e| {
+            // 用户名查不到用户不进这里，这里是异常才进
+            error!("find by username error: {}", e);
             AuthenticationError::Unknown
         })?;
-        match user {
+        match opt {
             Some(mut user) => {
                 user.authenticate_by_password(password)?;
                 Ok(AuthenticatedUser {

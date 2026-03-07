@@ -25,7 +25,7 @@ use starriver_infrastructure::{
 use std::future::Future;
 use std::ops::{Add, Not};
 use time::{Duration, OffsetDateTime};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub struct UsernamePasswordFlow {}
 
@@ -136,6 +136,7 @@ impl AuthenticationFlow for UsernamePasswordFlow {
         err: AuthenticationError,
     ) -> impl Future<Output = Self::Response> {
         async move {
+            warn!("authentication failed: {}", err);
             let cause = match err {
                 AuthenticationError::UsernameNotFound => Cause::ClientBadRequest,
                 AuthenticationError::BadPassword => Cause::ClientBadRequest,

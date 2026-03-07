@@ -7,8 +7,9 @@ use axum::{
 use sea_orm::DbErr;
 use serde::Serialize;
 use strum::EnumIter;
+use tracing::error;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct ApiError {
     cause: Cause,
     message: String,
@@ -26,6 +27,7 @@ impl ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status_code, code) = self.cause.to_http_status();
+        error!(name: "api error", "code: {}, message：{}", code, self.message);
         let json = ApiErrorResponse::<()> {
             code: code,
             message: self.message,
@@ -97,13 +99,12 @@ impl IntoResponse for PageError {
 
 impl Display for PageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (status, code) = self.cause.to_http_status();
-        write!(f, "({}, {}, {})", status, code, self.message)
+        write!(f, "{}", self.message)
     }
 }
 
 // ----------------------------------------------------------------------------------------
-#[derive(Serialize, EnumIter)]
+#[derive(Debug, Serialize, EnumIter)]
 pub enum Cause {
     ClientBadRequest,
     DbError,

@@ -1,10 +1,13 @@
 use crate::db::blog_do::ActiveModel;
 use crate::db::blog_do::Entity;
+use crate::db::blog_do::Model;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::error::ApiError;
+use starriver_infrastructure::error::error::Cause;
+use starriver_infrastructure::update_active_model_on_change;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -31,13 +34,13 @@ impl BlogRepository for DefaultBlogRepository {
             .map_err(ApiError::from)
     }
 
-    async fn add(&self, e: Blog) -> Result<Blog, ApiError> {
+    async fn add(&self, blog: Blog) -> Result<Blog, ApiError> {
         ActiveModel {
-            id: Set(e.id),
-            title: Set(e.title),
-            body: Set(e.body),
+            id: Set(blog.id),
+            title: Set(blog.title),
+            body: Set(blog.body),
             state: Set(Default::default()),
-            author_id: Set(e.author_id),
+            author_id: Set(blog.author_id),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: Set(None),
         }
@@ -64,30 +67,38 @@ impl BlogRepository for DefaultBlogRepository {
         Ok(result)
     }
 
-    async fn update(&self, e: Blog) -> Result<Option<Blog>, ApiError> {
-        let exist = Entity::find_by_id(e.id).one(self.conn).await?;
-        match exist {
-            None => Ok(None),
+    async fn update(&self, blog: Blog) -> Result<Blog, ApiError> {
+        match Entity::find_by_id(blog.id).one(self.conn).await? {
             Some(found) => {
-                let mut found: ActiveModel = found.into();
-                found.title = Set(e.title);
-                found.body = Set(e.body);
-                found
+                let mut model: ActiveModel = found.into();
+
+                let any_updated = update_active_model_on_change!(
+                    model, blog, title, body, author_id, create_at, update_at
+                );
+                if !any_updated {
+                    return Err(ApiError::new(Cause::ClientBadRequest, "none field updated"));
+                }
+                return model
                     .update(self.conn)
                     .await
-                    .map(|updated| {
-                        Some(Blog {
-                            id: updated.id,
-                            title: updated.title,
-                            body: updated.body,
-                            state: updated.state.into(),
-                            author_id: updated.author_id,
-                            create_at: updated.create_at,
-                            update_at: updated.update_at,
-                        })
-                    })
-                    .map_err(ApiError::from)
+                    .map(fun_name)
+                    .map_err(ApiError::from);
             }
-        }
+            None => {
+                return Err(ApiError::new(Cause::ClientBadRequest, "Blog not found"));
+            }
+        };
+    }
+}
+
+fn fun_name(updated: Model) -> Blog {
+    Blog {
+        id: updated.id,
+        title: updated.title,
+        body: updated.body,
+        state: updated.state.into(),
+        author_id: updated.author_id,
+        create_at: updated.create_at,
+        update_at: updated.update_at,
     }
 }

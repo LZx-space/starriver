@@ -9,11 +9,11 @@ pub trait BlogRepository {
     fn find_by_id(&self, id: Uuid) -> impl Future<Output = Result<Option<Blog>, ApiError>> + Send;
 
     /// 新增
-    fn add(&self, e: Blog) -> impl Future<Output = Result<Blog, ApiError>> + Send;
+    fn add(&self, blog: Blog) -> impl Future<Output = Result<Blog, ApiError>> + Send;
 
     /// 删除
     fn delete_by_id(&self, id: Uuid) -> impl Future<Output = Result<bool, ApiError>> + Send;
 
     /// 修改
-    fn update(&self, e: Blog) -> impl Future<Output = Result<Option<Blog>, ApiError>> + Send;
+    fn update(&self, blog: Blog) -> impl Future<Output = Result<Blog, ApiError>> + Send;
 }

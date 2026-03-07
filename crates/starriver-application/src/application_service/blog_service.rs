@@ -43,11 +43,7 @@ impl BlogApplication {
     pub async fn update(&self, id: Uuid, cmd: BlogCmd) -> Result<BlogDetail, ApiError> {
         let existing_blog = self.find_entity_by_id(id).await?;
         let updated_blog = cmd_2_update_entity(cmd, existing_blog);
-        self.repo
-            .update(updated_blog)
-            .await?
-            .map(entity_2_vo)
-            .ok_or_else(|| ApiError::new(Cause::DbError, format!("更新博客(id={})失败", id)))
+        self.repo.update(updated_blog).await.map(entity_2_vo)
     }
 
     // private-------------------------------------------------------------------

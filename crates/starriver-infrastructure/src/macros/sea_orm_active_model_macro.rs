@@ -14,6 +14,8 @@ macro_rules! update_active_model_on_change {
             // 对比聚合根字段与 ActiveModel 字段的值
             if !$entity.$field.eq($active_model.$field.as_ref()) {
                 $active_model.$field = Set($entity.$field);
+                // 有字段触发Set，标记为true
+                any_updated = true;
             }
         )*
         // 返回是否有字段执行了Set操作

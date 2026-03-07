@@ -1,7 +1,14 @@
 use crate::user::value_object::{Password, State, Username};
 use serde::Serialize;
-use starriver_infrastructure::error::error::ApiError;
+use starriver_infrastructure::{
+    error::error::ApiError,
+    security::authentication::{
+        core::authenticator::AuthenticationError,
+        password_hasher::{from_hashed_password, verify_password},
+    },
+};
 use time::OffsetDateTime;
+use tracing::error;
 use uuid::Uuid;
 
 // -----Aggregate Root User------------------------------------------------------
@@ -41,8 +48,27 @@ impl User {
         todo!()
     }
 
-    pub fn add_login_event(&mut self, event: LoginEvent) {
-        todo!()
+    /// 通过密码认证
+    pub fn authenticate_by_password(&mut self, password: &str) -> Result<(), AuthenticationError> {
+        from_hashed_password(self.password.hashed_password_string())
+            .map_err(|e| {
+                error!(
+                    "bad hashed password string in {} repository, {}",
+                    self.username.as_str(),
+                    e
+                );
+                AuthenticationError::BadPassword
+            })
+            .and_then(|pwd_hash_str| {
+                verify_password(password, &pwd_hash_str).map_err(|e| {
+                    error!(
+                        "verify {} hashed password error: {}",
+                        self.username.as_str(),
+                        e
+                    );
+                    AuthenticationError::BadPassword
+                })
+            })
     }
 }
 

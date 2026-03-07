@@ -8,12 +8,10 @@ use starriver_adapter::api::blog_handler;
 use starriver_adapter::api::dictionary_handler;
 use starriver_adapter::api::{authentication_handler, user_handler};
 use starriver_adapter::config::app_state::AppState;
-use starriver_adapter::config::username_password_authentictor::{
-    DefaultUserRepository, UsernamePasswordAuthenticator,
-};
+use starriver_adapter::config::username_password_authentictor::UsernamePasswordAuthenticator;
 use starriver_adapter::config::username_password_flow::UsernamePasswordFlow;
 use starriver_infrastructure::error::middleware::handle_api_error;
-use starriver_infrastructure::security::authentication::web::axum::middleware::AuthenticationLayer;
+use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
@@ -57,12 +55,14 @@ async fn main() {
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
+    let app_state = AppState::new(conn);
+    let user_application = app_state.user_application.clone();
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
     let service_builder = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(handle_api_error))
         .layer(AuthenticationLayer::new(
-            UsernamePasswordAuthenticator::new(DefaultUserRepository::new(conn)),
+            UsernamePasswordAuthenticator::new(user_application),
             UsernamePasswordFlow {},
         ));
     let router = Router::new()
@@ -84,7 +84,7 @@ async fn main() {
                 .post(dictionary_handler::add_dictionary_entry),
         )
         .nest_service("/static", serve_dir)
-        .with_state(AppState::new(conn))
+        .with_state(app_state)
         .layer(service_builder);
     let listener = TcpListener::bind(&addrs)
         .await

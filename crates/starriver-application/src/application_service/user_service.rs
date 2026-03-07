@@ -1,16 +1,18 @@
-use crate::{
-    query::user_query_service::{DefaultUserQueryService, UserQueryService},
-    repository::user_repository::DefaultUserRepository,
-    user_dto::SecurityUser,
-};
+use crate::repository::user_repository::DefaultUserRepository;
 use sea_orm::DatabaseConnection;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
-use starriver_infrastructure::error::error::{ApiError, Cause};
+use starriver_infrastructure::{
+    error::error::{ApiError, Cause},
+    security::authentication::{
+        core::authenticator::AuthenticationError,
+        username_password_authentication::{AuthenticatedUser, UsernamePasswordCredential},
+    },
+};
+use tracing::error;
 
 pub struct UserApplication {
     repo: DefaultUserRepository,
-    query_service: DefaultUserQueryService,
 }
 
 impl UserApplication {
@@ -18,18 +20,36 @@ impl UserApplication {
     pub fn new(conn: &'static DatabaseConnection) -> UserApplication {
         UserApplication {
             repo: DefaultUserRepository { conn },
-            query_service: DefaultUserQueryService { conn },
         }
     }
 
-    pub async fn register_user(&self, username: &str, password: &str) -> Result<User, ApiError> {
+    pub async fn register_user(&self, username: &str, password: &str) -> Result<(), ApiError> {
         // todo add publish register event
         let user = User::create_user(username, password)
             .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
-        self.repo.insert(user).await
+        self.repo.insert(user).await.map(|_| ())
     }
 
-    pub async fn find_by_username(&self, username: &str) -> Result<Option<SecurityUser>, ApiError> {
-        self.query_service.find_by_username(username).await
+    pub async fn authenticate(
+        &self,
+        credential: &UsernamePasswordCredential,
+    ) -> Result<AuthenticatedUser, AuthenticationError> {
+        let username = credential.username.as_str();
+        let password = credential.password.as_str();
+        let user = self.repo.find_by_username(username).await.map_err(|e| {
+            error!("find_by_username error: {}", e);
+            AuthenticationError::Unknown
+        })?;
+        match user {
+            Some(mut user) => {
+                user.authenticate_by_password(password)?;
+                Ok(AuthenticatedUser {
+                    username: username.to_string(),
+                    password: "".to_string(),
+                    authorities: vec![],
+                })
+            }
+            None => return Err(AuthenticationError::UsernameNotFound),
+        }
     }
 }

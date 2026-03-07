@@ -1,185 +1,33 @@
-use axum::extract::{FromRequest, Request};
-use axum::http::StatusCode;
-use axum_extra::extract::CookieJar;
-use sea_orm::DatabaseConnection;
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+
 use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
-use starriver_infrastructure::security::authentication::core::credential::{
-    AuthenticationContext, Credential,
+use starriver_infrastructure::security::authentication::core::credential::AuthenticationContext;
+use starriver_infrastructure::security::authentication::username_password_authentication::{
+    AuthenticatedUser, UsernamePasswordCredential,
 };
-use starriver_infrastructure::security::authentication::core::principal::{
-    Principal, SimpleAuthority,
-};
-use starriver_infrastructure::security::authentication::password_hasher::{
-    from_hashed_password, verify_password,
-};
-use std::fmt::Debug;
-use tracing::{error, warn};
 
-/// 区别与用户提交的用户名&密码，该类型能包含更多的信心，比如IP等随HTTP请求携带的其他信息
-#[derive(Clone, Debug)]
-pub struct UsernamePasswordCredential {
-    username: String,
-    password: String,
-}
-
-impl UsernamePasswordCredential {
-    pub fn new(username: String, password: String) -> Result<Self, AuthenticationError> {
-        if username.is_empty() {
-            return Err(AuthenticationError::UsernameEmpty);
-        }
-        if password.is_empty() {
-            return Err(AuthenticationError::PasswordEmpty);
-        }
-        Ok(UsernamePasswordCredential { username, password })
-    }
-}
-
-impl Credential for UsernamePasswordCredential {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct User {
-    username: String,
-    #[serde(skip_serializing)]
-    password: String,
-    #[serde(default)]
-    authorities: Vec<SimpleAuthority>,
-}
-
-impl Principal for User {
-    type Id = String;
-    type Authority = SimpleAuthority;
-
-    fn id(&self) -> &Self::Id {
-        &self.username
-    }
-
-    fn authorities(&self) -> Vec<&Self::Authority> {
-        vec![]
-    }
-}
-
-impl<S> FromRequest<S> for User
-where
-    S: Send + Sync,
-{
-    type Rejection = StatusCode;
-
-    fn from_request(
-        req: Request,
-        state: &S,
-    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
-        async move {
-            let cookie_jar = CookieJar::from_request(req, state).await.map_err(|_| {
-                error!("提取cookie失败");
-                StatusCode::UNAUTHORIZED
-            })?;
-
-            let id_cookie = cookie_jar.get("id").ok_or_else(|| {
-                error!("缺少 `id` Cookie");
-                StatusCode::UNAUTHORIZED
-            })?;
-
-            serde_json::from_str::<User>(id_cookie.value()).map_err(|e| {
-                error!("解析cookie失败, {}", e);
-                StatusCode::UNAUTHORIZED
-            })
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
-pub trait UserRepository {
-    fn find_by_id(
-        &self,
-        user_id: &String,
-    ) -> impl Future<Output = Result<User, AuthenticationError>> + Send;
-}
-
-pub struct DefaultUserRepository {
-    delegate: UserApplication,
-}
-
-impl DefaultUserRepository {
-    pub fn new(conn: &'static DatabaseConnection) -> Self {
-        DefaultUserRepository {
-            delegate: UserApplication::new(conn),
-        }
-    }
-}
-
-impl UserRepository for DefaultUserRepository {
-    async fn find_by_id(&self, user_id: &String) -> Result<User, AuthenticationError> {
-        let user = self.delegate.find_by_username(user_id).await.map_err(|e| {
-            warn!("Failed to find user by username: {}", e);
-            AuthenticationError::Unknown
-        })?;
-        match user {
-            Some(u) => Ok(User {
-                username: u.username,
-                password: u.password,
-                authorities: vec![],
-            }),
-            None => {
-                warn!("User not found with username: {}", user_id);
-                Err(AuthenticationError::UsernameNotFound)
-            }
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
 pub struct UsernamePasswordAuthenticator {
-    user_repository: DefaultUserRepository,
+    user_service: Arc<UserApplication>,
 }
 
 impl UsernamePasswordAuthenticator {
-    pub fn new(repo: DefaultUserRepository) -> UsernamePasswordAuthenticator {
-        UsernamePasswordAuthenticator {
-            user_repository: repo,
-        }
+    pub fn new(user_service: Arc<UserApplication>) -> UsernamePasswordAuthenticator {
+        UsernamePasswordAuthenticator { user_service }
     }
 }
 
 impl Authenticator for UsernamePasswordAuthenticator {
     type Credential = UsernamePasswordCredential;
-    type Principal = User;
+    type Principal = AuthenticatedUser;
 
     fn authenticate(
         &self,
         ctx: &AuthenticationContext<Self::Credential>,
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send {
         let credential = &ctx.credential;
-        let username = &credential.username;
-        let password = &credential.password;
-        async move {
-            // 查找用户
-            let user = self.user_repository.find_by_id(username).await?;
-            // 验证密码
-            let password_hash_string =
-                from_hashed_password(user.password.as_str()).map_err(|e| {
-                    error!(
-                        "bad hashed password string in {} repository, {}",
-                        username, e
-                    );
-                    AuthenticationError::BadPassword
-                })?;
-            verify_password(password.as_str(), &password_hash_string)
-                .map(|_| user)
-                .map_err(|e| {
-                    error!("verify {} hashed password error: {}", username, e);
-                    AuthenticationError::BadPassword
-                })
-        }
+        async move { self.user_service.authenticate(credential).await }
     }
 }
-
-#[cfg(test)]
-pub mod test {}

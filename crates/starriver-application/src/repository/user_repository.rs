@@ -1,6 +1,11 @@
 use crate::db::user_do::ActiveModel;
+use crate::db::user_do::Column;
+use crate::db::user_do::Entity;
 use crate::db::user_do::Model;
 use sea_orm::ActiveValue::Set;
+use sea_orm::ColumnTrait;
+use sea_orm::EntityTrait;
+use sea_orm::QueryFilter;
 use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
@@ -13,6 +18,15 @@ pub struct DefaultUserRepository {
 }
 
 impl UserRepository for DefaultUserRepository {
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
+        Entity::find()
+            .filter(Column::Username.eq(username))
+            .one(self.conn)
+            .await?
+            .map(model_to_entity)
+            .transpose()
+    }
+
     async fn insert(&self, user: User) -> Result<User, ApiError> {
         ActiveModel {
             id: Set(user.id),
@@ -37,6 +51,15 @@ impl UserRepository for DefaultUserRepository {
         .update(self.conn)
         .await
         .map(model_to_entity)?
+    }
+
+    async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, ApiError> {
+        let result = Entity::delete_by_id(user_id)
+            .exec(self.conn)
+            .await?
+            .rows_affected
+            > 0;
+        Ok(result)
     }
 }
 

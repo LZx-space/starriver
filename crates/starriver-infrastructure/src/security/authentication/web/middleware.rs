@@ -151,6 +151,7 @@ where
     }
 }
 
+/// 当结构体有泛型时，#[derive(Clone)]会导致泛型也要满足Clone特性，这里则手动实现
 impl<S: Clone, A, F, C, P> Clone for AuthenticationService<S, A, F, C, P> {
     fn clone(&self) -> Self {
         Self {

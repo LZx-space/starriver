@@ -12,4 +12,5 @@ argon2 = { workspace = true }
 time = { workspace = true }
 
 serde = { workspace = true }
+tracing = { workspace = true }
 uuid = { workspace = true }

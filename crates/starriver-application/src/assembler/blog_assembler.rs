@@ -7,6 +7,7 @@ use starriver_domain::blog::value_object::State::Draft;
 use crate::blog_dto::BlogDetail;
 use crate::dto::blog_dto::BlogCmd;
 
+#[inline]
 pub fn cmd_2_new_entity(cmd: BlogCmd, blogger_id: String) -> Blog {
     Blog {
         id: Uuid::now_v7(),
@@ -19,12 +20,14 @@ pub fn cmd_2_new_entity(cmd: BlogCmd, blogger_id: String) -> Blog {
     }
 }
 
+#[inline]
 pub fn cmd_2_update_entity(cmd: BlogCmd, mut to_update: Blog) -> Blog {
     to_update.title = cmd.title;
     to_update.body = cmd.body;
     to_update
 }
 
+#[inline]
 pub fn entity_2_vo(entity: Blog) -> BlogDetail {
     BlogDetail {
         title: entity.title,

@@ -1,6 +1,5 @@
 use crate::db::blog_do::ActiveModel;
 use crate::db::blog_do::Entity;
-use crate::db::blog_do::Model;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
 use starriver_domain::blog::entity::Blog;
@@ -81,24 +80,20 @@ impl BlogRepository for DefaultBlogRepository {
                 return model
                     .update(self.conn)
                     .await
-                    .map(fun_name)
+                    .map(|updated| Blog {
+                        id: updated.id,
+                        title: updated.title,
+                        body: updated.body,
+                        state: updated.state.into(),
+                        author_id: updated.author_id,
+                        create_at: updated.create_at,
+                        update_at: updated.update_at,
+                    })
                     .map_err(ApiError::from);
             }
             None => {
                 return Err(ApiError::new(Cause::ClientBadRequest, "Blog not found"));
             }
         };
-    }
-}
-
-fn fun_name(updated: Model) -> Blog {
-    Blog {
-        id: updated.id,
-        title: updated.title,
-        body: updated.body,
-        state: updated.state.into(),
-        author_id: updated.author_id,
-        create_at: updated.create_at,
-        update_at: updated.update_at,
     }
 }

@@ -10,5 +10,4 @@ pub async fn insert(state: State<AppState>, cmd: Json<UserCmd>) -> impl IntoResp
         .user_application
         .register_user(&cmd.username, &cmd.password)
         .await
-        .map(|e| Json(e))
 }

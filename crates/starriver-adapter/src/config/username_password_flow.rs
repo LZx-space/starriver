@@ -1,6 +1,4 @@
-use crate::config::username_password_authentictor::{
-    User, UsernamePasswordAuthenticator, UsernamePasswordCredential,
-};
+use crate::config::username_password_authentictor::UsernamePasswordAuthenticator;
 
 use axum::{
     body::Body,
@@ -17,6 +15,7 @@ use starriver_infrastructure::{
     error::error::ApiError,
     security::authentication::{
         core::credential::{AuthenticationContext, RequestMetadata},
+        username_password_authentication::{AuthenticatedUser, UsernamePasswordCredential},
         web::flow::AuthenticationFlow,
     },
 };
@@ -34,10 +33,10 @@ impl AuthenticationFlow for UsernamePasswordFlow {
     type Request = Request<Body>;
     type Response = Response<Body>;
     type Credential = UsernamePasswordCredential;
-    type Principal = User;
+    type Principal = AuthenticatedUser;
     type Authenticator = UsernamePasswordAuthenticator;
 
-    fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> + Send {
+    fn is_authenticate_request(&self, req: &Self::Request) -> impl Future<Output = bool> {
         let path = req.uri().path();
         let method = req.method();
         async { path.eq("/login") && method.eq(&Method::POST) }
@@ -54,50 +53,44 @@ impl AuthenticationFlow for UsernamePasswordFlow {
         async move { cookies.get("id").is_some() }
     }
 
-    fn extract_credential(
+    async fn extract_credential(
         &self,
         req: Self::Request,
-    ) -> impl Future<Output = Result<AuthenticationContext<Self::Credential>, AuthenticationError>>
-    {
-        async move {
-            // 提取表单数据
-            let form = Form::<FormLoginCmd>::from_request(req, &())
-                .await
-                .map_err(|_| AuthenticationError::Unknown)?;
-            info!(name: "login", "form login cmd: {:?}", form.0);
-            // 创建凭证
-            let credential = UsernamePasswordCredential::new(form.0.username, form.0.password)
-                .map_err(|e| {
-                    error!(name: "login", "new credential error: {}", e);
-                    e
-                })?;
+    ) -> Result<AuthenticationContext<Self::Credential>, AuthenticationError> {
+        // 提取表单数据
+        let form = Form::<FormLoginCmd>::from_request(req, &())
+            .await
+            .map_err(|_| AuthenticationError::Unknown)?;
+        info!(name: "login", "form login cmd: {:?}", form.0);
+        // 创建凭证
+        let credential = UsernamePasswordCredential {
+            username: form.0.username,
+            password: form.0.password,
+        };
 
-            // 创建认证上下文
-            let ctx = AuthenticationContext::new(credential, RequestMetadata::default());
-            Ok(ctx)
-        }
+        // 创建认证上下文
+        let ctx = AuthenticationContext::new(credential, RequestMetadata::default());
+        Ok(ctx)
     }
 
-    fn on_unauthenticated(&self, _req: Self::Request) -> impl Future<Output = Self::Response> {
-        async {
-            Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .body(Body::empty())
-                .unwrap_or_else(|e| {
-                    error!("build unauthenticated response error: {}", e);
-                    ApiError::new(
-                        Cause::InnerError,
-                        "build unauthenticated response error".to_string(),
-                    )
-                    .into_response()
-                })
-        }
+    async fn on_unauthenticated(&self, _req: Self::Request) -> Self::Response {
+        Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Body::empty())
+            .unwrap_or_else(|e| {
+                error!("build unauthenticated response error: {}", e);
+                ApiError::new(
+                    Cause::InnerError,
+                    "build unauthenticated response error".to_string(),
+                )
+                .into_response()
+            })
     }
 
     fn on_authenticate_success(
         &self,
         _req: &AuthenticationContext<Self::Credential>,
-        principal: User,
+        principal: AuthenticatedUser,
     ) -> impl Future<Output = Self::Response> {
         async move {
             // 序列化用户信息

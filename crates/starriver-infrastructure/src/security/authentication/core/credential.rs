@@ -5,13 +5,13 @@ use axum::http::{HeaderMap, HeaderValue};
 pub trait Credential: Send + Sync {}
 
 /// 认证上下文
-pub struct AuthenticationContext<Credential> {
-    pub credential: Credential,
+pub struct AuthenticationContext<C: Credential> {
+    pub credential: C,
     pub request_metadata: RequestMetadata,
 }
 
-impl<Credential> AuthenticationContext<Credential> {
-    pub fn new(credential: Credential, request_metadata: RequestMetadata) -> Self {
+impl<C: Credential> AuthenticationContext<C> {
+    pub fn new(credential: C, request_metadata: RequestMetadata) -> Self {
         Self {
             credential,
             request_metadata,

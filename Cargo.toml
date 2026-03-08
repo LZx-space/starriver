@@ -24,7 +24,7 @@ tracing = "^0"
 tracing-subscriber = { version = "^0", features = ["local-time"] }
 tracing-appender = "^0"
 tower = { version = "^0" }
-tower-http = { version = "^0", features = ["full"] }
+tower-http = { version = "^0", features = ["fs", "request-id", "trace"] }
 uuid = { version = "^1", features = ["v7", "fast-rng", "macro-diagnostics"] }
 
 [profile.dev]

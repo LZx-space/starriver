@@ -14,17 +14,13 @@ use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
+use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
 use tower_http::services::ServeDir;
+use tower_http::trace::TraceLayer;
 
 use tower::ServiceBuilder;
 
 use tokio::net::TcpListener;
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::Layer;
-use tracing_subscriber::fmt::layer;
-use tracing_subscriber::fmt::time::LocalTime;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -34,22 +30,7 @@ async fn main() {
     say_hello();
     dotenvy::dotenv().expect(".env file not found");
 
-    let file_appender = tracing_appender::rolling::daily("./log", "starriver.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-    let file_layer = layer()
-        .with_ansi(false)
-        .with_writer(non_blocking)
-        .with_filter(LevelFilter::INFO);
-
-    let console_layer = layer()
-        .with_writer(stdout)
-        .with_timer(LocalTime::rfc_3339())
-        .with_filter(LevelFilter::INFO);
-
-    tracing_subscriber::registry()
-        .with(file_layer)
-        .with(console_layer)
-        .init();
+    tracing_subscriber::fmt::init();
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();
@@ -57,10 +38,13 @@ async fn main() {
     let user_service = app_state.user_application.clone();
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
-    let middleware_service = ServiceBuilder::new().layer(AuthenticationLayer::new(
-        UsernamePasswordAuthenticator { user_service },
-        UsernamePasswordFlow {},
-    ));
+    let middleware_service = ServiceBuilder::new()
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+        .layer(TraceLayer::new_for_http())
+        .layer(AuthenticationLayer::new(
+            UsernamePasswordAuthenticator { user_service },
+            UsernamePasswordFlow {},
+        ));
     let router = Router::new()
         .route(
             "/session/user",

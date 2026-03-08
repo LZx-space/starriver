@@ -8,6 +8,8 @@ use starriver_infrastructure::{
 };
 use time::OffsetDateTime;
 
+use crate::user::specification::PasswordSpecification;
+
 #[derive(Debug, Default, Serialize)]
 pub enum State {
     #[default]
@@ -42,7 +44,11 @@ pub struct Password {
 }
 
 impl Password {
-    pub fn create_password(raw_password: &str) -> Result<Self, ApiError> {
+    pub fn create_password(
+        raw_password: &str,
+        spec: &PasswordSpecification,
+    ) -> Result<Self, ApiError> {
+        spec.validate_new_password(raw_password)?;
         hash_password(raw_password)
             .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
             .map(|e| Password {
@@ -63,10 +69,10 @@ impl Password {
             })
     }
 
-    pub fn verify_password(&self, input: &str) -> Result<(), ApiError> {
+    pub fn verify_password(&self, raw_pwd: &str) -> Result<(), ApiError> {
         let password_hash_string = PasswordHashString::new(&self.hashed_string)
             .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
-        verify_password(input, &password_hash_string)
+        verify_password(raw_pwd, &password_hash_string)
             .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
     }
 

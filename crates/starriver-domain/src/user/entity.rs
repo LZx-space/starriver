@@ -1,4 +1,7 @@
-use crate::user::value_object::{Password, State, Username};
+use crate::user::{
+    specification::PasswordSpecification,
+    value_object::{Password, State, Username},
+};
 use serde::Serialize;
 use starriver_infrastructure::{
     error::error::ApiError,
@@ -25,14 +28,17 @@ pub struct User {
 }
 
 impl User {
-    // 领域能力---------------------------------------------------------------------
-    pub fn change_password(&mut self, new_password: &str) -> Result<(), ApiError> {
-        self.password = Password::create_password(new_password)?;
+    pub fn change_password(
+        &mut self,
+        new_password: &str,
+        spec: &PasswordSpecification,
+    ) -> Result<(), ApiError> {
+        self.password = Password::create_password(new_password, spec)?;
         Ok(())
     }
 
     /// 通过密码认证
-    pub fn authenticate_by_password(&mut self, password: &str) -> Result<(), AuthenticationError> {
+    pub fn authenticate_by_password(&mut self, raw_pwd: &str) -> Result<(), AuthenticationError> {
         from_hashed_password(self.password.hashed_password_string())
             .map_err(|e| {
                 error!(
@@ -43,7 +49,7 @@ impl User {
                 AuthenticationError::BadPassword
             })
             .and_then(|pwd_hash_str| {
-                verify_password(password, &pwd_hash_str).map_err(|e| {
+                verify_password(raw_pwd, &pwd_hash_str).map_err(|e| {
                     error!(
                         "verify {} hashed password error: {}",
                         self.username.as_str(),

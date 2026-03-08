@@ -18,7 +18,7 @@ impl UserFactory {
     ) -> Result<User, ApiError> {
         let username = Username::new(username)?;
         password_specification.validate_new_password(password)?;
-        let password = Password::create_password(password)?;
+        let password = Password::create_password(password, &password_specification)?;
         Ok(User {
             id: Uuid::now_v7(),
             username,

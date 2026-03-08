@@ -1,5 +1,7 @@
 use crate::security::authentication::core::authenticator::{AuthenticationError, Authenticator};
-use crate::security::authentication::core::credential::{AuthenticationContext, Credential};
+use crate::security::authentication::core::credential::{
+    AuthenticationContext, Credential, RequestMetadata,
+};
 use crate::security::authentication::core::principal::Principal;
 
 pub trait AuthenticationFlow {
@@ -48,7 +50,7 @@ pub trait AuthenticationFlow {
 
     fn on_authenticate_failure(
         &self,
-        ctx: &AuthenticationContext<Self::Credential>,
+        request_meta: &RequestMetadata,
         err: AuthenticationError,
     ) -> impl Future<Output = Self::Response> + Send;
 }

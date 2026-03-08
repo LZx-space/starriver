@@ -132,7 +132,7 @@ impl AuthenticationFlow for UsernamePasswordFlow {
 
     fn on_authenticate_failure(
         &self,
-        _req: &AuthenticationContext<Self::Credential>,
+        _request_meta: &RequestMetadata,
         err: AuthenticationError,
     ) -> impl Future<Output = Self::Response> {
         async move {

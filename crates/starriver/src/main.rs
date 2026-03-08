@@ -10,12 +10,15 @@ use starriver_adapter::api::{authentication_handler, user_handler};
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authentictor::UsernamePasswordAuthenticator;
 use starriver_adapter::config::username_password_flow::UsernamePasswordFlow;
-use starriver_infrastructure::error::middleware::handle_api_error;
+use starriver_infrastructure::error::middleware::handle_middleware_error;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
+use std::time::Duration;
+use tower::limit::RateLimit;
+use tower_http::ServiceExt;
 use tower_http::services::ServeDir;
 
 use tower::ServiceBuilder;
@@ -59,8 +62,8 @@ async fn main() {
     let user_service = app_state.user_application.clone();
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
-    let service_builder = ServiceBuilder::new()
-        .layer(HandleErrorLayer::new(handle_api_error))
+    let middleware_service = ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(handle_middleware_error))
         .layer(AuthenticationLayer::new(
             UsernamePasswordAuthenticator { user_service },
             UsernamePasswordFlow {},
@@ -85,7 +88,7 @@ async fn main() {
         )
         .nest_service("/static", serve_dir)
         .with_state(app_state)
-        .layer(service_builder);
+        .layer(middleware_service);
     let listener = TcpListener::bind(&addrs)
         .await
         .expect("Can't bind to address");

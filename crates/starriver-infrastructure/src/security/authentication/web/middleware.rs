@@ -1,6 +1,7 @@
+use axum::BoxError;
 use axum::body::Body;
 use axum::http::Request;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use futures_util::future::BoxFuture;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -47,7 +48,6 @@ where
 impl<S, A, F, C, P> Layer<S> for AuthenticationLayer<A, F, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
-    S::Error: Into<ApiError>,
     A: Authenticator<Credential = C, Principal = P>,
     F: AuthenticationFlow<
             Request = Request<Body>,
@@ -98,7 +98,7 @@ pub struct AuthenticationService<S: Clone, A, F, C, P> {
 impl<S, A, F, C, P> Service<Request<Body>> for AuthenticationService<S, A, F, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
-    S::Error: Into<ApiError>,
+    S::Error: Into<BoxError>,
     S::Future: Send + 'static,
     A: Authenticator<Credential = C, Principal = P> + Send + Sync + 'static,
     F: AuthenticationFlow<
@@ -114,7 +114,7 @@ where
     P: Principal,
 {
     type Response = Response;
-    type Error = ApiError;
+    type Error = BoxError;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -127,15 +127,22 @@ where
         let authentication_flow = self.authentication_flow.clone();
         Box::pin(async move {
             if authentication_flow.is_authenticate_request(&req).await {
-                let ctx = authentication_flow
-                    .extract_credential(req)
-                    .await
-                    .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
+                let ctx_result = authentication_flow.extract_credential(req).await;
+                let ctx = match ctx_result {
+                    Ok(ctx) => ctx,
+                    Err(e) => {
+                        return Ok(
+                            ApiError::new(Cause::ClientBadRequest, e.to_string()).into_response()
+                        );
+                    }
+                };
                 return match authentication_flow.authenticate(&authenticator, &ctx).await {
                     Ok(principal) => Ok(authentication_flow
                         .on_authenticate_success(&ctx, principal)
                         .await),
-                    Err(err) => Ok(authentication_flow.on_authenticate_failure(&ctx, err).await),
+                    Err(err) => Ok(authentication_flow
+                        .on_authenticate_failure(&ctx.request_metadata, err)
+                        .await),
                 };
             }
 

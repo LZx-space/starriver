@@ -1,17 +1,13 @@
 use axum::{
+    BoxError,
     http::HeaderMap,
     response::{IntoResponse, Response},
 };
 use tracing::error;
 
-use crate::error::error::{ApiError, PageError};
+use crate::error::error::{ApiError, Cause};
 
-pub async fn handle_api_error(request_headers: HeaderMap, error: ApiError) -> Response {
-    error!(name: "global api error handler", "error：{}, headers: {:#?}", error, request_headers);
-    error.into_response()
-}
-
-pub async fn handle_page_error(request_headers: HeaderMap, error: PageError) -> Response {
-    error!(name: "global page error handler", "error：{}, headers: {:#?}", error, request_headers);
-    error.into_response()
+pub async fn handle_middleware_error(request_headers: HeaderMap, error: BoxError) -> Response {
+    error!(name: "middleware error", "error：{}, headers: {:#?}", error, request_headers);
+    ApiError::new(Cause::InnerError, error.to_string()).into_response()
 }

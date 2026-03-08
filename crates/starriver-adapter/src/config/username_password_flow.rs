@@ -14,7 +14,6 @@ use serde::Deserialize;
 use starriver_infrastructure::{
     error::error::ApiError,
     security::authentication::{
-        core::credential::{AuthenticationContext, RequestMetadata},
         username_password_authentication::{AuthenticatedUser, UsernamePasswordCredential},
         web::flow::AuthenticationFlow,
     },
@@ -56,7 +55,7 @@ impl AuthenticationFlow for UsernamePasswordFlow {
     async fn extract_credential(
         &self,
         req: Self::Request,
-    ) -> Result<AuthenticationContext<Self::Credential>, AuthenticationError> {
+    ) -> Result<Self::Credential, AuthenticationError> {
         // 提取表单数据
         let form = Form::<FormLoginCmd>::from_request(req, &())
             .await
@@ -69,8 +68,7 @@ impl AuthenticationFlow for UsernamePasswordFlow {
         };
 
         // 创建认证上下文
-        let ctx = AuthenticationContext::new(credential, RequestMetadata::default());
-        Ok(ctx)
+        Ok(credential)
     }
 
     async fn on_unauthenticated(&self, _req: Self::Request) -> Self::Response {
@@ -89,7 +87,6 @@ impl AuthenticationFlow for UsernamePasswordFlow {
 
     fn on_authenticate_success(
         &self,
-        _req: &AuthenticationContext<Self::Credential>,
         principal: AuthenticatedUser,
     ) -> impl Future<Output = Self::Response> {
         async move {
@@ -132,7 +129,6 @@ impl AuthenticationFlow for UsernamePasswordFlow {
 
     fn on_authenticate_failure(
         &self,
-        _request_meta: &RequestMetadata,
         err: AuthenticationError,
     ) -> impl Future<Output = Self::Response> {
         async move {

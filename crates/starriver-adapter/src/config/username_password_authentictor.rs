@@ -4,7 +4,6 @@ use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
-use starriver_infrastructure::security::authentication::core::credential::AuthenticationContext;
 use starriver_infrastructure::security::authentication::username_password_authentication::{
     AuthenticatedUser, UsernamePasswordCredential,
 };
@@ -19,9 +18,8 @@ impl Authenticator for UsernamePasswordAuthenticator {
 
     fn authenticate(
         &self,
-        ctx: &AuthenticationContext<Self::Credential>,
+        credential: &Self::Credential,
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send {
-        let credential = &ctx.credential;
         async move { self.user_service.authenticate(credential).await }
     }
 }

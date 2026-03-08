@@ -1,7 +1,5 @@
 use crate::security::authentication::core::authenticator::{AuthenticationError, Authenticator};
-use crate::security::authentication::core::credential::{
-    AuthenticationContext, Credential, RequestMetadata,
-};
+use crate::security::authentication::core::credential::Credential;
 use crate::security::authentication::core::principal::Principal;
 
 pub trait AuthenticationFlow {
@@ -29,14 +27,14 @@ pub trait AuthenticationFlow {
     fn extract_credential(
         &self,
         req: Self::Request,
-    ) -> impl Future<Output = Result<AuthenticationContext<Self::Credential>, AuthenticationError>> + Send;
+    ) -> impl Future<Output = Result<Self::Credential, AuthenticationError>> + Send;
 
     fn authenticate(
         &self,
         authenticator: &Self::Authenticator,
-        ctx: &AuthenticationContext<Self::Credential>,
+        credential: &Self::Credential,
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send {
-        async move { authenticator.authenticate(&ctx).await }
+        async move { authenticator.authenticate(&credential).await }
     }
 
     fn on_unauthenticated(&self, req: Self::Request)
@@ -44,13 +42,11 @@ pub trait AuthenticationFlow {
 
     fn on_authenticate_success(
         &self,
-        ctx: &AuthenticationContext<Self::Credential>,
         principal: Self::Principal,
     ) -> impl Future<Output = Self::Response> + Send;
 
     fn on_authenticate_failure(
         &self,
-        request_meta: &RequestMetadata,
         err: AuthenticationError,
     ) -> impl Future<Output = Self::Response> + Send;
 }

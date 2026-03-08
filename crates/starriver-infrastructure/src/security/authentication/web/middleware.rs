@@ -1,14 +1,12 @@
-use axum::BoxError;
 use axum::body::Body;
 use axum::http::Request;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use futures_util::future::BoxFuture;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
-use crate::error::error::{ApiError, Cause};
 use crate::security::authentication::core::credential::Credential;
 use crate::security::authentication::core::principal::Principal;
 
@@ -98,7 +96,6 @@ pub struct AuthenticationService<S: Clone, A, F, C, P> {
 impl<S, A, F, C, P> Service<Request<Body>> for AuthenticationService<S, A, F, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
-    S::Error: Into<BoxError>,
     S::Future: Send + 'static,
     A: Authenticator<Credential = C, Principal = P> + Send + Sync + 'static,
     F: AuthenticationFlow<
@@ -114,11 +111,11 @@ where
     P: Principal,
 {
     type Response = Response;
-    type Error = BoxError;
+    type Error = S::Error; // 业务内已处理所有Err，如果发生则需要HandleErrorLayer来使错误值到标准返回格式
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.service.poll_ready(cx).map_err(|e| e.into())
+        self.service.poll_ready(cx)
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
@@ -126,26 +123,26 @@ where
         let authenticator = self.authenticator.clone();
         let authentication_flow = self.authentication_flow.clone();
         Box::pin(async move {
+            // 如果是认证请求，则进行认证
             if authentication_flow.is_authenticate_request(&req).await {
-                let ctx_result = authentication_flow.extract_credential(req).await;
-                let ctx = match ctx_result {
-                    Ok(ctx) => ctx,
+                let credential = authentication_flow.extract_credential(req).await;
+                let credential = match credential {
+                    Ok(credential) => credential,
                     Err(e) => {
-                        return Ok(
-                            ApiError::new(Cause::ClientBadRequest, e.to_string()).into_response()
-                        );
+                        return Ok(authentication_flow.on_authenticate_failure(e).await);
                     }
                 };
-                return match authentication_flow.authenticate(&authenticator, &ctx).await {
-                    Ok(principal) => Ok(authentication_flow
-                        .on_authenticate_success(&ctx, principal)
-                        .await),
-                    Err(err) => Ok(authentication_flow
-                        .on_authenticate_failure(&ctx.request_metadata, err)
-                        .await),
+                return match authentication_flow
+                    .authenticate(&authenticator, &credential)
+                    .await
+                {
+                    Ok(principal) => {
+                        Ok(authentication_flow.on_authenticate_success(principal).await)
+                    }
+                    Err(err) => Ok(authentication_flow.on_authenticate_failure(err).await),
                 };
             }
-
+            // 如果需要认证且未认证，则返回未认证响应
             if authentication_flow
                 .is_access_require_authentication(&req)
                 .await
@@ -153,7 +150,7 @@ where
             {
                 return Ok(authentication_flow.on_unauthenticated(req).await);
             }
-            service.call(req).await.map_err(|e| e.into())
+            service.call(req).await
         })
     }
 }

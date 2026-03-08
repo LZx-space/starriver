@@ -1,5 +1,4 @@
 use axum::Router;
-use axum::error_handling::HandleErrorLayer;
 
 use axum::routing::{get, post};
 use ferris_says::say;
@@ -10,7 +9,6 @@ use starriver_adapter::api::{authentication_handler, user_handler};
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authentictor::UsernamePasswordAuthenticator;
 use starriver_adapter::config::username_password_flow::UsernamePasswordFlow;
-use starriver_infrastructure::error::middleware::handle_middleware_error;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
 use std::env;
@@ -59,12 +57,10 @@ async fn main() {
     let user_service = app_state.user_application.clone();
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
-    let middleware_service = ServiceBuilder::new()
-        .layer(HandleErrorLayer::new(handle_middleware_error))
-        .layer(AuthenticationLayer::new(
-            UsernamePasswordAuthenticator { user_service },
-            UsernamePasswordFlow {},
-        ));
+    let middleware_service = ServiceBuilder::new().layer(AuthenticationLayer::new(
+        UsernamePasswordAuthenticator { user_service },
+        UsernamePasswordFlow {},
+    ));
     let router = Router::new()
         .route(
             "/session/user",

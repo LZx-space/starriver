@@ -1,4 +1,4 @@
-use std::{convert::Infallible, fmt::Display};
+use std::fmt::Display;
 
 use axum::{
     http::StatusCode,
@@ -35,12 +35,6 @@ impl IntoResponse for ApiError {
         }
         .into_response();
         (status_code, json).into_response()
-    }
-}
-
-impl From<Infallible> for ApiError {
-    fn from(_: Infallible) -> Self {
-        ApiError::new(Cause::ClientBadRequest, "Infallible")
     }
 }
 

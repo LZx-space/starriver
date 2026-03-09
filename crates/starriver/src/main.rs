@@ -31,9 +31,8 @@ static GLOBAL: MiMalloc = MiMalloc;
 #[tokio::main]
 async fn main() {
     say_hello();
-    dotenvy::dotenv().expect(".env file not found");
-
     tracing_subscriber::fmt::init();
+    dotenvy::dotenv().expect(".env file not found");
 
     let conn = db_conn().await;
     let addrs = http_server_bind_addrs();

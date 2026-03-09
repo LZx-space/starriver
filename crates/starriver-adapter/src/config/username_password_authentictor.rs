@@ -1,3 +1,4 @@
+use std::ops::Sub;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,6 +35,10 @@ pub struct TokioTimingAttackProtection {
 
 impl TimingAttackProtection for TokioTimingAttackProtection {
     async fn delay(&self, already_spend: Duration) {
-        sleep(self.delay - already_spend).await;
+        let to_sleep = self.delay.saturating_sub(already_spend);
+        if Duration::ZERO.eq(&to_sleep) {
+            return;
+        }
+        sleep(to_sleep).await;
     }
 }

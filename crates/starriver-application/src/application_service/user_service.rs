@@ -49,7 +49,6 @@ impl UserApplication {
                 Ok(AuthenticatedUser {
                     id: user.id,
                     username: username.to_string(),
-                    password: "".to_string(),
                     authorities: vec![],
                 })
             }

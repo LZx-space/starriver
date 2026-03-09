@@ -25,8 +25,6 @@ impl Credential for UsernamePasswordCredential {}
 pub struct AuthenticatedUser {
     pub id: Uuid,
     pub username: String,
-    #[serde(skip_serializing)]
-    pub password: String,
     #[serde(default)]
     pub authorities: Vec<SimpleAuthority>,
 }

@@ -16,6 +16,7 @@ To get started:
 3. Navigate to the project: `cd starriver`.
 4. Build the project: `cargo build`.
 5. Run tests: `cargo test`.
+6. Initilize DB: `cd script && wsl_local_db_pg_init.bat`
 
 ## DDD Overview
 

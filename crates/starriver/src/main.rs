@@ -30,8 +30,8 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() {
-    say_hello();
     tracing_subscriber::fmt::init();
+    say_hello();
     dotenvy::dotenv().expect(".env file not found");
 
     let conn = db_conn().await;

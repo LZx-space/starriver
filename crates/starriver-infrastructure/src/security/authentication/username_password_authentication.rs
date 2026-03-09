@@ -1,8 +1,9 @@
-use axum::extract::{FromRequest, Request};
 use axum::http::StatusCode;
+use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 use tracing::error;
+use uuid::Uuid;
 
 use crate::security::authentication::core::{
     credential::Credential,
@@ -22,6 +23,7 @@ impl Credential for UsernamePasswordCredential {}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuthenticatedUser {
+    pub id: Uuid,
     pub username: String,
     #[serde(skip_serializing)]
     pub password: String,
@@ -42,21 +44,23 @@ impl Principal for AuthenticatedUser {
     }
 }
 
-impl<S> FromRequest<S> for AuthenticatedUser
+impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
 {
     type Rejection = StatusCode;
 
-    fn from_request(
-        req: Request,
+    fn from_request_parts(
+        parts: &mut Parts,
         state: &S,
     ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
         async move {
-            let cookie_jar = CookieJar::from_request(req, state).await.map_err(|_| {
-                error!("提取cookie失败");
-                StatusCode::UNAUTHORIZED
-            })?;
+            let cookie_jar = CookieJar::from_request_parts(parts, state)
+                .await
+                .map_err(|_| {
+                    error!("提取cookie失败");
+                    StatusCode::UNAUTHORIZED
+                })?;
 
             let id_cookie = cookie_jar.get("id").ok_or_else(|| {
                 error!("缺少 `id` Cookie");

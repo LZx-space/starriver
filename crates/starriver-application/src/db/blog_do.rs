@@ -18,7 +18,7 @@ pub struct Model {
 
     pub state: BlogState,
 
-    pub author_id: String,
+    pub author_id: Uuid,
 
     pub create_at: OffsetDateTime,
 

@@ -5,6 +5,7 @@ use axum::response::IntoResponse;
 use starriver_application::blog_dto::BlogCmd;
 use starriver_infrastructure::error::error::ApiError;
 use starriver_infrastructure::model::page::PageQuery;
+use starriver_infrastructure::security::authentication::username_password_authentication::AuthenticatedUser;
 use uuid::Uuid;
 
 pub async fn page(
@@ -32,10 +33,16 @@ pub async fn find_one(
 
 pub async fn insert(
     state: State<AppState>,
+    user: AuthenticatedUser,
     cmd: Json<BlogCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let author_id = user.id;
     let cmd = cmd.0;
-    state.blog_application.add(cmd).await.map(|e| Json(e))
+    state
+        .blog_application
+        .add(author_id, cmd)
+        .await
+        .map(|e| Json(e))
 }
 
 pub async fn update(
@@ -43,8 +50,8 @@ pub async fn update(
     id: Path<Uuid>,
     cmd: Json<BlogCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let cmd = cmd.0;
     let id = id.0;
+    let cmd = cmd.0;
     state
         .blog_application
         .update(id, cmd)

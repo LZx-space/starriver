@@ -9,7 +9,7 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.dependencies]
-axum = { version = "^0" }
+axum = { version = "^0", features = ["macros"] }
 axum-extra = { version = "^0", features = ["cookie","form"] }
 anyhow = "^1"
 argon2 = "^0"

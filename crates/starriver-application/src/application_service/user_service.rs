@@ -47,6 +47,7 @@ impl UserApplication {
             Some(mut user) => {
                 user.authenticate_by_password(password)?;
                 Ok(AuthenticatedUser {
+                    id: user.id,
                     username: username.to_string(),
                     password: "".to_string(),
                     authorities: vec![],

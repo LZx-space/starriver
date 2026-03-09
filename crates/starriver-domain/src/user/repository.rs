@@ -7,6 +7,7 @@ pub trait UserRepository {
         &self,
         username: &str,
     ) -> impl Future<Output = Result<Option<User>, ApiError>> + Send;
+
     fn insert(&self, user: User) -> impl Future<Output = Result<User, ApiError>> + Send;
 
     fn update(&self, user: User) -> impl Future<Output = Result<User, ApiError>> + Send;

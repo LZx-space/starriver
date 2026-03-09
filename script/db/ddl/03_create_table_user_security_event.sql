@@ -1,6 +1,7 @@
 CREATE TABLE public.user_security_event
 (
     id         uuid primary key         NOT NULL,
+    user_id    uuid                     NOT NULL,
     type       smallint                 NOT NULL,
     is_success boolean                  NOT NULL DEFAULT false,
     message    character varying(100)   NOT NULL,

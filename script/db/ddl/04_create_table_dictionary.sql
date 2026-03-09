@@ -1,4 +1,4 @@
-DROP TABLE public."dictionary";
+DROP TABLE IF EXISTS public."dictionary";
 
 CREATE TABLE public."dictionary"
 (

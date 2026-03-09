@@ -1,4 +1,4 @@
-DROP TABLE public."blog";
+DROP TABLE IF EXISTS public."blog";
 
 create table public.blog
 (

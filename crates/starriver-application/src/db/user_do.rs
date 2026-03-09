@@ -2,15 +2,16 @@ use sea_orm::DerivePrimaryKey;
 use sea_orm::entity::prelude::*;
 use sea_orm::sqlx::types::time::OffsetDateTime;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize, Serialize)]
-#[sea_orm(table_name = "user")]
+/// 用户
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(schema_name = "public", table_name = "user")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
 
+    #[sea_orm(unique)]
     pub username: String,
 
     pub password: String,

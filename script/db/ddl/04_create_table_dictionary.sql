@@ -1,5 +1,3 @@
-DROP TABLE IF EXISTS public."dictionary";
-
 CREATE TABLE public."dictionary"
 (
     id        uuid        NOT NULL,

@@ -4,9 +4,9 @@ use time::OffsetDateTime;
 
 use starriver_domain::blog::value_object::State;
 
-/// 文章
+/// 博客
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "blog")]
+#[sea_orm(schema_name = "public", table_name = "blog")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,

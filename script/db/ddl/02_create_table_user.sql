@@ -1,5 +1,3 @@
-DROP TABLE IF EXISTS public."user";
-
 create table public."user"
 (
     id        uuid primary key         not null,
@@ -9,3 +7,7 @@ create table public."user"
     update_at timestamp with time zone          default CURRENT_TIMESTAMP,
     CONSTRAINT user_unique UNIQUE (username)
 );
+
+-- Column comments
+
+comment on table public."user" is '用户';

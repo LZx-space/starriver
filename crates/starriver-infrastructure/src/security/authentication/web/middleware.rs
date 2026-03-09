@@ -5,6 +5,7 @@ use futures_util::future::BoxFuture;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use std::time::SystemTime;
 use tower::{Layer, Service};
 
 use crate::security::authentication::core::credential::Credential;
@@ -12,15 +13,17 @@ use crate::security::authentication::core::principal::Principal;
 
 use crate::security::authentication::core::authenticator::Authenticator;
 use crate::security::authentication::web::flow::AuthenticationFlow;
+use crate::security::authentication::web::timing_attack_protection::TimingAttackProtection;
 
-pub struct AuthenticationLayer<A, F, C, P> {
+pub struct AuthenticationLayer<A, F, TAP, C, P> {
     pub authenticator: Arc<A>,
     pub authentication_flow: Arc<F>,
+    pub timing_attack_protection: Arc<TAP>,
     _c: PhantomData<C>,
     _p: PhantomData<P>,
 }
 
-impl<A, F, C, P> AuthenticationLayer<A, F, C, P>
+impl<A, F, TAP, C, P> AuthenticationLayer<A, F, TAP, C, P>
 where
     A: Authenticator<Credential = C, Principal = P>,
     F: AuthenticationFlow<
@@ -30,20 +33,22 @@ where
             Principal = P,
             Authenticator = A,
         >,
+    TAP: TimingAttackProtection,
     C: Credential,
     P: Principal,
 {
-    pub fn new(authenticator: A, authentication_flow: F) -> Self {
+    pub fn new(authenticator: A, authentication_flow: F, timing_attack_protection: TAP) -> Self {
         AuthenticationLayer {
             authenticator: Arc::new(authenticator),
             authentication_flow: Arc::new(authentication_flow),
+            timing_attack_protection: Arc::new(timing_attack_protection),
             _c: PhantomData::<C>::default(),
             _p: PhantomData::<P>::default(),
         }
     }
 }
 
-impl<S, A, F, C, P> Layer<S> for AuthenticationLayer<A, F, C, P>
+impl<S, A, F, TAP, C, P> Layer<S> for AuthenticationLayer<A, F, TAP, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
     A: Authenticator<Credential = C, Principal = P>,
@@ -54,16 +59,18 @@ where
             Principal = P,
             Authenticator = A,
         >,
+    TAP: TimingAttackProtection,
     C: Credential,
     P: Principal,
 {
-    type Service = AuthenticationService<S, A, F, C, P>;
+    type Service = AuthenticationService<S, A, F, TAP, C, P>;
 
     fn layer(&self, service: S) -> Self::Service {
         AuthenticationService {
             service,
             authenticator: self.authenticator.clone(),
             authentication_flow: self.authentication_flow.clone(),
+            timing_attack_protection: self.timing_attack_protection.clone(),
             _c: PhantomData::<C>::default(),
             _p: PhantomData::<P>::default(),
         }
@@ -71,11 +78,12 @@ where
 }
 
 /// 当结构体有泛型时，#[derive(Clone)]会导致泛型也要满足Clone特性，这里则手动实现
-impl<A, F, C, P> Clone for AuthenticationLayer<A, F, C, P> {
+impl<A, F, TAP, C, P> Clone for AuthenticationLayer<A, F, TAP, C, P> {
     fn clone(&self) -> Self {
         Self {
             authenticator: self.authenticator.clone(),
             authentication_flow: self.authentication_flow.clone(),
+            timing_attack_protection: self.timing_attack_protection.clone(),
             _c: self._c.clone(),
             _p: self._p.clone(),
         }
@@ -85,15 +93,16 @@ impl<A, F, C, P> Clone for AuthenticationLayer<A, F, C, P> {
 // ---------------------------------------------------------------------------------
 
 /// 认证服务，实现了tower的Service trait
-pub struct AuthenticationService<S: Clone, A, F, C, P> {
+pub struct AuthenticationService<S: Clone, A, F, TAP, C, P> {
     service: S,
     authenticator: Arc<A>,
     authentication_flow: Arc<F>,
+    timing_attack_protection: Arc<TAP>,
     _c: PhantomData<C>,
     _p: PhantomData<P>,
 }
 
-impl<S, A, F, C, P> Service<Request<Body>> for AuthenticationService<S, A, F, C, P>
+impl<S, A, F, TAP, C, P> Service<Request<Body>> for AuthenticationService<S, A, F, TAP, C, P>
 where
     S: Service<Request<Body>, Response = Response> + Clone + Send + Sync + 'static,
     S::Future: Send + 'static,
@@ -107,6 +116,7 @@ where
         > + Send
         + Sync
         + 'static,
+    TAP: TimingAttackProtection + Send + Sync + 'static,
     C: Credential + Send + Sync + 'static,
     P: Principal,
 {
@@ -122,6 +132,7 @@ where
         let mut service = self.service.clone();
         let authenticator = self.authenticator.clone();
         let authentication_flow = self.authentication_flow.clone();
+        let timing_attack_protection = self.timing_attack_protection.clone();
         Box::pin(async move {
             // 如果是认证请求，则进行认证
             if authentication_flow.is_authenticate_request(&req).await {
@@ -132,10 +143,13 @@ where
                         return Ok(authentication_flow.on_authenticate_failure(e).await);
                     }
                 };
-                return match authentication_flow
+                let start = SystemTime::now();
+                let auth_result = authentication_flow
                     .authenticate(&authenticator, &credential)
-                    .await
-                {
+                    .await;
+                let auth_elapsed = SystemTime::now().duration_since(start).unwrap_or_default();
+                timing_attack_protection.delay(auth_elapsed).await;
+                return match auth_result {
                     Ok(principal) => {
                         Ok(authentication_flow.on_authenticate_success(principal).await)
                     }
@@ -156,12 +170,13 @@ where
 }
 
 /// 当结构体有泛型时，#[derive(Clone)]会导致泛型也要满足Clone特性，这里则手动实现
-impl<S: Clone, A, F, C, P> Clone for AuthenticationService<S, A, F, C, P> {
+impl<S: Clone, A, F, TAP, C, P> Clone for AuthenticationService<S, A, F, TAP, C, P> {
     fn clone(&self) -> Self {
         Self {
             service: self.service.clone(),
             authenticator: self.authenticator.clone(),
             authentication_flow: self.authentication_flow.clone(),
+            timing_attack_protection: self.timing_attack_protection.clone(),
             _c: self._c.clone(),
             _p: self._p.clone(),
         }

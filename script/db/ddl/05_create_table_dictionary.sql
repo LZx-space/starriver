@@ -1,12 +1,11 @@
 CREATE TABLE public."dictionary"
 (
-    id        uuid        NOT NULL,
-    value     varchar     NOT NULL, -- 值的字符串
-    data_type varchar     NOT NULL, -- 数据类型
-    "comment" varchar     NOT NULL, -- 字典项说明
-    create_at timestamptz NOT NULL, -- 创建时间
-    update_at timestamptz NULL,     -- 最后更新时间
-    CONSTRAINT dictionary_pk PRIMARY KEY (id)
+    id        uuid primary key         NOT NULL,
+    value     character varying(30)    NOT NULL, -- 值的字符串
+    data_type character varying(30)    NOT NULL, -- 数据类型
+    "comment" character varying(30)    NOT NULL, -- 字典项说明
+    create_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 创建时间
+    update_at timestamp with time zone -- 最后更新时间
 );
 COMMENT ON TABLE public."dictionary" IS '字典';
 

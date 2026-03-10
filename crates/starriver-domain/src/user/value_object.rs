@@ -18,6 +18,9 @@ pub enum State {
     Disabled,
     Expired, //
 }
+
+// ----------------------------------------------------------------------------
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Username(String);
 
@@ -36,9 +39,11 @@ impl Username {
         &self.0
     }
 }
-#[derive(Clone, Debug, Deserialize)]
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Debug)]
 pub struct Password {
-    #[serde(skip_serializing)]
     hashed_string: String,
     set_at: OffsetDateTime,
 }
@@ -83,4 +88,12 @@ impl Password {
     pub fn set_at(&self) -> OffsetDateTime {
         self.set_at
     }
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum SecurityEventType {
+    TryLoginWithBadPwd,
+    PasswordChanged,
 }

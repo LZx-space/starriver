@@ -10,7 +10,6 @@ pub struct Model {
     pub id: Uuid,
     pub user_id: Uuid,
     pub event_type: i16,
-    pub is_success: bool,
     pub message: String,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,

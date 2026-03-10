@@ -1,8 +1,7 @@
 use crate::user::{
     specification::PasswordSpecification,
-    value_object::{Password, State, Username},
+    value_object::{Password, SecurityEventType, State, Username},
 };
-use serde::Serialize;
 use starriver_infrastructure::{
     error::error::ApiError,
     security::authentication::{
@@ -16,15 +15,14 @@ use uuid::Uuid;
 
 // -----Aggregate Root User------------------------------------------------------
 /// The user aggregate. User is the aggregate root.
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct User {
     pub id: Uuid,
     pub username: Username,
-    #[serde(skip_serializing)]
     pub password: Password,
     pub state: State,
     pub created_at: OffsetDateTime,
-    pub login_events: Vec<LoginEvent>,
+    pub login_events: Vec<SecurityEvent>,
 }
 
 impl User {
@@ -63,11 +61,11 @@ impl User {
 
 // -----entity LoginEvent---------------------------------------------------
 
-#[derive(Debug, Serialize)]
-pub struct LoginEvent {
-    pub try_at: OffsetDateTime,
-    pub ip: String,
-    pub is_sccuess: bool,
+#[derive(Debug)]
+pub struct SecurityEvent {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub event_type: SecurityEventType,
+    pub message: String,
+    pub created_at: OffsetDateTime,
 }
-
-pub struct SecurityEvent {}

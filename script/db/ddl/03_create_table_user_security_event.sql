@@ -2,8 +2,7 @@ CREATE TABLE public.user_security_event
 (
     id         uuid primary key         NOT NULL,
     user_id    uuid                     NOT NULL,
-    type       smallint                 NOT NULL,
-    is_success boolean                  NOT NULL DEFAULT false,
+    event_type smallint                 NOT NULL,
     message    character varying(100)   NOT NULL,
     create_at  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_at  timestamp with time zone

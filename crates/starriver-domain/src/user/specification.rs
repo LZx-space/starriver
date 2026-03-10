@@ -1,4 +1,4 @@
-use crate::user::entity::LoginEvent;
+use crate::user::{entity::SecurityEvent, value_object::SecurityEventType};
 use starriver_infrastructure::error::error::{ApiError, Cause};
 use std::ops::Add;
 use time::{Duration, OffsetDateTime};
@@ -22,15 +22,27 @@ impl PasswordSpecification {
     }
 
     /// 依据尝试密码次数来锁定账户
-    pub fn lock_if_attempts_exceeded(&mut self, login_events: Vec<LoginEvent>) -> bool {
+    pub fn lock_if_try_exceeded(
+        &mut self,
+        login_events: Vec<SecurityEvent>,
+    ) -> Result<bool, ApiError> {
         let now = OffsetDateTime::now_utc();
-        login_events
+        let bad_pwd_times = login_events
             .iter()
+            .filter(|e| SecurityEventType::TryLoginWithBadPwd.eq(&e.event_type))
             .filter(|e| {
-                !e.is_sccuess && e.try_at.add(self.accumulate_bad_password_times_duration) >= now
+                e.created_at
+                    .add(self.accumulate_bad_password_times_duration)
+                    >= now
             })
-            .count()
-            > self.max_bad_password_times
+            .count();
+        if bad_pwd_times == 0 {
+            return Err(ApiError::new(
+                Cause::ClientBadRequest,
+                "bad password never happened",
+            ));
+        }
+        Ok(bad_pwd_times > self.max_bad_password_times)
     }
 }
 

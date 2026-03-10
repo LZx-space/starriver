@@ -8,6 +8,7 @@ use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::error::{ApiError, Cause};
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
+use starriver_infrastructure::security::authentication::username_password_authentication::AuthenticatedUser;
 use uuid::Uuid;
 
 pub struct BlogApplication {
@@ -32,17 +33,31 @@ impl BlogApplication {
         self.find_entity_by_id(id).await.map(entity_2_vo)
     }
 
-    pub async fn add(&self, author_id: Uuid, cmd: BlogCmd) -> Result<BlogDetail, ApiError> {
+    pub async fn add(
+        &self,
+        author: AuthenticatedUser,
+        cmd: BlogCmd,
+    ) -> Result<BlogDetail, ApiError> {
+        let author_id = author.id;
         let blog = cmd_2_new_entity(author_id, cmd);
         self.repo.add(blog).await.map(entity_2_vo)
     }
 
-    pub async fn delete_by_id(&self, id: Uuid) -> Result<bool, ApiError> {
+    pub async fn delete_by_id(
+        &self,
+        operator: AuthenticatedUser,
+        id: Uuid,
+    ) -> Result<bool, ApiError> {
         self.repo.delete_by_id(id).await
     }
 
-    pub async fn update(&self, blog_id: Uuid, cmd: BlogCmd) -> Result<BlogDetail, ApiError> {
-        let existing_blog = self.find_entity_by_id(blog_id).await?;
+    pub async fn update(
+        &self,
+        operator: AuthenticatedUser,
+        id: Uuid,
+        cmd: BlogCmd,
+    ) -> Result<BlogDetail, ApiError> {
+        let existing_blog = self.find_entity_by_id(id).await?;
         let updated_blog = cmd_2_update_entity(cmd, existing_blog);
         self.repo.update(updated_blog).await.map(entity_2_vo)
     }

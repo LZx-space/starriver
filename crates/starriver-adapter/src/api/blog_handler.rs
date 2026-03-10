@@ -36,33 +36,33 @@ pub async fn insert(
     user: AuthenticatedUser,
     cmd: Json<BlogCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let author_id = user.id;
     let cmd = cmd.0;
-    state
-        .blog_application
-        .add(author_id, cmd)
-        .await
-        .map(|e| Json(e))
+    state.blog_application.add(user, cmd).await.map(|e| Json(e))
 }
 
 pub async fn update(
     state: State<AppState>,
     id: Path<Uuid>,
+    user: AuthenticatedUser,
     cmd: Json<BlogCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     let id = id.0;
     let cmd = cmd.0;
     state
         .blog_application
-        .update(id, cmd)
+        .update(user, id, cmd)
         .await
         .map(|e| Json(e))
 }
 
-pub async fn delete(state: State<AppState>, id: Path<Uuid>) -> Result<impl IntoResponse, ApiError> {
+pub async fn delete(
+    state: State<AppState>,
+    id: Path<Uuid>,
+    user: AuthenticatedUser,
+) -> Result<impl IntoResponse, ApiError> {
     state
         .blog_application
-        .delete_by_id(id.0)
+        .delete_by_id(user, id.0)
         .await
         .map(|e| Json(e))
 }

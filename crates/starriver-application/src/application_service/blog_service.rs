@@ -8,7 +8,7 @@ use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::error::{ApiError, Cause};
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
-use starriver_infrastructure::security::authentication::username_password_authentication::AuthenticatedUser;
+use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use uuid::Uuid;
 
 pub struct BlogApplication {

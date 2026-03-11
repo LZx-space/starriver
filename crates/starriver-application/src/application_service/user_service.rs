@@ -5,8 +5,8 @@ use starriver_domain::user::{factory::UserFactory, specification::PasswordSpecif
 use starriver_infrastructure::{
     error::error::{ApiError, Cause},
     security::authentication::{
+        _default_impl::{AuthenticatedUser, UsernamePasswordCredential},
         core::authenticator::AuthenticationError,
-        username_password_authentication::{AuthenticatedUser, UsernamePasswordCredential},
     },
 };
 use tracing::error;

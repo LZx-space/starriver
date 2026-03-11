@@ -5,7 +5,7 @@ use axum::response::IntoResponse;
 use starriver_application::blog_dto::BlogCmd;
 use starriver_infrastructure::error::error::ApiError;
 use starriver_infrastructure::model::page::PageQuery;
-use starriver_infrastructure::security::authentication::username_password_authentication::AuthenticatedUser;
+use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use uuid::Uuid;
 
 pub async fn page(

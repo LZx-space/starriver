@@ -21,5 +21,6 @@ strum = { version = "^0", features = ["derive"] }
 time = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+tokio = { workspace = true }
 tower = { workspace = true }
 uuid = { workspace = true }

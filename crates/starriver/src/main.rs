@@ -7,16 +7,12 @@ use starriver_adapter::api::blog_handler;
 use starriver_adapter::api::dictionary_handler;
 use starriver_adapter::api::{authentication_handler, user_handler};
 use starriver_adapter::config::app_state::AppState;
-use starriver_adapter::config::username_password_authentictor::{
-    TokioTimingAttackProtection, UsernamePasswordAuthenticator,
-};
-use starriver_adapter::config::username_password_flow::UsernamePasswordFlow;
+use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
 use starriver_infrastructure::util::db::db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
-use std::time::Duration;
 use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
@@ -43,12 +39,8 @@ async fn main() {
     let middleware_service = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
-        .layer(AuthenticationLayer::new(
+        .layer(AuthenticationLayer::with_authenticator(
             UsernamePasswordAuthenticator { user_service },
-            UsernamePasswordFlow {},
-            TokioTimingAttackProtection {
-                delay: Duration::from_millis(500),
-            },
         ));
     let router = Router::new()
         .route(

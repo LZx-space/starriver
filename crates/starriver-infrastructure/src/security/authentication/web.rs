@@ -1,4 +1,3 @@
-pub mod authenticated_principal_handler;
 pub mod authentication_credentials_extractor;
 pub mod authentication_result_handler;
 pub mod middleware;

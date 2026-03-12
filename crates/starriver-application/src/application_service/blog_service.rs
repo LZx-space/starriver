@@ -9,6 +9,7 @@ use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::error::{ApiError, Cause};
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
+use tracing::info;
 use uuid::Uuid;
 
 pub struct BlogApplication {
@@ -43,23 +44,25 @@ impl BlogApplication {
         self.repo.add(blog).await.map(entity_2_vo)
     }
 
-    pub async fn delete_by_id(
-        &self,
-        operator: AuthenticatedUser,
-        id: Uuid,
-    ) -> Result<bool, ApiError> {
-        self.repo.delete_by_id(id).await
-    }
-
     pub async fn update(
         &self,
         operator: AuthenticatedUser,
         id: Uuid,
         cmd: BlogCmd,
     ) -> Result<BlogDetail, ApiError> {
+        info!("用户{}更新博客{}", operator.username, id);
         let existing_blog = self.find_entity_by_id(id).await?;
         let updated_blog = cmd_2_update_entity(cmd, existing_blog);
         self.repo.update(updated_blog).await.map(entity_2_vo)
+    }
+
+    pub async fn delete_by_id(
+        &self,
+        operator: AuthenticatedUser,
+        id: Uuid,
+    ) -> Result<bool, ApiError> {
+        info!("用户{}删除博客{}", operator.username, id);
+        self.repo.delete_by_id(id).await
     }
 
     // private-------------------------------------------------------------------
@@ -67,6 +70,6 @@ impl BlogApplication {
         self.repo
             .find_by_id(id)
             .await?
-            .ok_or_else(|| ApiError::new(Cause::ClientBadRequest, format!("博客(id={})不存在", id)))
+            .ok_or_else(|| ApiError::new(Cause::ClientBadRequest, format!("博客{}不存在", id)))
     }
 }

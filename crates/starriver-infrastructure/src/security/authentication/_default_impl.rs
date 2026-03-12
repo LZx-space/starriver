@@ -27,7 +27,9 @@ use axum::{
 };
 use axum_extra::extract::{CookieJar, cookie::Cookie};
 use core::time::Duration;
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
+use time::UtcDateTime;
 use tokio::time::sleep;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -70,6 +72,10 @@ impl Credentials for UsernamePasswordCredentials {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+const AUTHENTION_TOKEN_COOKIE_NAME: &str = "token";
+
+const AUTHENTICATION_JWS_SECRET: &str = "LZx";
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuthenticatedUser {
     pub id: Uuid,
@@ -106,13 +112,29 @@ where
                 .await
                 .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
 
-            let id_cookie = cookie_jar.get("id").ok_or_else(|| {
-                error!("缺少 `id` Cookie");
-                StatusCode::UNAUTHORIZED
-            })?;
+            let jws = cookie_jar
+                .get(AUTHENTION_TOKEN_COOKIE_NAME)
+                .ok_or_else(|| {
+                    warn!("未找到认证凭证的Cookie");
+                    StatusCode::UNAUTHORIZED
+                })?
+                .value();
 
-            serde_json::from_str::<AuthenticatedUser>(id_cookie.value()).map_err(|e| {
-                error!("解析cookie失败, {}", e);
+            decode::<PrincipalClaims>(
+                jws,
+                &DecodingKey::from_secret(AUTHENTICATION_JWS_SECRET.as_ref()),
+                &Validation::default(),
+            )
+            .map(|data| {
+                let principal_claims = data.claims;
+                AuthenticatedUser {
+                    id: principal_claims.sub,
+                    username: principal_claims.username,
+                    authorities: principal_claims.authorities,
+                }
+            })
+            .map_err(|e| {
+                error!("解码JWS失败, {}", e);
                 StatusCode::UNAUTHORIZED
             })
         }
@@ -147,6 +169,16 @@ impl Default for TokioTimingAttackProtection {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PrincipalClaims {
+    exp: i64,  // Expiration time (as UTC timestamp)
+    nbf: i64,  // Not Before (as UTC timestamp)
+    iat: i64,  // Issued at (as UTC timestamp)
+    sub: Uuid, // Subject (whom token refers to)
+    username: String,
+    authorities: Vec<SimpleAuthority>,
+}
+
 pub struct DefaultAuthenticationSuccessHandler {}
 
 impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
@@ -155,19 +187,33 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
     type Principal = AuthenticatedUser;
 
     async fn on_authentication_success(&self, principal: AuthenticatedUser) -> Self::Response {
-        // 序列化用户信息
-        let json = match serde_json::to_string(&principal) {
-            Ok(json) => json,
-            Err(e) => {
-                error!("serialize principal error: {}", e);
-                return ApiError::new(Cause::InnerError, "serialize principal error".to_string())
-                    .into_response();
+        // 创建JWS声明
+        let principal_claims = PrincipalClaims {
+            exp: UtcDateTime::now()
+                .saturating_add(time::Duration::hours(1))
+                .unix_timestamp(),
+            nbf: UtcDateTime::now().unix_timestamp(),
+            iat: UtcDateTime::now().unix_timestamp(),
+            sub: principal.id,
+            username: principal.username,
+            authorities: principal.authorities,
+        };
+        // 编码为JWS
+        let jws = encode(
+            &Header::default(),
+            &principal_claims,
+            &EncodingKey::from_secret(AUTHENTICATION_JWS_SECRET.as_ref()),
+        );
+        let jws = match jws {
+            Ok(token) => token,
+            Err(err) => {
+                error!("serialize principal error: {}", err);
+                return ApiError::new(Cause::InnerError, err.to_string()).into_response();
             }
         };
         // 创建cookie
-        let cookie = Cookie::build(("id", json))
+        let cookie = Cookie::build((AUTHENTION_TOKEN_COOKIE_NAME, jws))
             .http_only(true)
-            // .expires(OffsetDateTime::now_utc().add(Duration::hours(1)))
             .secure(false)
             .path("/")
             .build();
@@ -187,6 +233,8 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             })
     }
 }
+
+// ----------------------------------------------------------------------------------------
 
 pub struct DefaultAuthenticationFailureHandler {}
 

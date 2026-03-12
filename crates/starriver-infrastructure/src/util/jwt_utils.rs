@@ -1,28 +1,65 @@
+use serde::{Deserialize, Serialize};
+use time::UtcDateTime;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegisteredClaims {
+    pub iss: Option<String>, // Optional. Issuer
+    pub sub: Option<String>, // Optional. Subject (whom token refers to)
+    pub aud: Option<String>, // Optional. Audience
+    pub exp: Option<i64>,    // Optional Expiration time (as UTC timestamp)
+    pub nbf: Option<i64>,    // Optional. Not Before (as UTC timestamp)
+    pub iat: Option<i64>,    // Optional. Issued at (as UTC timestamp)
+    pub jti: Option<String>, // Optional. JWT ID
+}
+
+impl RegisteredClaims {
+    pub fn with_sub(mut self, sub: String) -> Self {
+        self.sub = Some(sub);
+        self
+    }
+
+    pub fn with_exp(mut self, exp: UtcDateTime) -> Self {
+        let exp = exp.unix_timestamp();
+        self.exp = Some(exp);
+        self
+    }
+
+    pub fn with_nbf(mut self, nbf: UtcDateTime) -> Self {
+        let nbf = nbf.unix_timestamp();
+        self.nbf = Some(nbf);
+        self
+    }
+
+    pub fn with_iat(mut self, iat: UtcDateTime) -> Self {
+        let iat = iat.unix_timestamp();
+        self.iat = Some(iat);
+        self
+    }
+}
+
+impl Default for RegisteredClaims {
+    fn default() -> Self {
+        Self {
+            iss: Default::default(),
+            sub: Default::default(),
+            aud: Default::default(),
+            exp: Default::default(),
+            nbf: Default::default(),
+            iat: Default::default(),
+            jti: Default::default(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
-    use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Claims {
-        aud: String, // Optional. Audience
-        exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-        iat: usize, // Optional. Issued at (as UTC timestamp)
-        iss: String, // Optional. Issuer
-        nbf: usize, // Optional. Not Before (as UTC timestamp)
-        sub: String, // Optional. Subject (whom token refers to)
-    }
+    use super::*;
 
     #[test]
     fn demo1() {
-        let claims = Claims {
-            iss: "LZx".to_string(),
-            sub: "token".to_string(),
-            aud: "LZx".to_string(),
-            exp: 2_000_000_000,
-            nbf: 1_669_231_234,
-            iat: 1_661_231_234,
-        };
+        let claims = RegisteredClaims::default().with_exp(UtcDateTime::now());
         let token = encode(
             &Header::default(),
             &claims,
@@ -33,7 +70,7 @@ mod test {
                 println!("encode jwt: {}", jwt);
                 let mut validation = Validation::default();
                 validation.set_audience(&vec!["LZx"]);
-                let decode = decode::<Claims>(
+                let decode = decode::<RegisteredClaims>(
                     &jwt,
                     &DecodingKey::from_secret("secret".as_ref()),
                     &validation,

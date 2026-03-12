@@ -16,12 +16,12 @@ mod test {
     #[test]
     fn demo1() {
         let claims = Claims {
+            iss: "LZx".to_string(),
+            sub: "token".to_string(),
             aud: "LZx".to_string(),
             exp: 2_000_000_000,
-            iat: 1_661_231_234,
-            iss: "LZx".to_string(),
             nbf: 1_669_231_234,
-            sub: "token".to_string(),
+            iat: 1_661_231_234,
         };
         let token = encode(
             &Header::default(),

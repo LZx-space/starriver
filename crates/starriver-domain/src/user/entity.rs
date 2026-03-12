@@ -4,8 +4,8 @@ use crate::user::{
 };
 use starriver_infrastructure::{
     error::error::ApiError,
-    security::authentication::{
-        core::authenticator::AuthenticationError,
+    security::{
+        authentication::core::authenticator::AuthenticationError,
         password_hasher::{from_hashed_password, verify_password},
     },
 };

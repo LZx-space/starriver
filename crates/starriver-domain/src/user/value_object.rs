@@ -2,9 +2,7 @@ use argon2::password_hash::PasswordHashString;
 use serde::{Deserialize, Serialize};
 use starriver_infrastructure::{
     error::error::{ApiError, Cause},
-    security::authentication::password_hasher::{
-        from_hashed_password, hash_password, verify_password,
-    },
+    security::password_hasher::{from_hashed_password, hash_password, verify_password},
 };
 use time::OffsetDateTime;
 

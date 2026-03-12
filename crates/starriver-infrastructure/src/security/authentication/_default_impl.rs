@@ -5,11 +5,11 @@ use crate::{
     security::authentication::{
         core::{
             authenticator::AuthenticationError,
-            credential::Credential,
+            credentials::Credentials,
             principal::{Principal, SimpleAuthority},
         },
         web::{
-            authentication_credential_extractor::CredentialExtractor,
+            authentication_credentials_extractor::CredentialsExtractor,
             authentication_result_handler::{
                 AuthenticationFailureHandler, AuthenticationSuccessHandler,
             },
@@ -61,12 +61,12 @@ impl Default for LoginRequestMatcher {
 ////////////////////////////////////////////////////////////////////////////////
 /// 区别与用户提交的用户名&密码，该类型能包含更多的信心，比如IP等随HTTP请求携带的其他信息
 #[derive(Clone, Debug)]
-pub struct UsernamePasswordCredential {
+pub struct UsernamePasswordCredentials {
     pub username: String,
     pub password: String,
 }
 
-impl Credential for UsernamePasswordCredential {}
+impl Credentials for UsernamePasswordCredentials {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -104,10 +104,7 @@ where
         async move {
             let cookie_jar = CookieJar::from_request_parts(parts, state)
                 .await
-                .map_err(|_| {
-                    error!("提取cookie失败");
-                    StatusCode::UNAUTHORIZED
-                })?;
+                .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
 
             let id_cookie = cookie_jar.get("id").ok_or_else(|| {
                 error!("缺少 `id` Cookie");
@@ -220,26 +217,26 @@ pub struct FormLoginCmd {
     pub password: String,
 }
 
-pub struct DefaultCredentialExtractor {}
+pub struct DefaultCredentialsExtractor {}
 
-impl CredentialExtractor for DefaultCredentialExtractor {
+impl CredentialsExtractor for DefaultCredentialsExtractor {
     type Request = Request<Body>;
 
-    type Credential = UsernamePasswordCredential;
+    type Credentials = UsernamePasswordCredentials;
 
-    async fn extract(&self, req: Self::Request) -> Result<Self::Credential, AuthenticationError> {
+    async fn extract(&self, req: Self::Request) -> Result<Self::Credentials, AuthenticationError> {
         // 提取表单数据
         let form = Form::<FormLoginCmd>::from_request(req, &())
             .await
             .map_err(|_| AuthenticationError::Unknown)?;
         info!(name: "login", "form login cmd: {:?}", form.0);
         // 创建凭证
-        let credential = UsernamePasswordCredential {
+        let credentials = UsernamePasswordCredentials {
             username: form.0.username,
             password: form.0.password,
         };
 
-        Ok(credential)
+        Ok(credentials)
     }
 }
 

@@ -5,7 +5,7 @@ use starriver_domain::user::{factory::UserFactory, specification::PasswordSpecif
 use starriver_infrastructure::{
     error::error::{ApiError, Cause},
     security::authentication::{
-        _default_impl::{AuthenticatedUser, UsernamePasswordCredential},
+        _default_impl::{AuthenticatedUser, UsernamePasswordCredentials},
         core::authenticator::AuthenticationError,
     },
 };
@@ -34,10 +34,10 @@ impl UserApplication {
 
     pub async fn authenticate(
         &self,
-        credential: &UsernamePasswordCredential,
+        credentials: &UsernamePasswordCredentials,
     ) -> Result<AuthenticatedUser, AuthenticationError> {
-        let username = credential.username.as_str();
-        let password = credential.password.as_str();
+        let username = credentials.username.as_str();
+        let password = credentials.password.as_str();
         let opt = self.repo.find_by_username(username).await.map_err(|e| {
             // 用户名查不到用户不进这里，这里是异常才进
             error!("find by username error: {}", e);

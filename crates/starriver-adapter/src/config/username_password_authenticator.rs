@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::security::authentication::_default_impl::{
-    AuthenticatedUser, UsernamePasswordCredential,
+    AuthenticatedUser, UsernamePasswordCredentials,
 };
 use starriver_infrastructure::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
@@ -13,13 +13,13 @@ pub struct UsernamePasswordAuthenticator {
 }
 
 impl Authenticator for UsernamePasswordAuthenticator {
-    type Credential = UsernamePasswordCredential;
+    type Credentials = UsernamePasswordCredentials;
     type Principal = AuthenticatedUser;
 
     fn authenticate(
         &self,
-        credential: &Self::Credential,
+        credentials: &Self::Credentials,
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send {
-        async move { self.user_service.authenticate(credential).await }
+        async move { self.user_service.authenticate(credentials).await }
     }
 }

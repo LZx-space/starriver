@@ -6,8 +6,8 @@ use crate::security::authentication::core::{
 
 /// 处理 Principal
 ///
-/// * 认证成功时：将 Principal 转为标识
-/// * 用户提交时：将标识转为 Principal
+/// * 认证成功时：将已认证主体生成关联令牌。如JWT、SessionId
+/// * 用户提交时：认证令牌并将其转为被认证主体
 
 pub trait PrincipalHandler {
     type Principal: Principal;

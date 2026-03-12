@@ -1,17 +1,17 @@
-use crate::security::authentication::core::credential::Credential;
+use crate::security::authentication::core::credentials::Credentials;
 use crate::security::authentication::core::principal::Principal;
 use std::fmt::Debug;
 use thiserror::Error;
 
 pub trait Authenticator {
-    type Credential: Credential;
+    type Credentials: Credentials;
 
     type Principal: Principal;
 
     /// 认证
     fn authenticate(
         &self,
-        credential: &Self::Credential,
+        credentials: &Self::Credentials,
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send;
 }
 

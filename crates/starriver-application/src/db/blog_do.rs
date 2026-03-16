@@ -11,18 +11,12 @@ use starriver_domain::blog::value_object::State;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-
     pub title: String,
-
     #[sea_orm(column_type = "Text")]
     pub body: String,
-
     pub state: BlogState,
-
     pub author_id: Uuid,
-
     pub create_at: OffsetDateTime,
-
     pub update_at: Option<OffsetDateTime>,
 }
 

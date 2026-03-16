@@ -11,14 +11,10 @@ use uuid::Uuid;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-
     #[sea_orm(unique)]
     pub username: String,
-
     pub password: String,
-
     pub create_at: OffsetDateTime,
-
     pub update_at: Option<OffsetDateTime>,
 
     #[sea_orm(has_many)]

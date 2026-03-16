@@ -1,11 +1,9 @@
 use crate::db::user_do::ActiveModel;
-use crate::db::user_do::Column;
 use crate::db::user_do::Entity;
 use crate::db::user_do::Model;
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
-use sea_orm::ColumnTrait;
 use sea_orm::EntityTrait;
-use sea_orm::QueryFilter;
 use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
@@ -20,8 +18,7 @@ pub struct DefaultUserRepository {
 
 impl UserRepository for DefaultUserRepository {
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        Entity::find()
-            .filter(Column::Username.eq(username))
+        Entity::find_by_username(username)
             .one(self.conn)
             .await?
             .map(model_to_entity)
@@ -54,8 +51,8 @@ impl UserRepository for DefaultUserRepository {
             id: Set(user.id),
             username: Set(user.username.as_str().to_string()),
             password: Set(user.password.hashed_password_string().to_string()),
-            create_at: Set(OffsetDateTime::now_utc()),
-            update_at: Set(None),
+            create_at: NotSet,
+            update_at: Set(Some(OffsetDateTime::now_utc())),
         }
         .update(self.conn)
         .await

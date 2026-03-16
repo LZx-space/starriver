@@ -3,6 +3,7 @@ use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(schema_name = "public", table_name = "user_security_event")]
 pub struct Model {
@@ -13,22 +14,8 @@ pub struct Model {
     pub message: String,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::user_do::Entity",
-        from = "Column::UserId",
-        to = "super::user_do::Column::Id"
-    )]
-    User,
-}
-
-impl Related<super::user_do::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::User.def()
-    }
+    #[sea_orm(belongs_to, from = "user_id", to = "id")]
+    pub author: HasOne<super::user_do::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

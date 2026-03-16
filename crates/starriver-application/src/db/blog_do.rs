@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 use starriver_domain::blog::value_object::State;
 
 /// 博客
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "blog")]
 pub struct Model {
@@ -25,8 +26,8 @@ pub struct Model {
     pub update_at: Option<OffsetDateTime>,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+// pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 

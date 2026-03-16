@@ -5,6 +5,7 @@ use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
 use uuid::Uuid;
 
 /// 用户
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "user")]
 pub struct Model {
@@ -19,18 +20,9 @@ pub struct Model {
     pub create_at: OffsetDateTime,
 
     pub update_at: Option<OffsetDateTime>,
-}
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::user_security_event_do::Entity")]
-    UserSecurityEvent,
-}
-
-impl Related<super::user_security_event_do::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::UserSecurityEvent.def()
-    }
+    #[sea_orm(has_many)]
+    pub security_events: HasMany<super::user_security_event_do::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

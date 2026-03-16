@@ -3,8 +3,8 @@ use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::blog::value_object::State;
-use crate::blog::value_object::State::{Draft, Released};
+use crate::blog::value_object::BlogState;
+use crate::blog::value_object::BlogState::{Draft, Released};
 
 /// The blog aggregate. Blog is the aggregate root.
 #[derive(Debug, Serialize)]
@@ -12,7 +12,7 @@ pub struct Blog {
     pub id: Uuid,
     pub title: String,
     pub body: String,
-    pub state: State,
+    pub state: BlogState,
     pub author_id: Uuid,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,

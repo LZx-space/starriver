@@ -32,6 +32,17 @@ pub enum AuthenticationError {
     #[error("bad password")]
     BadPassword,
 
+    /////////////////////////
+    #[error("user inactive")]
+    UserInactive,
+
+    #[error("user locked")]
+    UserLocked,
+
+    #[error("user disabled")]
+    UserDisabled,
+
+    /////////////////////////
     #[error("unknown error")]
     Unknown,
 }

@@ -2,7 +2,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use starriver_domain::blog::entity::Blog;
-use starriver_domain::blog::value_object::State::Draft;
+use starriver_domain::blog::value_object::BlogState::Draft;
 
 use crate::blog_dto::{BlogCmd, BlogDetail};
 

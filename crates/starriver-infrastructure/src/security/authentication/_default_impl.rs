@@ -243,17 +243,14 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
 
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
         warn!("authentication failed: {}", err);
-        let cause = match err {
-            AuthenticationError::UsernameNotFound => Cause::ClientBadRequest,
-            AuthenticationError::BadPassword => Cause::ClientBadRequest,
-            _ => Cause::InnerError,
+        let (cause, message) = match err {
+            AuthenticationError::UserInactive => (Cause::Forbidden, "user inactive"),
+            AuthenticationError::UserLocked => (Cause::Forbidden, "user locked"),
+            AuthenticationError::UserDisabled => (Cause::Forbidden, "user disabled"),
+            AuthenticationError::Unknown => (Cause::InnerError, "unknown error"),
+            _ => (Cause::ClientBadRequest, "username or password incorrect"),
         };
-        let message = match cause {
-            Cause::InnerError => "authentication failed",
-            _ => "username or password incorrect",
-        };
-        let error = ApiError::new(cause, message.to_string());
-        error.into_response()
+        ApiError::new(cause, message).into_response()
     }
 }
 

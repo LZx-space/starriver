@@ -9,12 +9,12 @@ use time::OffsetDateTime;
 use crate::user::specification::PasswordSpecification;
 
 #[derive(Debug, Default, Serialize)]
-pub enum State {
+pub enum UserState {
     #[default]
-    UnVerified,
-    Activated,
-    Disabled,
-    Expired, //
+    Inactive, // 未激活/待验证
+    Active,   // 正常
+    Locked,   // 临时锁定
+    Disabled, // 禁用/暂停
 }
 
 // ----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 use crate::user::{
     specification::PasswordSpecification,
-    value_object::{Password, SecurityEventType, State, Username},
+    value_object::{Password, SecurityEventType, UserState, Username},
 };
 use starriver_infrastructure::{
     error::error::ApiError,
@@ -20,7 +20,7 @@ pub struct User {
     pub id: Uuid,
     pub username: Username,
     pub password: Password,
-    pub state: State,
+    pub state: UserState,
     pub created_at: OffsetDateTime,
     pub login_events: Vec<SecurityEvent>,
 }
@@ -37,6 +37,12 @@ impl User {
 
     /// 通过密码认证
     pub fn authenticate_by_password(&mut self, raw_pwd: &str) -> Result<(), AuthenticationError> {
+        match self.state {
+            UserState::Inactive => return Err(AuthenticationError::UserInactive),
+            UserState::Locked => return Err(AuthenticationError::UserLocked),
+            UserState::Disabled => return Err(AuthenticationError::UserDisabled),
+            UserState::Active => {}
+        }
         from_hashed_password(self.password.hashed_password_string())
             .map_err(|e| {
                 error!(

@@ -101,6 +101,7 @@ impl Display for PageError {
 #[derive(Debug, Serialize, EnumIter)]
 pub enum Cause {
     ClientBadRequest,
+    Forbidden,
     DbError,
     InnerError,
     ThirdParty,
@@ -110,6 +111,7 @@ impl Cause {
     fn to_http_status(&self) -> (StatusCode, u16) {
         match self {
             Cause::ClientBadRequest => (StatusCode::BAD_REQUEST, 40001),
+            Cause::Forbidden => (StatusCode::FORBIDDEN, 40301),
             Cause::DbError => (StatusCode::INTERNAL_SERVER_ERROR, 50001),
             Cause::InnerError => (StatusCode::INTERNAL_SERVER_ERROR, 50002),
             Cause::ThirdParty => (StatusCode::INTERNAL_SERVER_ERROR, 50003),

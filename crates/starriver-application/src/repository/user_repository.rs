@@ -38,6 +38,7 @@ impl UserRepository for DefaultUserRepository {
             id: Set(user.id),
             username: Set(username.to_string()),
             password: Set(user.password.hashed_password_string().to_string()),
+            state: Set(crate::db::user_do::UserStateDo::Inactive),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: Set(None),
         }
@@ -51,6 +52,7 @@ impl UserRepository for DefaultUserRepository {
             id: Set(user.id),
             username: Set(user.username.as_str().to_string()),
             password: Set(user.password.hashed_password_string().to_string()),
+            state: Set(user.state.into()),
             create_at: NotSet,
             update_at: Set(Some(OffsetDateTime::now_utc())),
         }
@@ -77,7 +79,7 @@ fn model_to_entity(m: Model) -> Result<User, ApiError> {
         id: m.id,
         username,
         password,
-        state: Default::default(),
+        state: m.state.into(),
         created_at: m.create_at,
         login_events: vec![],
     })

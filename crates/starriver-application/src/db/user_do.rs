@@ -2,6 +2,7 @@ use sea_orm::DerivePrimaryKey;
 use sea_orm::entity::prelude::*;
 use sea_orm::sqlx::types::time::OffsetDateTime;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
+use starriver_domain::user::value_object::UserState;
 use uuid::Uuid;
 
 /// 用户
@@ -14,6 +15,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub username: String,
     pub password: String,
+    pub state: UserStateDo,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,
 
@@ -22,3 +24,41 @@ pub struct Model {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+/////////////////////////////////////////////////////////////
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
+pub enum UserStateDo {
+    #[default]
+    #[sea_orm(num_value = 0)]
+    Inactive, // 未激活/待验证
+    #[sea_orm(num_value = 1)]
+    Active, // 正常
+    #[sea_orm(num_value = 2)]
+    Locked, // 临时锁定
+    #[sea_orm(num_value = 3)]
+    Disabled, // 禁用/暂停
+}
+
+impl From<UserState> for UserStateDo {
+    fn from(value: UserState) -> Self {
+        match value {
+            UserState::Inactive => UserStateDo::Inactive,
+            UserState::Active => UserStateDo::Active,
+            UserState::Locked => UserStateDo::Locked,
+            UserState::Disabled => UserStateDo::Disabled,
+        }
+    }
+}
+
+impl Into<UserState> for UserStateDo {
+    fn into(self) -> UserState {
+        match self {
+            UserStateDo::Inactive => UserState::Inactive,
+            UserStateDo::Active => UserState::Active,
+            UserStateDo::Locked => UserState::Locked,
+            UserStateDo::Disabled => UserState::Disabled,
+        }
+    }
+}

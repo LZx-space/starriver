@@ -8,6 +8,10 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
 
+[workspace.lints.clippy]
+# 这就是你想要的配置
+unwrap_used = "deny"
+
 [workspace.dependencies]
 axum = { version = "^0", features = ["macros"] }
 axum-extra = { version = "^0", features = ["cookie","form"] }

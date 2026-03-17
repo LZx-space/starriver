@@ -29,7 +29,7 @@ impl IntoResponse for ApiError {
         let (status_code, code) = self.cause.to_http_status();
         error!(name: "api error", "code: {}, message：{}", code, self.message);
         let json = ApiErrorResponse::<()> {
-            code: code,
+            code,
             message: self.message,
             data: None,
         }

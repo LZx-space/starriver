@@ -1,4 +1,4 @@
-use starriver_infrastructure::error::error::ApiError;
+use starriver_infrastructure::error::ApiError;
 use uuid::Uuid;
 
 use crate::blog::entity::Blog;

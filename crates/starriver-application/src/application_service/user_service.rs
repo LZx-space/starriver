@@ -3,7 +3,7 @@ use sea_orm::DatabaseConnection;
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::{factory::UserFactory, specification::PasswordSpecification};
 use starriver_infrastructure::{
-    error::error::{ApiError, Cause},
+    error::{ApiError, Cause},
     security::authentication::{
         _default_impl::{AuthenticatedUser, UsernamePasswordCredentials},
         core::authenticator::AuthenticationError,
@@ -52,7 +52,7 @@ impl UserApplication {
                     authorities: vec![],
                 })
             }
-            None => return Err(AuthenticationError::UsernameNotFound),
+            None => Err(AuthenticationError::UsernameNotFound),
         }
     }
 }

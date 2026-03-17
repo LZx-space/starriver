@@ -3,7 +3,7 @@ use crate::user::{
     value_object::{Password, SecurityEventType, UserState, Username},
 };
 use starriver_infrastructure::{
-    error::error::ApiError,
+    error::ApiError,
     security::{
         authentication::core::authenticator::AuthenticationError,
         password_hasher::{from_hashed_password, verify_password},

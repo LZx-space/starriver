@@ -41,24 +41,24 @@ pub enum UserStateDo {
     Disabled, // 禁用/暂停
 }
 
-impl From<UserState> for UserStateDo {
-    fn from(value: UserState) -> Self {
+impl From<UserStateDo> for UserState {
+    fn from(value: UserStateDo) -> Self {
         match value {
-            UserState::Inactive => UserStateDo::Inactive,
-            UserState::Active => UserStateDo::Active,
-            UserState::Locked => UserStateDo::Locked,
-            UserState::Disabled => UserStateDo::Disabled,
+            UserStateDo::Active => UserState::Active,
+            UserStateDo::Inactive => UserState::Inactive,
+            UserStateDo::Locked => UserState::Locked,
+            UserStateDo::Disabled => UserState::Disabled,
         }
     }
 }
 
-impl Into<UserState> for UserStateDo {
-    fn into(self) -> UserState {
-        match self {
-            UserStateDo::Inactive => UserState::Inactive,
-            UserStateDo::Active => UserState::Active,
-            UserStateDo::Locked => UserState::Locked,
-            UserStateDo::Disabled => UserState::Disabled,
+impl From<UserState> for UserStateDo {
+    fn from(value: UserState) -> Self {
+        match value {
+            UserState::Active => UserStateDo::Active,
+            UserState::Inactive => UserStateDo::Inactive,
+            UserState::Locked => UserStateDo::Locked,
+            UserState::Disabled => UserStateDo::Disabled,
         }
     }
 }

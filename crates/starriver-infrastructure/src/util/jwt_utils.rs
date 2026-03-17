@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::UtcDateTime;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct RegisteredClaims {
     pub iss: Option<String>, // Optional. Issuer
     pub sub: Option<String>, // Optional. Subject (whom token refers to)
@@ -34,20 +34,6 @@ impl RegisteredClaims {
         let iat = iat.unix_timestamp();
         self.iat = Some(iat);
         self
-    }
-}
-
-impl Default for RegisteredClaims {
-    fn default() -> Self {
-        Self {
-            iss: Default::default(),
-            sub: Default::default(),
-            aud: Default::default(),
-            exp: Default::default(),
-            nbf: Default::default(),
-            iat: Default::default(),
-            jti: Default::default(),
-        }
     }
 }
 

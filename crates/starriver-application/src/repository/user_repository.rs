@@ -8,8 +8,8 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::value_object::{Password, Username};
-use starriver_infrastructure::error::error::ApiError;
-use starriver_infrastructure::error::error::Cause;
+use starriver_infrastructure::error::ApiError;
+use starriver_infrastructure::error::Cause;
 use time::OffsetDateTime;
 
 pub struct DefaultUserRepository {

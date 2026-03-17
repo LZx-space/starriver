@@ -13,7 +13,7 @@ pub fn cmd_2_new_entity(author_id: Uuid, cmd: BlogCmd) -> Blog {
         title: cmd.title,
         body: cmd.body,
         state: Draft,
-        author_id: author_id,
+        author_id,
         create_at: OffsetDateTime::now_utc(),
         update_at: None,
     }

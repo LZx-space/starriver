@@ -4,8 +4,8 @@ use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
-use starriver_infrastructure::error::error::ApiError;
-use starriver_infrastructure::error::error::Cause;
+use starriver_infrastructure::error::ApiError;
+use starriver_infrastructure::error::Cause;
 use starriver_infrastructure::update_active_model_on_change;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -91,9 +91,7 @@ impl BlogRepository for DefaultBlogRepository {
                     })
                     .map_err(ApiError::from);
             }
-            None => {
-                return Err(ApiError::new(Cause::ClientBadRequest, "Blog not found"));
-            }
-        };
+            None => Err(ApiError::new(Cause::ClientBadRequest, "Blog not found")),
+        }
     }
 }

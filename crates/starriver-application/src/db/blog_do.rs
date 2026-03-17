@@ -34,22 +34,12 @@ pub enum BlogStateDo {
     Released,
 }
 
-impl Into<BlogState> for BlogStateDo {
-    fn into(self) -> BlogState {
-        if self.eq(&BlogStateDo::Draft) {
+impl From<BlogStateDo> for BlogState {
+    fn from(value: BlogStateDo) -> Self {
+        if value.eq(&BlogStateDo::Draft) {
             BlogState::Draft
         } else {
             BlogState::Released
-        }
-    }
-}
-
-impl From<BlogState> for BlogStateDo {
-    fn from(value: BlogState) -> Self {
-        if value.eq(&BlogState::Draft) {
-            BlogStateDo::Draft
-        } else {
-            BlogStateDo::Released
         }
     }
 }

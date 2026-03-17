@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    error::error::{ApiError, Cause},
+    error::{ApiError, Cause},
     security::authentication::{
         core::{
             authenticator::AuthenticationError,
@@ -103,41 +103,36 @@ where
 {
     type Rejection = StatusCode;
 
-    fn from_request_parts(
-        parts: &mut Parts,
-        state: &S,
-    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
-        async move {
-            let cookie_jar = CookieJar::from_request_parts(parts, state)
-                .await
-                .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let cookie_jar = CookieJar::from_request_parts(parts, state)
+            .await
+            .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
 
-            let jws = cookie_jar
-                .get(AUTHENTION_TOKEN_COOKIE_NAME)
-                .ok_or_else(|| {
-                    warn!("未找到认证凭证的Cookie");
-                    StatusCode::UNAUTHORIZED
-                })?
-                .value();
-
-            decode::<PrincipalClaims>(
-                jws,
-                &DecodingKey::from_secret(AUTHENTICATION_JWS_SECRET.as_ref()),
-                &Validation::default(),
-            )
-            .map(|data| {
-                let principal_claims = data.claims;
-                AuthenticatedUser {
-                    id: principal_claims.sub,
-                    username: principal_claims.username,
-                    authorities: principal_claims.authorities,
-                }
-            })
-            .map_err(|e| {
-                error!("解码JWS失败, {}", e);
+        let jws = cookie_jar
+            .get(AUTHENTION_TOKEN_COOKIE_NAME)
+            .ok_or_else(|| {
+                warn!("未找到认证凭证的Cookie");
                 StatusCode::UNAUTHORIZED
-            })
-        }
+            })?
+            .value();
+
+        decode::<PrincipalClaims>(
+            jws,
+            &DecodingKey::from_secret(AUTHENTICATION_JWS_SECRET.as_ref()),
+            &Validation::default(),
+        )
+        .map(|data| {
+            let principal_claims = data.claims;
+            AuthenticatedUser {
+                id: principal_claims.sub,
+                username: principal_claims.username,
+                authorities: principal_claims.authorities,
+            }
+        })
+        .map_err(|e| {
+            error!("解码JWS失败, {}", e);
+            StatusCode::UNAUTHORIZED
+        })
     }
 }
 

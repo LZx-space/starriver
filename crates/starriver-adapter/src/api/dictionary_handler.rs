@@ -2,7 +2,7 @@ use crate::config::app_state::AppState;
 use axum::Json;
 use axum::extract::{Query, State};
 use axum::response::IntoResponse;
-use starriver_infrastructure::error::error::{ApiError, Cause};
+use starriver_infrastructure::error::{ApiError, Cause};
 use starriver_infrastructure::model::page::PageQuery;
 use starriver_infrastructure::service::dictionary::dictionary_service::{
     DataType, DictionaryEntry,
@@ -13,7 +13,7 @@ pub async fn list_dictionary_entry(
     query: Query<PageQuery>,
 ) -> impl IntoResponse {
     let page = state.dictionary.page(query.0).await;
-    page.map(|u| Json(u))
+    page.map(Json)
         .map_err(|e| ApiError::new(Cause::DbError, e.to_string()))
 }
 

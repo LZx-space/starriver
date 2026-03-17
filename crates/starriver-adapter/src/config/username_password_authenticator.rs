@@ -16,10 +16,10 @@ impl Authenticator for UsernamePasswordAuthenticator {
     type Credentials = UsernamePasswordCredentials;
     type Principal = AuthenticatedUser;
 
-    fn authenticate(
+    async fn authenticate(
         &self,
         credentials: &Self::Credentials,
-    ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send {
-        async move { self.user_service.authenticate(credentials).await }
+    ) -> Result<Self::Principal, AuthenticationError> {
+        self.user_service.authenticate(credentials).await
     }
 }

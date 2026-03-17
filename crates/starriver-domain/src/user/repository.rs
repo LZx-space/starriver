@@ -1,5 +1,5 @@
 use crate::user::entity::User;
-use starriver_infrastructure::error::error::ApiError;
+use starriver_infrastructure::error::ApiError;
 use uuid::Uuid;
 
 pub trait UserRepository {

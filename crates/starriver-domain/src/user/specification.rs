@@ -1,5 +1,5 @@
 use crate::user::{entity::SecurityEvent, value_object::SecurityEventType};
-use starriver_infrastructure::error::error::{ApiError, Cause};
+use starriver_infrastructure::error::{ApiError, Cause};
 use std::ops::Add;
 use time::{Duration, OffsetDateTime};
 

@@ -1,7 +1,7 @@
 use crate::db::blog_do::{Column, Entity};
 use sea_orm::{DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect, prelude::Expr};
 use starriver_infrastructure::{
-    error::error::ApiError,
+    error::ApiError,
     model::page::{PageQuery, PageResult},
 };
 

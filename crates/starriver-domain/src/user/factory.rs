@@ -1,4 +1,4 @@
-use starriver_infrastructure::error::error::ApiError;
+use starriver_infrastructure::error::ApiError;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

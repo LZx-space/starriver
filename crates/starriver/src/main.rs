@@ -66,14 +66,16 @@ async fn main() {
     let listener = TcpListener::bind(&addrs)
         .await
         .expect("Can't bind to address");
-    axum::serve(listener, router).await.unwrap();
+    axum::serve(listener, router)
+        .await
+        .expect("Can't serve the service");
 }
 
 fn say_hello() {
     let out = "Hello, World!";
     let width = out.len();
     let mut writer = BufWriter::new(stdout());
-    say(out, width, &mut writer).unwrap()
+    say(out, width, &mut writer).expect("Can't write to stdout")
 }
 
 fn http_server_bind_addrs() -> (IpAddr, u16) {
@@ -82,7 +84,7 @@ fn http_server_bind_addrs() -> (IpAddr, u16) {
     let http_server_port =
         env::var("HTTP_SERVER_PORT").expect("HTTP_SERVER_PORT environment variable not set");
     (
-        http_server_ip.parse().unwrap(),
-        http_server_port.parse().unwrap(),
+        http_server_ip.parse().expect("Can't parse server ip"),
+        http_server_port.parse().expect("Can't parse server port"),
     )
 }

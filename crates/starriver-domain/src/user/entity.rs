@@ -75,6 +75,7 @@ impl User {
         match verify_password(raw_pwd, &pwd_hash_str) {
             Ok(_) => State::with_all_none(),
             Err(_) => {
+                // 密码错误，记录登录事件
                 let event = SecurityEvent {
                     id: Uuid::now_v7(),
                     user_id: self.id,
@@ -83,10 +84,12 @@ impl User {
                     created_at: OffsetDateTime::now_utc(),
                 };
                 self.login_events.push(event.clone());
+                // 检查是否需要锁定用户
                 let locked = spec.lock_if_try_exceeded(&self.login_events);
                 if locked {
                     info!("用户{}已锁定，登录密码错误太多", self.id);
                 }
+                // 返回状态，包含锁定状态和密码错误事件
                 let state = AuthByPwdState {
                     user_id: self.id,
                     locked,

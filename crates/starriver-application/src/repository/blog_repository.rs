@@ -1,5 +1,6 @@
 use crate::db::blog_do::ActiveModel;
 use crate::db::blog_do::Entity;
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
 use starriver_domain::blog::entity::Blog;
@@ -41,7 +42,7 @@ impl BlogRepository for DefaultBlogRepository {
             state: Set(Default::default()),
             author_id: Set(blog.author_id),
             create_at: Set(OffsetDateTime::now_utc()),
-            update_at: Set(None),
+            update_at: NotSet,
         }
         .insert(self.conn)
         .await

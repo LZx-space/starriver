@@ -49,7 +49,7 @@ impl UserRepository for DefaultUserRepository {
             password: Set(user.password.hashed_password_string().to_string()),
             state: Set(crate::db::user_do::UserStateDo::Inactive),
             create_at: Set(OffsetDateTime::now_utc()),
-            update_at: Set(None),
+            update_at: NotSet,
         }
         .insert(self.conn)
         .await

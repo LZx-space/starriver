@@ -18,7 +18,6 @@ pub struct Model {
     pub state: UserStateDo,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,
-
     #[sea_orm(has_many)]
     pub security_events: HasMany<super::user_security_event_do::Entity>,
 }

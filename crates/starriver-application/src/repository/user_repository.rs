@@ -81,7 +81,7 @@ impl UserRepository for DefaultUserRepository {
                             message: Set(event.message),
                             create_at: Set(event.created_at),
                             update_at: NotSet,
-                            author: HasOneModel::NotSet,
+                            user: HasOneModel::NotSet,
                         };
                         event_model.insert(tx).await?;
                     }

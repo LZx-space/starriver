@@ -93,6 +93,8 @@ impl UserRepository for DefaultUserRepository {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[inline]
 fn model_to_entity(m: Model) -> Result<User, ApiError> {
     let username = Username::new(m.username.as_str())?;

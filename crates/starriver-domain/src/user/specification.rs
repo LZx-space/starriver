@@ -22,12 +22,9 @@ impl PasswordSpecification {
     }
 
     /// 依据尝试密码次数来锁定账户
-    pub fn lock_if_try_exceeded(
-        &mut self,
-        login_events: Vec<SecurityEvent>,
-    ) -> Result<bool, ApiError> {
+    pub fn lock_if_try_exceeded(&self, login_events: &[SecurityEvent]) -> bool {
         let now = OffsetDateTime::now_utc();
-        let bad_pwd_times = login_events
+        login_events
             .iter()
             .filter(|e| SecurityEventType::TryLoginWithBadPwd.eq(&e.event_type))
             .filter(|e| {
@@ -35,14 +32,8 @@ impl PasswordSpecification {
                     .add(self.accumulate_bad_password_times_duration)
                     >= now
             })
-            .count();
-        if bad_pwd_times == 0 {
-            return Err(ApiError::new(
-                Cause::ClientBadRequest,
-                "bad password never happened",
-            ));
-        }
-        Ok(bad_pwd_times > self.max_bad_password_times)
+            .count()
+            > self.max_bad_password_times
     }
 }
 

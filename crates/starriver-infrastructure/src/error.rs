@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use sea_orm::DbErr;
+use sea_orm::{DbErr, TransactionError};
 use serde::Serialize;
 use strum::EnumIter;
 use tracing::error;
@@ -50,6 +50,11 @@ impl From<DbErr> for ApiError {
     }
 }
 
+impl From<TransactionError<ApiError>> for ApiError {
+    fn from(err: TransactionError<ApiError>) -> Self {
+        ApiError::new(Cause::DbError, err.to_string())
+    }
+}
 // ----------------------------------------------------------------------------------------
 #[derive(Serialize)]
 pub struct ApiErrorResponse<T: Serialize> {

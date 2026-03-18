@@ -1,3 +1,4 @@
+pub mod domain_state;
 pub mod error;
 pub mod macros;
 pub mod model;

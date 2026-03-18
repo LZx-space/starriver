@@ -1,16 +1,17 @@
 use crate::user::{
     specification::PasswordSpecification,
+    state_object::AuthByPwdState,
     value_object::{Password, SecurityEventType, UserState, Username},
 };
 use starriver_infrastructure::{
-    error::ApiError,
+    domain_state::{DomainState, State},
     security::{
         authentication::core::authenticator::AuthenticationError,
         password_hasher::{from_hashed_password, verify_password},
     },
 };
 use time::OffsetDateTime;
-use tracing::error;
+use tracing::{error, info};
 use uuid::Uuid;
 
 // -----Aggregate Root User------------------------------------------------------
@@ -30,44 +31,76 @@ impl User {
         &mut self,
         new_password: &str,
         spec: &PasswordSpecification,
-    ) -> Result<(), ApiError> {
-        self.password = Password::create_password(new_password, spec)?;
-        Ok(())
+    ) -> DomainState<Password> {
+        let pwd = Password::create_password(new_password, spec);
+        let pwd = match pwd {
+            Ok(pwd) => pwd,
+            Err(err) => {
+                return DomainState::with_error(err);
+            }
+        };
+        self.password = pwd;
+        DomainState::with_state(self.password.clone())
     }
 
     /// 通过密码认证
-    pub fn authenticate_by_password(&mut self, raw_pwd: &str) -> Result<(), AuthenticationError> {
-        match self.state {
-            UserState::Inactive => return Err(AuthenticationError::UserInactive),
-            UserState::Locked => return Err(AuthenticationError::UserLocked),
-            UserState::Disabled => return Err(AuthenticationError::UserDisabled),
-            UserState::Active => {}
+    pub fn authenticate_by_password(
+        &mut self,
+        raw_pwd: &str,
+        spec: &PasswordSpecification,
+    ) -> State<AuthByPwdState, AuthenticationError> {
+        // 先检查用户状态
+        let state_error = match self.state {
+            UserState::Active => None,
+            UserState::Inactive => Some(AuthenticationError::UserInactive),
+            UserState::Locked => Some(AuthenticationError::UserLocked),
+            UserState::Disabled => Some(AuthenticationError::UserDisabled),
+        };
+        if let Some(err) = state_error {
+            return State::with_error(err);
         }
-        from_hashed_password(self.password.hashed_password_string())
-            .map_err(|e| {
+
+        let pwd_hash_str = match from_hashed_password(self.password.hashed_password_string()) {
+            Ok(hash) => hash,
+            Err(e) => {
                 error!(
                     "bad hashed password string in {} repository, {}",
                     self.username.as_str(),
                     e
                 );
-                AuthenticationError::BadPassword
-            })
-            .and_then(|pwd_hash_str| {
-                verify_password(raw_pwd, &pwd_hash_str).map_err(|e| {
-                    error!(
-                        "verify {} hashed password error: {}",
-                        self.username.as_str(),
-                        e
-                    );
-                    AuthenticationError::BadPassword
-                })
-            })
+                // 数据库数据错误，不做状态变更
+                return State::with_error(AuthenticationError::BadPassword);
+            }
+        };
+        match verify_password(raw_pwd, &pwd_hash_str) {
+            Ok(_) => State::with_all_none(),
+            Err(_) => {
+                let event = SecurityEvent {
+                    id: Uuid::now_v7(),
+                    user_id: self.id,
+                    event_type: SecurityEventType::TryLoginWithBadPwd,
+                    message: "bad password".to_string(),
+                    created_at: OffsetDateTime::now_utc(),
+                };
+                self.login_events.push(event.clone());
+                let locked = spec.lock_if_try_exceeded(&self.login_events);
+                if locked {
+                    info!("用户{}已锁定，登录密码错误太多", self.id);
+                }
+                let state = AuthByPwdState {
+                    user_id: self.id,
+                    locked,
+                    bad_pwd_event: Some(event),
+                };
+                State::with_both(state, AuthenticationError::BadPassword)
+            }
+        }
     }
 }
 
 // -----entity LoginEvent---------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SecurityEvent {
     pub id: Uuid,
     pub user_id: Uuid,

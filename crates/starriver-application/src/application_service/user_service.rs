@@ -54,13 +54,14 @@ impl UserApplication {
                     })?;
                 }
                 if let Some(error) = auth.error {
-                    return Err(error);
+                    Err(error)
+                } else {
+                    Ok(AuthenticatedUser {
+                        id: user.id,
+                        username: username.to_string(),
+                        authorities: vec![],
+                    })
                 }
-                Ok(AuthenticatedUser {
-                    id: user.id,
-                    username: username.to_string(),
-                    authorities: vec![],
-                })
             }
             None => Err(AuthenticationError::UsernameNotFound),
         }

@@ -1,10 +1,6 @@
 use uuid::Uuid;
 
-use crate::user::{entity::SecurityEvent, value_object::Password};
-
-pub struct ChangePwdState {
-    pub pwd: Password,
-}
+use crate::user::entity::SecurityEvent;
 
 #[derive(Debug)]
 pub struct AuthByPwdState {

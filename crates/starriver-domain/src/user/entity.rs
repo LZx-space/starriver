@@ -77,7 +77,7 @@ impl User {
                         message: "bad password".to_string(),
                         created_at: OffsetDateTime::now_utc(),
                     };
-                    self.login_events.push(event.clone());
+                    self.login_events.push(event);
                     // 检查是否需要锁定用户
                     if spec.lock_if_try_exceeded(&self.login_events) {
                         info!("用户{}已锁定，登录密码错误太多", self.id);

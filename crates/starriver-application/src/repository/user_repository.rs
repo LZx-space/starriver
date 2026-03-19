@@ -40,7 +40,7 @@ impl UserRepository for DefaultUserRepository {
                 .filter(user_security_event_do::Column::UserId.eq(user.id))
                 .filter(
                     user_security_event_do::Column::CreateAt
-                        .gt(OffsetDateTime::now_utc().saturating_sub(Duration::minutes(30))),
+                        .gt(OffsetDateTime::now_utc().saturating_sub(Duration::minutes(30))), // 最近30分钟内的事件，注意当前此处没有与PasswordSpecification同步
                 )
                 .order_by_desc(user_security_event_do::Column::CreateAt) // 按时间倒序取最新
                 .all(self.conn)
@@ -156,23 +156,12 @@ fn model_to_entity(m: Model) -> Result<User, ApiError> {
 fn model_ex_to_entity(m: ModelEx) -> Result<User, ApiError> {
     let username = Username::new(m.username.as_str())?;
     let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
-    let login_events: Vec<SecurityEvent> = m
-        .security_events
-        .into_iter()
-        .map(|e| SecurityEvent {
-            id: e.id,
-            user_id: e.user_id,
-            event_type: e.event_type.into(),
-            message: e.message,
-            created_at: e.create_at,
-        })
-        .collect();
     Ok(User {
         id: m.id,
         username,
         password,
         state: m.state.into(),
         created_at: m.create_at,
-        security_events: login_events,
+        security_events: vec![],
     })
 }

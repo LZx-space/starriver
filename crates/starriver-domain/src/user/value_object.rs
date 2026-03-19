@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 
 use crate::user::specification::PasswordSpecification;
 
-#[derive(Debug, Default, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub enum UserState {
     #[default]
     Inactive, // 未激活/待验证
@@ -19,7 +19,7 @@ pub enum UserState {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Username(String);
 
 impl Username {
@@ -40,7 +40,7 @@ impl Username {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Password {
     hashed_string: String,
     set_at: OffsetDateTime,

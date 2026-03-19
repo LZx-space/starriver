@@ -40,6 +40,8 @@ pub enum UserStateDo {
     Disabled, // 禁用/暂停
 }
 
+/////////////////////////////////////////////////////////////
+
 impl From<UserStateDo> for UserState {
     fn from(value: UserStateDo) -> Self {
         match value {

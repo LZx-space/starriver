@@ -1,3 +1,4 @@
+use crate::db::user_do;
 use crate::db::user_do::ActiveModel;
 use crate::db::user_do::Entity;
 use crate::db::user_do::Model;
@@ -6,17 +7,20 @@ use crate::db::user_do::UserStateDo;
 use crate::db::user_security_event_do;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
+use sea_orm::ColumnTrait;
 use sea_orm::EntityTrait;
 use sea_orm::HasOneModel;
+use sea_orm::QueryFilter;
+use sea_orm::QueryOrder;
 use sea_orm::TransactionTrait;
 use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use starriver_domain::user::entity::SecurityEvent;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
-use starriver_domain::user::value_object::UserState;
 use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::error::Cause;
+use time::Duration;
 use time::OffsetDateTime;
 
 pub struct DefaultUserRepository {
@@ -25,22 +29,44 @@ pub struct DefaultUserRepository {
 
 impl UserRepository for DefaultUserRepository {
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        Entity::load()
+        let user = Entity::load()
             .filter_by_username(username)
-            .with(user_security_event_do::Entity)
             .one(self.conn)
             .await?
             .map(model_ex_to_entity)
-            .transpose()
+            .transpose()?;
+        if let Some(mut user) = user {
+            let mut events: Vec<SecurityEvent> = user_security_event_do::Entity::find()
+                .filter(user_security_event_do::Column::UserId.eq(user.id))
+                .filter(
+                    user_security_event_do::Column::CreateAt
+                        .gt(OffsetDateTime::now_utc().saturating_sub(Duration::minutes(30))),
+                )
+                .order_by_desc(user_security_event_do::Column::CreateAt) // 按时间倒序取最新
+                .all(self.conn)
+                .await?
+                .iter()
+                .map(|e| SecurityEvent {
+                    id: e.id,
+                    user_id: e.user_id,
+                    event_type: e.event_type.clone().into(),
+                    message: e.message.to_owned(),
+                    created_at: e.create_at,
+                })
+                .collect();
+            user.security_events.append(&mut events);
+            return Ok(Some(user));
+        }
+        Ok(user)
     }
 
     async fn insert(&self, user: User) -> Result<User, ApiError> {
         let username = user.username.as_str();
         let found = self.find_by_username(username).await?;
-        if found.is_some() {
+        if let Some(user) = found {
             return Err(ApiError::new(
                 Cause::ClientBadRequest,
-                "username already exists",
+                format!("username[{}] already exists", user.username.as_str()),
             ));
         }
         ActiveModel {
@@ -65,32 +91,48 @@ impl UserRepository for DefaultUserRepository {
         Ok(result)
     }
 
-    async fn update(&self, user: User) -> Result<User, ApiError> {
-        let mut model = ActiveModel::builder().set_id(user.id);
-        if user.state == UserState::Locked {
-            model = model.set_state(UserStateDo::Locked);
-        }
-        self.conn
-            .transaction::<_, User, ApiError>(|tx| {
-                Box::pin(async {
-                    let mut security_events = user.login_events;
-                    if let Some(event) = security_events.pop() {
-                        let event_model = user_security_event_do::ActiveModelEx {
-                            id: Set(event.id),
-                            user_id: Set(event.user_id),
-                            event_type: Set(event.event_type.into()),
-                            message: Set(event.message),
-                            create_at: Set(event.created_at),
-                            update_at: NotSet,
-                            user: HasOneModel::NotSet,
-                        };
-                        event_model.insert(tx).await?;
-                    }
-                    model.update(tx).await.map(model_ex_to_entity)?
+    async fn update(&self, mut user: User) -> Result<User, ApiError> {
+        let db_user = self.find_by_username(user.username.as_str()).await?;
+        if let Some(db_user) = db_user {
+            self.conn
+                .transaction::<_, User, ApiError>(|tx| {
+                    Box::pin(async move {
+                        let mut model = user_do::ActiveModel::builder().set_id(user.id);
+                        if db_user.username != user.username {
+                            model = model.set_username(user.username.as_str().to_string());
+                        }
+                        if db_user.password != user.password {
+                            model = model
+                                .set_password(user.password.hashed_password_string().to_string());
+                        }
+                        if db_user.state != user.state {
+                            let state: UserStateDo = user.state.into();
+                            model = model.set_state(state);
+                        }
+
+                        if db_user.security_events != user.security_events
+                            && let Some(event) = user.security_events.pop()
+                        {
+                            let event_model = user_security_event_do::ActiveModelEx {
+                                id: Set(event.id),
+                                user_id: Set(event.user_id),
+                                event_type: Set(event.event_type.into()),
+                                message: Set(event.message),
+                                create_at: Set(event.created_at),
+                                update_at: NotSet,
+                                user: HasOneModel::NotSet,
+                            };
+                            event_model.insert(tx).await?;
+                        }
+                        model = model.set_update_at(Some(OffsetDateTime::now_utc()));
+                        return model.update(tx).await.map(model_ex_to_entity)?;
+                    })
                 })
-            })
-            .await
-            .map_err(ApiError::from)
+                .await
+                .map_err(ApiError::from)
+        } else {
+            Ok(user)
+        }
     }
 }
 
@@ -106,7 +148,7 @@ fn model_to_entity(m: Model) -> Result<User, ApiError> {
         password,
         state: m.state.into(),
         created_at: m.create_at,
-        login_events: vec![],
+        security_events: vec![],
     })
 }
 
@@ -131,6 +173,6 @@ fn model_ex_to_entity(m: ModelEx) -> Result<User, ApiError> {
         password,
         state: m.state.into(),
         created_at: m.create_at,
-        login_events,
+        security_events: login_events,
     })
 }

@@ -25,7 +25,7 @@ impl UserFactory {
             password,
             state: Default::default(),
             created_at: OffsetDateTime::now_utc(),
-            login_events: vec![],
+            security_events: vec![],
         })
     }
 }

@@ -45,22 +45,19 @@ impl UserApplication {
         })?;
         match opt {
             Some(mut user) => {
-                let auth =
-                    user.authenticate_by_password(password, &PasswordSpecification::default());
-                if let Some(state) = auth.state {
-                    self.repo.update_auth_pwd_state(state).await.map_err(|e| {
-                        error!("update user error: {}", e);
-                        AuthenticationError::Unknown
-                    })?;
-                }
-                if let Some(error) = auth.error {
-                    Err(error)
-                } else {
-                    Ok(AuthenticatedUser {
+                match user.authenticate_by_password(password, &PasswordSpecification::default()) {
+                    Ok(_) => Ok(AuthenticatedUser {
                         id: user.id,
                         username: username.to_string(),
                         authorities: vec![],
-                    })
+                    }),
+                    Err(e) => {
+                        self.repo.update(user).await.map_err(|e| {
+                            error!("update user error: {}", e);
+                            AuthenticationError::Unknown
+                        })?;
+                        Err(e)
+                    }
                 }
             }
             None => Err(AuthenticationError::UsernameNotFound),

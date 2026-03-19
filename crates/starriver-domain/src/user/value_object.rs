@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 
 use crate::user::specification::PasswordSpecification;
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, PartialEq, Eq)]
 pub enum UserState {
     #[default]
     Inactive, // 未激活/待验证

@@ -1,4 +1,4 @@
-use crate::user::{entity::User, state_object::AuthByPwdState};
+use crate::user::entity::User;
 use starriver_infrastructure::error::ApiError;
 use uuid::Uuid;
 
@@ -10,10 +10,7 @@ pub trait UserRepository {
 
     fn insert(&self, user: User) -> impl Future<Output = Result<User, ApiError>> + Send;
 
-    fn delete(&self, user_id: Uuid) -> impl Future<Output = Result<bool, ApiError>> + Send;
+    fn update(&self, user: User) -> impl Future<Output = Result<User, ApiError>> + Send;
 
-    fn update_auth_pwd_state(
-        &self,
-        state: AuthByPwdState,
-    ) -> impl Future<Output = Result<User, ApiError>> + Send;
+    fn delete(&self, user_id: Uuid) -> impl Future<Output = Result<bool, ApiError>> + Send;
 }

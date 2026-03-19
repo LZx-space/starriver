@@ -13,7 +13,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use starriver_domain::user::entity::SecurityEvent;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
-use starriver_domain::user::state_object::AuthByPwdState;
+use starriver_domain::user::value_object::UserState;
 use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::error::Cause;
@@ -65,15 +65,16 @@ impl UserRepository for DefaultUserRepository {
         Ok(result)
     }
 
-    async fn update_auth_pwd_state(&self, state: AuthByPwdState) -> Result<User, ApiError> {
-        let mut model = ActiveModel::builder().set_id(state.user_id);
-        if state.locked {
+    async fn update(&self, user: User) -> Result<User, ApiError> {
+        let mut model = ActiveModel::builder().set_id(user.id);
+        if user.state == UserState::Locked {
             model = model.set_state(UserStateDo::Locked);
         }
         self.conn
             .transaction::<_, User, ApiError>(|tx| {
                 Box::pin(async {
-                    if let Some(event) = state.bad_pwd_event {
+                    let mut security_events = user.login_events;
+                    if let Some(event) = security_events.pop() {
                         let event_model = user_security_event_do::ActiveModelEx {
                             id: Set(event.id),
                             user_id: Set(event.user_id),

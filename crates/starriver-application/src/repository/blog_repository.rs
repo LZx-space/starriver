@@ -71,7 +71,8 @@ impl BlogRepository for DefaultBlogRepository {
         match Entity::find_by_id(blog.id).one(self.conn).await? {
             Some(found) => {
                 let mut model: ActiveModel = found.into();
-
+                // 依赖于DO和Entity字段的一致性，且Entity不能包含多端的Vec属性
+                // 合理的方式是使用2个Entity对比差异属性，然后依此更新相应的字段
                 let any_updated = update_active_model_on_change!(
                     model, blog, title, body, author_id, create_at, update_at
                 );

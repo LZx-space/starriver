@@ -92,9 +92,9 @@ impl UserRepository for DefaultUserRepository {
     }
 
     async fn update(&self, mut user: User) -> Result<User, ApiError> {
-        let db_user = self.find_by_username(user.username.as_str()).await?;
-        if let Some(db_user) = db_user {
-            self.conn
+        match self.find_by_username(user.username.as_str()).await? {
+            Some(db_user) => self
+                .conn
                 .transaction::<_, User, ApiError>(|tx| {
                     Box::pin(async move {
                         let mut model = user_do::ActiveModel::builder().set_id(user.id);
@@ -129,9 +129,8 @@ impl UserRepository for DefaultUserRepository {
                     })
                 })
                 .await
-                .map_err(ApiError::from)
-        } else {
-            Ok(user)
+                .map_err(ApiError::from),
+            None => Err(ApiError::new(Cause::ClientBadRequest, "User not found")),
         }
     }
 }

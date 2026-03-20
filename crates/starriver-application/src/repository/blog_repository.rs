@@ -1,4 +1,5 @@
 use crate::db::blog_do::ActiveModel;
+use crate::db::blog_do::BlogStateDo;
 use crate::db::blog_do::Entity;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
@@ -7,7 +8,6 @@ use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::error::Cause;
-use starriver_infrastructure::update_active_model_on_change;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -23,8 +23,8 @@ impl BlogRepository for DefaultBlogRepository {
             .map(|op| {
                 op.map(|e| Blog {
                     id,
-                    title: e.title.clone(),
-                    body: e.body.clone(),
+                    title: e.title,
+                    body: e.body,
                     state: e.state.into(),
                     author_id: e.author_id,
                     create_at: e.create_at,
@@ -68,18 +68,22 @@ impl BlogRepository for DefaultBlogRepository {
     }
 
     async fn update(&self, blog: Blog) -> Result<Blog, ApiError> {
-        match Entity::find_by_id(blog.id).one(self.conn).await? {
+        match self.find_by_id(blog.id).await? {
             Some(found) => {
-                let mut model: ActiveModel = found.into();
-                // 依赖于DO和Entity字段的一致性，且Entity不能包含多端的Vec属性
-                // 合理的方式是使用2个Entity对比差异属性，然后依此更新相应的字段
-                let any_updated = update_active_model_on_change!(
-                    model, blog, title, body, author_id, create_at, update_at
-                );
-                if !any_updated {
-                    return Err(ApiError::new(Cause::ClientBadRequest, "none field updated"));
+                let mut model = ActiveModel::builder()
+                    .set_id(found.id)
+                    .set_update_at(Some(OffsetDateTime::now_utc()));
+                if found.title != blog.title {
+                    model = model.set_title(blog.title);
                 }
-                return model
+                if found.body != blog.body {
+                    model = model.set_body(blog.body);
+                }
+                if found.state != blog.state {
+                    let state: BlogStateDo = blog.state.into();
+                    model = model.set_state(state);
+                }
+                model
                     .update(self.conn)
                     .await
                     .map(|updated| Blog {
@@ -91,7 +95,7 @@ impl BlogRepository for DefaultBlogRepository {
                         create_at: updated.create_at,
                         update_at: updated.update_at,
                     })
-                    .map_err(ApiError::from);
+                    .map_err(ApiError::from)
             }
             None => Err(ApiError::new(Cause::ClientBadRequest, "Blog not found")),
         }

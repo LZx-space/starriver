@@ -1,4 +1,3 @@
-use crate::db::user_do;
 use crate::db::user_do::ActiveModel;
 use crate::db::user_do::Entity;
 use crate::db::user_do::Model;
@@ -93,24 +92,26 @@ impl UserRepository for DefaultUserRepository {
 
     async fn update(&self, mut user: User) -> Result<User, ApiError> {
         match self.find_by_username(user.username.as_str()).await? {
-            Some(db_user) => self
+            Some(found) => self
                 .conn
                 .transaction::<_, User, ApiError>(|tx| {
                     Box::pin(async move {
-                        let mut model = user_do::ActiveModel::builder().set_id(user.id);
-                        if db_user.username != user.username {
+                        let mut model = ActiveModel::builder()
+                            .set_id(found.id)
+                            .set_update_at(Some(OffsetDateTime::now_utc()));
+                        if found.username != user.username {
                             model = model.set_username(user.username.as_str().to_string());
                         }
-                        if db_user.password != user.password {
+                        if found.password != user.password {
                             model = model
                                 .set_password(user.password.hashed_password_string().to_string());
                         }
-                        if db_user.state != user.state {
+                        if found.state != user.state {
                             let state: UserStateDo = user.state.into();
                             model = model.set_state(state);
                         }
 
-                        if db_user.security_events != user.security_events
+                        if found.security_events != user.security_events
                             && let Some(event) = user.security_events.pop()
                         {
                             let event_model = user_security_event_do::ActiveModelEx {
@@ -124,7 +125,6 @@ impl UserRepository for DefaultUserRepository {
                             };
                             event_model.insert(tx).await?;
                         }
-                        model = model.set_update_at(Some(OffsetDateTime::now_utc()));
                         return model.update(tx).await.map(model_ex_to_entity)?;
                     })
                 })

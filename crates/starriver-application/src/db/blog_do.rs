@@ -43,3 +43,13 @@ impl From<BlogStateDo> for BlogState {
         }
     }
 }
+
+impl From<BlogState> for BlogStateDo {
+    fn from(value: BlogState) -> Self {
+        if value.eq(&BlogState::Draft) {
+            BlogStateDo::Draft
+        } else {
+            BlogStateDo::Released
+        }
+    }
+}

@@ -1,5 +1,4 @@
 pub mod error;
-pub mod macros;
 pub mod model;
 pub mod security;
 pub mod service;

@@ -50,7 +50,7 @@ impl BlogApplication {
         id: Uuid,
         cmd: BlogCmd,
     ) -> Result<BlogDetail, ApiError> {
-        info!("用户{}更新博客{}", operator.username, id);
+        info!("用户[{}]更新博客[{}]", operator.username, id);
         let existing_blog = self.find_entity_by_id(id).await?;
         let updated_blog = cmd_2_update_entity(cmd, existing_blog);
         self.repo.update(updated_blog).await.map(entity_2_vo)
@@ -61,11 +61,11 @@ impl BlogApplication {
         operator: AuthenticatedUser,
         id: Uuid,
     ) -> Result<bool, ApiError> {
-        info!("用户{}删除博客{}", operator.username, id);
+        info!("用户[{}]删除博客[{}]", operator.username, id);
         self.repo.delete_by_id(id).await
     }
 
-    // private-------------------------------------------------------------------
+    //////////////////////////////////////////////////////////////////////////////////////////
     async fn find_entity_by_id(&self, id: Uuid) -> Result<Blog, ApiError> {
         self.repo
             .find_by_id(id)

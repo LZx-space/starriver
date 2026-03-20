@@ -96,9 +96,6 @@ impl BlogRepository for DefaultBlogRepository {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/// 为 事务&非事务链接 共享
 async fn find_by_id(
     conn: &impl sea_orm::ConnectionTrait,
     id: Uuid,

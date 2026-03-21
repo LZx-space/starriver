@@ -3,17 +3,18 @@ use crate::blog_dto::BlogCmd;
 use crate::dto::blog_dto::{BlogDetail, BlogSummary};
 use crate::query::blog_query_service::{BlogQueryService, DefaultBlogQueryService};
 use crate::repository::blog_repository::DefaultBlogRepository;
-use sea_orm::DatabaseConnection;
+use sea_orm::{DatabaseConnection, TransactionTrait};
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::repository::BlogRepository;
 use starriver_infrastructure::error::{ApiError, Cause};
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
+use starriver_infrastructure::util::db::TransactionalConn;
 use tracing::info;
 use uuid::Uuid;
 
 pub struct BlogApplication {
-    repo: DefaultBlogRepository,
+    conn: &'static DatabaseConnection,
     query_service: DefaultBlogQueryService,
 }
 
@@ -21,7 +22,7 @@ impl BlogApplication {
     /// 新建
     pub fn new(conn: &'static DatabaseConnection) -> BlogApplication {
         BlogApplication {
-            repo: DefaultBlogRepository { conn },
+            conn,
             query_service: DefaultBlogQueryService { conn },
         }
     }
@@ -31,7 +32,8 @@ impl BlogApplication {
     }
 
     pub async fn find_by_id(&self, id: Uuid) -> Result<BlogDetail, ApiError> {
-        self.find_entity_by_id(id).await.map(entity_2_vo)
+        let repo = DefaultBlogRepository::new(self.conn);
+        find_blog_by_id(&repo, id).await.map(entity_2_vo)
     }
 
     pub async fn add(
@@ -41,7 +43,10 @@ impl BlogApplication {
     ) -> Result<BlogDetail, ApiError> {
         let author_id = author.id;
         let blog = cmd_2_new_entity(author_id, cmd);
-        self.repo.add(blog).await.map(entity_2_vo)
+        DefaultBlogRepository::new(self.conn)
+            .add(blog)
+            .await
+            .map(entity_2_vo)
     }
 
     pub async fn update(
@@ -51,9 +56,15 @@ impl BlogApplication {
         cmd: BlogCmd,
     ) -> Result<BlogDetail, ApiError> {
         info!("用户[{}]更新博客[{}]", operator.username, id);
-        let existing_blog = self.find_entity_by_id(id).await?;
-        let updated_blog = cmd_2_update_entity(cmd, existing_blog);
-        self.repo.update(updated_blog).await.map(entity_2_vo)
+        // 开启事务
+        let tx = self.conn.begin().await.map_err(ApiError::from)?;
+        let repo = DefaultBlogRepository::new(&tx);
+        let found_blog = find_blog_by_id(&repo, id).await?;
+        let updated_blog = cmd_2_update_entity(cmd, found_blog);
+        let result = repo.update(updated_blog).await.map(entity_2_vo)?;
+        // 提交事务
+        tx.commit().await?;
+        Ok(result)
     }
 
     pub async fn delete_by_id(
@@ -62,14 +73,17 @@ impl BlogApplication {
         id: Uuid,
     ) -> Result<bool, ApiError> {
         info!("用户[{}]删除博客[{}]", operator.username, id);
-        self.repo.delete_by_id(id).await
+        DefaultBlogRepository::new(self.conn).delete_by_id(id).await
     }
+}
 
-    //////////////////////////////////////////////////////////////////////////////////////////
-    async fn find_entity_by_id(&self, id: Uuid) -> Result<Blog, ApiError> {
-        self.repo
-            .find_by_id(id)
-            .await?
-            .ok_or_else(|| ApiError::new(Cause::ClientBadRequest, format!("博客{}不存在", id)))
-    }
+///////////////////////////////////////////////////////////////////////////////////////////
+
+async fn find_blog_by_id(
+    repo: &DefaultBlogRepository<'_, impl TransactionalConn>,
+    id: Uuid,
+) -> Result<Blog, ApiError> {
+    repo.find_by_id(id)
+        .await?
+        .ok_or_else(|| ApiError::new(Cause::ClientBadRequest, format!("博客{}不存在", id)))
 }

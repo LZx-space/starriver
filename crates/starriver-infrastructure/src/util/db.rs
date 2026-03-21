@@ -1,4 +1,4 @@
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection, TransactionTrait};
 use std::env;
 use std::sync::OnceLock;
 
@@ -14,3 +14,7 @@ pub async fn db_conn() -> &'static DatabaseConnection {
         .expect("create a DatabaseConnection failed");
     DB_CONN.get_or_init(|| conn)
 }
+
+/// 表明既可以是普通链接，也可以是事务链接（使用完需要马上提交，且不能共享）
+pub trait TransactionalConn: TransactionTrait + ConnectionTrait + Send + Sync {}
+impl<T: TransactionTrait + ConnectionTrait + Send + Sync> TransactionalConn for T {}

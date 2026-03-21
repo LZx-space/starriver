@@ -4,7 +4,7 @@ use starriver_domain::user::value_object::SecurityEventType;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[sea_orm::model]
+// #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "user_security_event")]
 pub struct Model {
@@ -15,11 +15,25 @@ pub struct Model {
     pub message: String,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,
-    #[sea_orm(belongs_to, from = "user_id", to = "id")]
-    pub user: HasOne<super::user_do::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::user_do::Entity",
+        from = "Column::UserId",
+        to = "super::user_do::Column::Id"
+    )]
+    User,
+}
+
+impl Related<super::user_do::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::User.def()
+    }
+}
 
 /////////////////////////////////////////////////////////////////
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]

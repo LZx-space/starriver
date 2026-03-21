@@ -1,32 +1,43 @@
 use crate::db::user_do::ActiveModel;
+use crate::db::user_do::Column;
 use crate::db::user_do::Entity;
 use crate::db::user_do::Model;
-use crate::db::user_do::ModelEx;
-use crate::db::user_do::UserStateDo;
 use crate::db::user_security_event_do;
+use sea_orm::ActiveModelTrait;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
+use sea_orm::ActiveValue::Unchanged;
 use sea_orm::ColumnTrait;
 use sea_orm::EntityTrait;
-use sea_orm::HasOneModel;
 use sea_orm::QueryFilter;
 use sea_orm::QueryOrder;
-use sea_orm::TransactionTrait;
-use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use starriver_domain::user::entity::SecurityEvent;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::error::Cause;
+use starriver_infrastructure::util::db::TransactionalConn;
 use time::Duration;
 use time::OffsetDateTime;
 
-pub struct DefaultUserRepository {
-    pub conn: &'static DatabaseConnection,
+pub struct DefaultUserRepository<'a, T> {
+    conn: &'a T,
 }
 
-impl UserRepository for DefaultUserRepository {
+impl<'a, T> DefaultUserRepository<'a, T>
+where
+    T: TransactionalConn,
+{
+    pub fn new(conn: &'a T) -> DefaultUserRepository<'a, T> {
+        Self { conn }
+    }
+}
+
+impl<'a, T> UserRepository for DefaultUserRepository<'a, T>
+where
+    T: TransactionalConn,
+{
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
         find_by_username(self.conn, username).await
     }
@@ -63,63 +74,59 @@ impl UserRepository for DefaultUserRepository {
     }
 
     async fn update(&self, mut user: User) -> Result<User, ApiError> {
-        self.conn
-            .transaction::<_, User, ApiError>(|tx| {
-                Box::pin(async move {
-                    match find_by_username(tx, user.username.as_str()).await? {
-                        Some(found) => {
-                            let mut model = ActiveModel::builder()
-                                .set_id(found.id)
-                                .set_update_at(Some(OffsetDateTime::now_utc()));
-                            if found.username != user.username {
-                                model = model.set_username(user.username.as_str().to_string());
-                            }
-                            if found.password != user.password {
-                                model = model.set_password(
-                                    user.password.hashed_password_string().to_string(),
-                                );
-                            }
-                            if found.state != user.state {
-                                let state: UserStateDo = user.state.into();
-                                model = model.set_state(state);
-                            }
+        match find_by_username(self.conn, user.username.as_str()).await? {
+            Some(found) => {
+                let mut username = Unchanged(found.username.as_str().to_string());
+                username.set_if_not_equals(user.username.as_str().to_string());
 
-                            if found.security_events != user.security_events
-                                && let Some(event) = user.security_events.pop()
-                            {
-                                let event_model = user_security_event_do::ActiveModelEx {
-                                    id: Set(event.id),
-                                    user_id: Set(event.user_id),
-                                    event_type: Set(event.event_type.into()),
-                                    message: Set(event.message),
-                                    create_at: Set(event.created_at),
-                                    update_at: NotSet,
-                                    user: HasOneModel::NotSet,
-                                };
-                                event_model.insert(tx).await?;
-                            }
-                            model.update(tx).await.map(model_ex_to_entity)?
-                        }
-                        None => Err(ApiError::new(Cause::ClientBadRequest, "User not found")),
-                    }
-                })
-            })
-            .await
-            .map_err(ApiError::from)
+                let mut password = Unchanged(found.password.hashed_password_string().to_string());
+                password.set_if_not_equals(user.password.hashed_password_string().to_string());
+
+                let mut state = Unchanged(found.state.into());
+                state.set_if_not_equals(user.state.into());
+
+                let model = ActiveModel {
+                    id: Unchanged(found.id),
+                    username,
+                    password,
+                    state,
+                    create_at: Unchanged(found.created_at),
+                    update_at: Set(Some(OffsetDateTime::now_utc())),
+                };
+
+                if found.security_events != user.security_events
+                    && let Some(event) = user.security_events.pop()
+                {
+                    let event_model = user_security_event_do::ActiveModel {
+                        id: Set(event.id),
+                        user_id: Set(event.user_id),
+                        event_type: Set(event.event_type.into()),
+                        message: Set(event.message),
+                        create_at: Set(event.created_at),
+                        update_at: NotSet,
+                    };
+                    event_model.insert(self.conn).await?;
+                }
+
+                model.update(self.conn).await.map(model_to_entity)?
+            }
+            None => Err(ApiError::new(Cause::ClientBadRequest, "User not found")),
+        }
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// 为 事务&非事务链接 共享
+/// 事务内则依赖其直接返回的快照来对比差距
 async fn find_by_username(
     conn: &impl sea_orm::ConnectionTrait,
     username: &str,
 ) -> Result<Option<User>, ApiError> {
-    let user = Entity::load()
-        .filter_by_username(username)
+    let user = Entity::find()
+        .filter(Column::Username.eq(username))
         .one(conn)
         .await?
-        .map(model_ex_to_entity)
+        .map(model_to_entity)
         .transpose()?;
     if let Some(mut user) = user {
         let mut events: Vec<SecurityEvent> = user_security_event_do::Entity::find()
@@ -150,20 +157,6 @@ async fn find_by_username(
 
 #[inline]
 fn model_to_entity(m: Model) -> Result<User, ApiError> {
-    let username = Username::new(m.username.as_str())?;
-    let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
-    Ok(User {
-        id: m.id,
-        username,
-        password,
-        state: m.state.into(),
-        created_at: m.create_at,
-        security_events: vec![],
-    })
-}
-
-#[inline]
-fn model_ex_to_entity(m: ModelEx) -> Result<User, ApiError> {
     let username = Username::new(m.username.as_str())?;
     let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
     Ok(User {

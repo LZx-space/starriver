@@ -5,7 +5,6 @@ use time::OffsetDateTime;
 use starriver_domain::blog::value_object::BlogState;
 
 /// 博客
-#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "blog")]
 pub struct Model {
@@ -21,6 +20,9 @@ pub struct Model {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {}
 
 // ---------------------------------------------------------
 

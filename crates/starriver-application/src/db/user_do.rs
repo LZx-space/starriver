@@ -6,7 +6,7 @@ use starriver_domain::user::value_object::UserState;
 use uuid::Uuid;
 
 /// 用户
-#[sea_orm::model]
+// #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "user")]
 pub struct Model {
@@ -18,12 +18,23 @@ pub struct Model {
     pub state: UserStateDo,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,
-    #[sea_orm(has_many)]
-    pub security_events: HasMany<super::user_security_event_do::Entity>,
+    // #[sea_orm(has_many)]
+    // pub security_events: HasMany<super::user_security_event_do::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
 
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(has_many = "super::user_security_event_do::Entity")]
+    Events,
+}
+
+impl Related<super::user_security_event_do::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Events.def()
+    }
+}
 /////////////////////////////////////////////////////////////
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]

@@ -17,8 +17,8 @@ pub struct UserApplication {
 
 impl UserApplication {
     /// 新建
-    pub fn new(conn: &'static DatabaseConnection) -> UserApplication {
-        UserApplication { conn }
+    pub fn new(conn: &'static DatabaseConnection) -> Self {
+        Self { conn }
     }
 
     pub async fn register_user(&self, username: &str, password: &str) -> Result<(), ApiError> {
@@ -39,7 +39,7 @@ impl UserApplication {
     ) -> Result<AuthenticatedUser, AuthenticationError> {
         let username = credentials.username.as_str();
         let password = credentials.password.as_str();
-        // 开启事务, update方法内部会再次查询获取副本以对比更新字段，这依赖于事务等级，所以这里有潜在风险
+        // 开启事务, update方法内部会再次查询获取副本以对比更新字段，当心事务等级
         let tx = self.conn.begin().await.map_err(|e| {
             error!("begin transaction error: {}", e);
             AuthenticationError::Unknown

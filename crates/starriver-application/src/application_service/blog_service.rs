@@ -20,8 +20,8 @@ pub struct BlogApplication {
 
 impl BlogApplication {
     /// 新建
-    pub fn new(conn: &'static DatabaseConnection) -> BlogApplication {
-        BlogApplication {
+    pub fn new(conn: &'static DatabaseConnection) -> Self {
+        Self {
             conn,
             query_service: DefaultBlogQueryService { conn },
         }

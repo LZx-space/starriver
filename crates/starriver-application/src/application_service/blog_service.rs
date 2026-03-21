@@ -56,7 +56,7 @@ impl BlogApplication {
         cmd: BlogCmd,
     ) -> Result<BlogDetail, ApiError> {
         info!("用户[{}]更新博客[{}]", operator.username, id);
-        // 开启事务
+        // 开启事务, update方法内部会再次查询获取副本以对比更新字段，这依赖于事务等级
         let tx = self.conn.begin().await.map_err(ApiError::from)?;
         let repo = DefaultBlogRepository::new(&tx);
         let found_blog = find_blog_by_id(&repo, id).await?;

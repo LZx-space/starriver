@@ -18,15 +18,16 @@ pub async fn get_or_init_verification_code_cache() -> &'static Cache<Uuid, Strin
     })
 }
 
-pub async fn cache_email_verification_code(u_id: Uuid) {
+pub async fn cache_email_verification_code(u_id: Uuid) -> String {
     let code: String = (0..6)
         .map(|_| rand::random::<u8>() % 10 + b'0')
         .map(|b| b as char)
         .collect();
     get_or_init_verification_code_cache()
         .await
-        .insert(u_id, code)
+        .insert(u_id, code.clone())
         .await;
+    code
 }
 
 pub async fn verify_email_verification_code(u_id: Uuid, code: String) -> Result<(), ApiError> {

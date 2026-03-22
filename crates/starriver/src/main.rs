@@ -43,10 +43,7 @@ async fn main() {
             UsernamePasswordAuthenticator { user_service },
         ));
     let router = Router::new()
-        .route(
-            "/session/user",
-            get(authentication_handler::authenticated_user),
-        )
+        .route("/users/me", get(authentication_handler::me))
         .route("/users", post(user_handler::register_inactive_user))
         .route("/blogs", get(blog_handler::page).post(blog_handler::insert))
         .route(

@@ -4,7 +4,6 @@ use starriver_domain::user::value_object::SecurityEventType;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-// #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "user_security_event")]
 pub struct Model {

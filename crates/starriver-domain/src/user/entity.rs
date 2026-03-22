@@ -1,6 +1,6 @@
 use crate::user::{
     specification::PasswordSpecification,
-    value_object::{Password, SecurityEventType, UserState, Username},
+    value_object::{Email, Password, SecurityEventType, UserState, Username},
 };
 use starriver_infrastructure::{
     error::ApiError,
@@ -20,6 +20,7 @@ pub struct User {
     pub id: Uuid,
     pub username: Username,
     pub password: Password,
+    pub email: Option<Email>,
     pub state: UserState,
     pub created_at: OffsetDateTime,
     pub security_events: Vec<SecurityEvent>,

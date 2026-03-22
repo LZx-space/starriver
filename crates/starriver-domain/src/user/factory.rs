@@ -23,6 +23,7 @@ impl UserFactory {
             id: Uuid::now_v7(),
             username,
             password,
+            email: None,
             state: Default::default(),
             created_at: OffsetDateTime::now_utc(),
             security_events: vec![],

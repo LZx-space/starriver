@@ -14,6 +14,7 @@ use sea_orm::QueryOrder;
 use starriver_domain::user::entity::SecurityEvent;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::repository::UserRepository;
+use starriver_domain::user::value_object::Email;
 use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::error::Cause;
@@ -55,6 +56,7 @@ where
             id: Set(user.id),
             username: Set(username.to_string()),
             password: Set(user.password.hashed_password_string().to_string()),
+            email: Set(user.email.map(|e| e.as_str().to_string())),
             state: Set(crate::db::user_do::UserStateDo::Inactive),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: NotSet,
@@ -82,6 +84,9 @@ where
                 let mut password = Unchanged(found.password.hashed_password_string().to_string());
                 password.set_if_not_equals(user.password.hashed_password_string().to_string());
 
+                let mut email = Unchanged(found.email.map(|e| e.as_str().to_string()));
+                email.set_if_not_equals(user.email.as_ref().map(|e| e.as_str().to_string()));
+
                 let mut state = Unchanged(found.state.into());
                 state.set_if_not_equals(user.state.into());
 
@@ -89,6 +94,7 @@ where
                     id: Unchanged(found.id),
                     username,
                     password,
+                    email,
                     state,
                     create_at: Unchanged(found.created_at),
                     update_at: Set(Some(OffsetDateTime::now_utc())),
@@ -159,10 +165,12 @@ async fn find_by_username(
 fn model_to_entity(m: Model) -> Result<User, ApiError> {
     let username = Username::new(m.username.as_str())?;
     let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
+    let email = m.email.map(|e| Email::new(e.as_str())).transpose()?;
     Ok(User {
         id: m.id,
         username,
         password,
+        email,
         state: m.state.into(),
         created_at: m.create_at,
         security_events: vec![],

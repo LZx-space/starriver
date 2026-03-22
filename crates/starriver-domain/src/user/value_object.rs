@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use starriver_infrastructure::{
     error::{ApiError, Cause},
     security::password_hasher::{from_hashed_password, hash_password, verify_password},
+    util::regex_utils::email_regex,
 };
 use time::OffsetDateTime;
 
@@ -17,7 +18,7 @@ pub enum UserState {
     Disabled, // 禁用/暂停
 }
 
-// ----------------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Username(String);
@@ -38,7 +39,7 @@ impl Username {
     }
 }
 
-// ----------------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Password {
@@ -88,7 +89,39 @@ impl Password {
     }
 }
 
-// ----------------------------------------------------------------------------
+///////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Email(String);
+
+impl Email {
+    pub fn new(email: &str) -> Result<Self, ApiError> {
+        if !email_regex().is_match(email) {
+            return Err(ApiError::new(
+                Cause::ClientBadRequest,
+                "Invalid email format".to_string(),
+            ));
+        }
+        Ok(Self(email.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Returns a masked email address, showing only the first character of the local part
+    pub fn masking(&self) -> String {
+        let parts: Vec<&str> = self.0.split('@').collect();
+        if parts.len() != 2 {
+            return self.0.clone();
+        }
+        let (local, domain) = (parts[0], parts[1]);
+        let masked_local = format!("{}*", &local[..1]);
+        format!("{}@{}", masked_local, domain)
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SecurityEventType {

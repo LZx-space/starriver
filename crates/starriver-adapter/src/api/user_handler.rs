@@ -3,6 +3,11 @@ use axum::Json;
 use axum::extract::State;
 use axum::response::IntoResponse;
 use starriver_application::user_dto::UserCmd;
+use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
+
+pub async fn me(user: AuthenticatedUser) -> impl IntoResponse {
+    Json(user)
+}
 
 pub async fn register_inactive_user(
     state: State<AppState>,

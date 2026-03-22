@@ -5,7 +5,7 @@ use ferris_says::say;
 use mimalloc::MiMalloc;
 use starriver_adapter::api::blog_handler;
 use starriver_adapter::api::dictionary_handler;
-use starriver_adapter::api::{authentication_handler, user_handler};
+use starriver_adapter::api::user_handler;
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
@@ -43,7 +43,7 @@ async fn main() {
             UsernamePasswordAuthenticator { user_service },
         ));
     let router = Router::new()
-        .route("/users/me", get(authentication_handler::me))
+        .route("/users/me", get(user_handler::me))
         .route("/users", post(user_handler::register_inactive_user))
         .route("/blogs", get(blog_handler::page).post(blog_handler::insert))
         .route(

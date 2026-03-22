@@ -11,7 +11,7 @@ use crate::user::{
 pub struct UserFactory {}
 
 impl UserFactory {
-    pub fn create_user(
+    pub fn create_inactive_user(
         username: &str,
         password: &str,
         password_specification: PasswordSpecification,

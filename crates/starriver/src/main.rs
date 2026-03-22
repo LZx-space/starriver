@@ -47,7 +47,7 @@ async fn main() {
             "/session/user",
             get(authentication_handler::authenticated_user),
         )
-        .route("/users", post(user_handler::insert))
+        .route("/users", post(user_handler::register_inactive_user))
         .route("/blogs", get(blog_handler::page).post(blog_handler::insert))
         .route(
             "/blogs/{id}",

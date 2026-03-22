@@ -21,12 +21,17 @@ impl UserApplication {
         Self { conn }
     }
 
-    pub async fn register_user(&self, username: &str, password: &str) -> Result<(), ApiError> {
-        let user = UserFactory::create_user(username, password, PasswordSpecification::default())
-            .map_err(|e| {
-            error!("register user error: {}", e);
-            ApiError::new(Cause::ClientBadRequest, e.to_string())
-        })?;
+    pub async fn register_inactive_user(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<(), ApiError> {
+        let user =
+            UserFactory::create_inactive_user(username, password, PasswordSpecification::default())
+                .map_err(|e| {
+                    error!("register user error: {}", e);
+                    ApiError::new(Cause::ClientBadRequest, e.to_string())
+                })?;
         DefaultUserRepository::new(self.conn)
             .insert(user)
             .await

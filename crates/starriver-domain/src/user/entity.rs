@@ -20,7 +20,7 @@ pub struct User {
     pub id: Uuid,
     pub username: Username,
     pub password: Password,
-    pub email: Option<Email>,
+    pub email: Email,
     pub state: UserState,
     pub created_at: OffsetDateTime,
     pub security_events: Vec<SecurityEvent>,

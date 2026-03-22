@@ -1,4 +1,5 @@
 use crate::repository::user_repository::DefaultUserRepository;
+use crate::user_dto::UserCmd;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::{factory::UserFactory, specification::PasswordSpecification};
@@ -21,17 +22,17 @@ impl UserApplication {
         Self { conn }
     }
 
-    pub async fn register_inactive_user(
-        &self,
-        username: &str,
-        password: &str,
-    ) -> Result<(), ApiError> {
-        let user =
-            UserFactory::create_inactive_user(username, password, PasswordSpecification::default())
-                .map_err(|e| {
-                    error!("register user error: {}", e);
-                    ApiError::new(Cause::ClientBadRequest, e.to_string())
-                })?;
+    pub async fn register_inactive_user(&self, cmd: UserCmd) -> Result<(), ApiError> {
+        let user = UserFactory::create_inactive_user(
+            cmd.username.as_str(),
+            cmd.password.as_str(),
+            cmd.email.as_str(),
+            PasswordSpecification::default(),
+        )
+        .map_err(|e| {
+            error!("register user error: {}", e);
+            ApiError::new(Cause::ClientBadRequest, e.to_string())
+        })?;
         DefaultUserRepository::new(self.conn)
             .insert(user)
             .await
@@ -60,6 +61,7 @@ impl UserApplication {
                 Ok(_) => Ok(AuthenticatedUser {
                     id: user.id,
                     username: username.to_string(),
+                    email: user.email.to_string(),
                     authorities: vec![],
                 }),
                 Err(e) => {

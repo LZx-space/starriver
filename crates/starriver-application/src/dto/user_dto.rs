@@ -4,4 +4,5 @@ use serde::Deserialize;
 pub struct UserCmd {
     pub username: String,
     pub password: String,
+    pub email: String,
 }

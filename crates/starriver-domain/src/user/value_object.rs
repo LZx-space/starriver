@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use argon2::password_hash::PasswordHashString;
 use serde::{Deserialize, Serialize};
 use starriver_infrastructure::{
@@ -118,6 +120,12 @@ impl Email {
         let (local, domain) = (parts[0], parts[1]);
         let masked_local = format!("{}*", &local[..1]);
         format!("{}@{}", masked_local, domain)
+    }
+}
+
+impl Display for Email {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

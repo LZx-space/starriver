@@ -14,8 +14,5 @@ pub async fn register_inactive_user(
     cmd: Json<UserCmd>,
 ) -> impl IntoResponse {
     let cmd = cmd.0;
-    state
-        .user_application
-        .register_inactive_user(&cmd.username, &cmd.password)
-        .await
+    state.user_application.register_inactive_user(cmd).await
 }

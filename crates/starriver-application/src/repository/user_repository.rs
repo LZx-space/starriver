@@ -2,6 +2,7 @@ use crate::db::user_do::ActiveModel;
 use crate::db::user_do::Column;
 use crate::db::user_do::Entity;
 use crate::db::user_do::Model;
+use crate::db::user_do::UserStateDo;
 use crate::db::user_security_event_do;
 use sea_orm::ActiveModelTrait;
 use sea_orm::ActiveValue::NotSet;
@@ -56,8 +57,8 @@ where
             id: Set(user.id),
             username: Set(username.to_string()),
             password: Set(user.password.hashed_password_string().to_string()),
-            email: Set(user.email.map(|e| e.as_str().to_string())),
-            state: Set(crate::db::user_do::UserStateDo::Inactive),
+            email: Set(user.email.to_string()),
+            state: Set(UserStateDo::Inactive),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: NotSet,
         }
@@ -84,8 +85,8 @@ where
                 let mut password = Unchanged(found.password.hashed_password_string().to_string());
                 password.set_if_not_equals(user.password.hashed_password_string().to_string());
 
-                let mut email = Unchanged(found.email.map(|e| e.as_str().to_string()));
-                email.set_if_not_equals(user.email.as_ref().map(|e| e.as_str().to_string()));
+                let mut email = Unchanged(found.email.to_string());
+                email.set_if_not_equals(user.email.to_string());
 
                 let mut state = Unchanged(found.state.into());
                 state.set_if_not_equals(user.state.into());
@@ -165,7 +166,7 @@ async fn find_by_username(
 fn model_to_entity(m: Model) -> Result<User, ApiError> {
     let username = Username::new(m.username.as_str())?;
     let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
-    let email = m.email.map(|e| Email::new(e.as_str())).transpose()?;
+    let email = Email::new(m.email.as_str())?;
     Ok(User {
         id: m.id,
         username,

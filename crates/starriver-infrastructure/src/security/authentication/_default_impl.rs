@@ -80,6 +80,7 @@ const AUTHENTICATION_JWS_SECRET: &str = "LZx";
 pub struct AuthenticatedUser {
     pub id: Uuid,
     pub username: String,
+    pub email: String,
     #[serde(default)]
     pub authorities: Vec<SimpleAuthority>,
 }
@@ -126,6 +127,7 @@ where
             AuthenticatedUser {
                 id: principal_claims.sub,
                 username: principal_claims.username,
+                email: principal_claims.email,
                 authorities: principal_claims.authorities,
             }
         })
@@ -171,6 +173,7 @@ pub struct PrincipalClaims {
     iat: i64,  // Issued at (as UTC timestamp)
     sub: Uuid, // Subject (whom token refers to)
     username: String,
+    email: String,
     authorities: Vec<SimpleAuthority>,
 }
 
@@ -191,6 +194,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             iat: UtcDateTime::now().unix_timestamp(),
             sub: principal.id,
             username: principal.username,
+            email: principal.email,
             authorities: principal.authorities,
         };
         // 编码为JWS

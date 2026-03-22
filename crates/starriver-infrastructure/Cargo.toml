@@ -18,6 +18,8 @@ futures-util = { workspace = true }
 hmac = "^0"
 
 jsonwebtoken = { version = "^10", features = ["rust_crypto"] }
+moka = { version = "^0", features = ["future"] }
+rand = "^0"
 regex = "^1"
 sea-orm = { workspace = true }
 serde = { workspace = true }

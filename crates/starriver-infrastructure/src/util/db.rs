@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 
 static DB_CONN: OnceLock<DatabaseConnection> = OnceLock::new();
 
-pub async fn db_conn() -> &'static DatabaseConnection {
+pub async fn get_or_init_db_conn() -> &'static DatabaseConnection {
     if let Some(conn) = DB_CONN.get() {
         return conn;
     }

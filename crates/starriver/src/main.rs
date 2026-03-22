@@ -9,7 +9,8 @@ use starriver_adapter::api::user_handler;
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
-use starriver_infrastructure::util::db::db_conn;
+use starriver_infrastructure::service::cache_service::get_or_init_verification_code_cache;
+use starriver_infrastructure::util::db::get_or_init_db_conn;
 use std::env;
 use std::io::{BufWriter, stdout};
 use std::net::IpAddr;
@@ -30,7 +31,9 @@ async fn main() {
     say_hello();
     dotenvy::dotenv().expect(".env file not found");
 
-    let conn = db_conn().await;
+    let conn = get_or_init_db_conn().await;
+    get_or_init_verification_code_cache().await;
+
     let addrs = http_server_bind_addrs();
     let app_state = AppState::new(conn);
     let user_service = app_state.user_application.clone();

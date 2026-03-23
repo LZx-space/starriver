@@ -16,10 +16,24 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    pub fn new<S: Into<String>>(cause: Cause, message: S) -> Self {
+    pub fn new<S: Display>(cause: Cause, message: S) -> Self {
         ApiError {
             cause,
-            message: message.into(),
+            message: message.to_string(),
+        }
+    }
+
+    pub fn with_inner_error<S: Display>(message: S) -> Self {
+        ApiError {
+            cause: Cause::InnerError,
+            message: message.to_string(),
+        }
+    }
+
+    pub fn with_bad_request<S: Display>(message: S) -> Self {
+        ApiError {
+            cause: Cause::ClientBadRequest,
+            message: message.to_string(),
         }
     }
 }

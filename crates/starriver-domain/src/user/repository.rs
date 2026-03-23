@@ -8,6 +8,11 @@ pub trait UserRepository {
         username: &str,
     ) -> impl Future<Output = Result<Option<User>, ApiError>> + Send;
 
+    fn find_by_id(
+        &self,
+        user_id: Uuid,
+    ) -> impl Future<Output = Result<Option<User>, ApiError>> + Send;
+
     fn insert(&self, user: User) -> impl Future<Output = Result<User, ApiError>> + Send;
 
     fn update(&self, user: User) -> impl Future<Output = Result<User, ApiError>> + Send;

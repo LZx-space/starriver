@@ -13,11 +13,13 @@ use crate::user::specification::PasswordSpecification;
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub enum UserState {
+    /// 正常
     #[default]
-    Inactive, // 未激活/待验证
-    Active,   // 正常
-    Locked,   // 临时锁定
-    Disabled, // 禁用/暂停
+    Active,
+    /// 临时锁定
+    Locked,
+    /// 禁用/暂停
+    Disabled,
 }
 
 /////////////////////////////////////////////////////////////////////////////////

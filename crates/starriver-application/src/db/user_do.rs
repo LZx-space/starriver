@@ -40,12 +40,10 @@ impl Related<super::user_security_event_do::Entity> for Entity {
 pub enum UserStateDo {
     #[default]
     #[sea_orm(num_value = 0)]
-    Inactive, // 未激活/待验证
-    #[sea_orm(num_value = 1)]
     Active, // 正常
-    #[sea_orm(num_value = 2)]
+    #[sea_orm(num_value = 1)]
     Locked, // 临时锁定
-    #[sea_orm(num_value = 3)]
+    #[sea_orm(num_value = 2)]
     Disabled, // 禁用/暂停
 }
 
@@ -55,7 +53,6 @@ impl From<UserStateDo> for UserState {
     fn from(value: UserStateDo) -> Self {
         match value {
             UserStateDo::Active => UserState::Active,
-            UserStateDo::Inactive => UserState::Inactive,
             UserStateDo::Locked => UserState::Locked,
             UserStateDo::Disabled => UserState::Disabled,
         }
@@ -66,7 +63,6 @@ impl From<UserState> for UserStateDo {
     fn from(value: UserState) -> Self {
         match value {
             UserState::Active => UserStateDo::Active,
-            UserState::Inactive => UserStateDo::Inactive,
             UserState::Locked => UserStateDo::Locked,
             UserState::Disabled => UserStateDo::Disabled,
         }

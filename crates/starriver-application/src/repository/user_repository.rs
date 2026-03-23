@@ -22,6 +22,7 @@ use starriver_infrastructure::error::Cause;
 use starriver_infrastructure::util::db::TransactionalConn;
 use time::Duration;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 pub struct DefaultUserRepository<'a, T> {
     conn: &'a T,
@@ -44,6 +45,15 @@ where
         find_by_username(self.conn, username).await
     }
 
+    async fn find_by_id(&self, user_id: Uuid) -> Result<Option<User>, ApiError> {
+        let user = Entity::find_by_id(user_id)
+            .one(self.conn)
+            .await?
+            .map(model_to_entity)
+            .transpose()?;
+        Ok(user)
+    }
+
     async fn insert(&self, user: User) -> Result<User, ApiError> {
         let username = user.username.as_str();
         let found = self.find_by_username(username).await?;
@@ -58,7 +68,7 @@ where
             username: Set(username.to_string()),
             password: Set(user.password.hashed_password_string().to_string()),
             email: Set(user.email.to_string()),
-            state: Set(UserStateDo::Inactive),
+            state: Set(UserStateDo::Active),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: NotSet,
         }

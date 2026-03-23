@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use crate::{
     error::{ApiError, Cause},
     security::authentication::{
@@ -14,7 +12,6 @@ use crate::{
                 AuthenticationFailureHandler, AuthenticationSuccessHandler,
             },
             request_matcher::RequestMatcher,
-            timing_attack_protection::TimingAttackProtection,
         },
     },
 };
@@ -26,11 +23,9 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::extract::{CookieJar, cookie::Cookie};
-use core::time::Duration;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use time::UtcDateTime;
-use tokio::time::sleep;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -112,7 +107,7 @@ where
         let jws = cookie_jar
             .get(AUTHENTION_TOKEN_COOKIE_NAME)
             .ok_or_else(|| {
-                warn!("未找到认证凭证的Cookie");
+                warn!("authentication cookie not found");
                 StatusCode::UNAUTHORIZED
             })?
             .value();
@@ -132,35 +127,9 @@ where
             }
         })
         .map_err(|e| {
-            error!("解码JWS失败, {}", e);
+            error!("decode JWS error, {}", e);
             StatusCode::UNAUTHORIZED
         })
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-/// 异步运行时为tokio时，使用tokio的sleep函数实现延时以防止认证时的时差攻击
-pub struct TokioTimingAttackProtection {
-    pub delay: Duration,
-}
-
-impl TimingAttackProtection for TokioTimingAttackProtection {
-    async fn fixed_duration_delay(&self, authenticate_start_at: Instant) {
-        let elapsed = authenticate_start_at.elapsed();
-        let to_delay = self.delay.saturating_sub(elapsed);
-        if Duration::ZERO.eq(&to_delay) {
-            return;
-        }
-        sleep(to_delay).await;
-    }
-}
-
-impl Default for TokioTimingAttackProtection {
-    fn default() -> Self {
-        Self {
-            delay: Duration::from_millis(500),
-        }
     }
 }
 
@@ -243,7 +212,6 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
         warn!("authentication failed: {}", err);
         let (cause, message) = match err {
-            AuthenticationError::UserInactive => (Cause::Forbidden, "user inactive"),
             AuthenticationError::UserLocked => (Cause::Forbidden, "user locked"),
             AuthenticationError::UserDisabled => (Cause::Forbidden, "user disabled"),
             AuthenticationError::Unknown => (Cause::InnerError, "unknown error"),

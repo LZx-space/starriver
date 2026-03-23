@@ -15,7 +15,7 @@ pub trait Authenticator {
     ) -> impl Future<Output = Result<Self::Principal, AuthenticationError>> + Send;
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum AuthenticationError {
     #[error("username not found")]
     UsernameNotFound,
@@ -33,9 +33,6 @@ pub enum AuthenticationError {
     BadPassword,
 
     /////////////////////////
-    #[error("user inactive")]
-    UserInactive,
-
     #[error("user locked")]
     UserLocked,
 

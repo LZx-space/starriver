@@ -1,38 +1,48 @@
+use std::convert::Infallible;
+
+use crate::query::user_query_service::{DefaultUserQueryService, UserQueryService};
 use crate::repository::user_repository::DefaultUserRepository;
-use crate::user_dto::UserCmd;
+use crate::user_dto::{EmailVerifyCmd, UserCmd};
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::{factory::UserFactory, specification::PasswordSpecification};
+use starriver_infrastructure::service::cache_service::{
+    cache_email_verification_code, verify_email_by_verification_code,
+};
+use starriver_infrastructure::service::email_service::send_email_verification_mail;
 use starriver_infrastructure::{
-    error::{ApiError, Cause},
+    error::ApiError,
     security::authentication::{
         _default_impl::{AuthenticatedUser, UsernamePasswordCredentials},
         core::authenticator::AuthenticationError,
     },
 };
-use tracing::error;
+use tracing::{error, warn};
 
 pub struct UserApplication {
     conn: &'static DatabaseConnection,
+    query_service: DefaultUserQueryService,
 }
 
 impl UserApplication {
     /// 新建
     pub fn new(conn: &'static DatabaseConnection) -> Self {
-        Self { conn }
+        Self {
+            conn,
+            query_service: DefaultUserQueryService { conn },
+        }
     }
 
-    pub async fn register_inactive_user(&self, cmd: UserCmd) -> Result<(), ApiError> {
-        let user = UserFactory::create_inactive_user(
+    pub async fn register_user(&self, cmd: UserCmd) -> Result<(), ApiError> {
+        let email_code = cmd.email_code;
+        let email = cmd.email.as_str();
+        verify_email_by_verification_code(email, email_code.as_str()).await?;
+        let user = UserFactory::create_user(
             cmd.username.as_str(),
             cmd.password.as_str(),
-            cmd.email.as_str(),
+            email,
             PasswordSpecification::default(),
-        )
-        .map_err(|e| {
-            error!("register user error: {}", e);
-            ApiError::new(Cause::ClientBadRequest, e.to_string())
-        })?;
+        )?;
         DefaultUserRepository::new(self.conn)
             .insert(user)
             .await
@@ -65,6 +75,7 @@ impl UserApplication {
                     authorities: vec![],
                 }),
                 Err(e) => {
+                    // 更新用户
                     repo.update(user).await.map_err(|e| {
                         error!("update user error: {}", e);
                         AuthenticationError::Unknown
@@ -79,6 +90,28 @@ impl UserApplication {
             }
         } else {
             Err(AuthenticationError::UsernameNotFound)
+        }
+    }
+
+    /// 发送邮箱验证邮件，永远不返回失败以防暴力核验邮箱
+    pub async fn send_verification_email(&self, cmd: EmailVerifyCmd) -> Result<(), Infallible> {
+        let email = cmd.email.as_str();
+        match self.query_service.find_by_email(email).await {
+            Ok(found) => {
+                if found {
+                    warn!("email already registered: {}", email);
+                    return Ok(());
+                }
+                let verification_code = cache_email_verification_code(email).await;
+                if let Err(e) = send_email_verification_mail(email, verification_code).await {
+                    error!("send verification email error {}", e)
+                }
+                Ok(())
+            }
+            Err(e) => {
+                error!("find user by email error {}", e);
+                Ok(())
+            }
         }
     }
 }

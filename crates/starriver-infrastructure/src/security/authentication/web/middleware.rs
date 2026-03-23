@@ -10,8 +10,7 @@ use tower::{Layer, Service};
 
 use crate::security::authentication::_default_impl::{
     AuthenticatedUser, DefaultAuthenticationFailureHandler, DefaultAuthenticationSuccessHandler,
-    DefaultCredentialsExtractor, LoginRequestMatcher, TokioTimingAttackProtection,
-    UsernamePasswordCredentials,
+    DefaultCredentialsExtractor, LoginRequestMatcher, UsernamePasswordCredentials,
 };
 use crate::security::authentication::core::credentials::Credentials;
 use crate::security::authentication::core::principal::Principal;
@@ -22,7 +21,8 @@ use crate::security::authentication::web::authentication_result_handler::{
     AuthenticationFailureHandler, AuthenticationSuccessHandler,
 };
 use crate::security::authentication::web::request_matcher::RequestMatcher;
-use crate::security::authentication::web::timing_attack_protection::TimingAttackProtection;
+use crate::security::timing_attack_protection::TimingAttackProtection;
+use crate::security::timing_attack_protection::TokioTimingAttackProtection;
 
 pub struct AuthenticationLayer<RM, CE, A, TAP, RS, RF, C, P> {
     login_request_matcher: Arc<RM>,

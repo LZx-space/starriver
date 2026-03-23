@@ -2,8 +2,33 @@ use std::env;
 
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    message::Mailbox,
     transport::smtp::{Error, authentication::Credentials, response::Response},
 };
+
+use crate::error::ApiError;
+
+pub async fn send_email_verification_mail(
+    to: &str,
+    verification_code: String,
+) -> Result<(), ApiError> {
+    let to = to.parse::<Mailbox>().map_err(ApiError::with_inner_error)?;
+    let from = "starriver@qq.com"
+        .parse::<Mailbox>()
+        .map_err(ApiError::with_inner_error)?;
+    let message = Message::builder()
+        .subject("Starriver User's Email Verification")
+        .from(from)
+        .to(to)
+        .body(format!("email verification code is {}", verification_code))
+        .map_err(ApiError::with_inner_error)?;
+    let client = EmailClient::with_env().map_err(ApiError::with_inner_error)?;
+    client
+        .send(message)
+        .await
+        .map_err(ApiError::with_inner_error)?;
+    Ok(())
+}
 
 pub struct EmailClient {
     smtp_client: AsyncSmtpTransport<Tokio1Executor>,

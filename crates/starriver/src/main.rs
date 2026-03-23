@@ -48,6 +48,7 @@ async fn main() {
     let router = Router::new()
         .route("/users/me", get(user_handler::me))
         .route("/users", post(user_handler::register_inactive_user))
+        .route("/email-verifications", post(user_handler::verify_email))
         .route("/blogs", get(blog_handler::page).post(blog_handler::insert))
         .route(
             "/blogs/{id}",

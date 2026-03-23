@@ -43,15 +43,11 @@ impl User {
         spec: &PasswordSpecification,
     ) -> Result<(), AuthenticationError> {
         // 先检查用户状态
-        let state_error = match self.state {
-            UserState::Active => None,
-            UserState::Inactive => Some(AuthenticationError::UserInactive),
-            UserState::Locked => Some(AuthenticationError::UserLocked),
-            UserState::Disabled => Some(AuthenticationError::UserDisabled),
+        match self.state {
+            UserState::Active => {}
+            UserState::Locked => return Err(AuthenticationError::UserLocked),
+            UserState::Disabled => return Err(AuthenticationError::UserDisabled),
         };
-        if let Some(err) = state_error {
-            return Err(err);
-        }
 
         from_hashed_password(self.password.hashed_password_string())
             .map_err(|e| {
@@ -81,12 +77,17 @@ impl User {
                     self.security_events.push(event);
                     // 检查是否需要锁定用户
                     if spec.lock_if_try_exceeded(&self.security_events) {
-                        info!("用户{}已锁定，登录密码错误太多", self.id);
+                        info!("user[{}] locked，bad password too many times", self.id);
                         self.state = UserState::Locked;
                     }
                     AuthenticationError::BadPassword
-                })
+                })?;
+                Ok(())
             })
+    }
+
+    pub fn activate(&mut self) {
+        self.state = UserState::Active;
     }
 }
 

@@ -8,7 +8,7 @@ static VERIFICATION_CODE_CACHE: OnceLock<Cache<String, String>> = OnceLock::new(
 // keep async for future expansion
 pub async fn get_or_init_verification_code_cache() -> &'static Cache<String, String> {
     VERIFICATION_CODE_CACHE.get_or_init(|| {
-        let max_capacity = env::var("DB_URL").unwrap_or("10_000".to_string());
+        let max_capacity = env::var("EMAIL_CACHE_MAX_CAPACITY").unwrap_or("10_000".to_string());
         let max_capacity = max_capacity.parse::<u64>().unwrap_or(10_000);
         Cache::builder()
             .max_capacity(max_capacity)
@@ -38,6 +38,20 @@ pub async fn verify_email_by_verification_code(email: &str, code: &str) -> Resul
     }
     Err(ApiError::new(
         Cause::ClientBadRequest,
-        "Verification code does not match or invalid",
+        "verification code does not match or invalid",
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cache_verification_code() {
+        let email = "test@example.com";
+        let code = cache_email_verification_code(email).await;
+        assert_eq!(code.len(), 6);
+        let result = verify_email_by_verification_code(email, code.as_str()).await;
+        assert!(result.is_ok(), "verification code should match")
+    }
 }

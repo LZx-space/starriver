@@ -12,8 +12,10 @@ pub async fn send_email_verification_mail(
     to: &str,
     verification_code: String,
 ) -> Result<(), ApiError> {
+    let client = EmailClient::with_env().map_err(ApiError::with_inner_error)?;
     let to = to.parse::<Mailbox>().map_err(ApiError::with_inner_error)?;
-    let from = "starriver@qq.com"
+    let from = client
+        .username
         .parse::<Mailbox>()
         .map_err(ApiError::with_inner_error)?;
     let message = Message::builder()
@@ -22,7 +24,6 @@ pub async fn send_email_verification_mail(
         .to(to)
         .body(format!("email verification code is {}", verification_code))
         .map_err(ApiError::with_inner_error)?;
-    let client = EmailClient::with_env().map_err(ApiError::with_inner_error)?;
     client
         .send(message)
         .await
@@ -32,16 +33,20 @@ pub async fn send_email_verification_mail(
 
 pub struct EmailClient {
     smtp_client: AsyncSmtpTransport<Tokio1Executor>,
+    username: String,
 }
 
 impl EmailClient {
     pub fn new(cfg: StmpConfig) -> Result<Self, Error> {
-        let creds = Credentials::new(cfg.username, cfg.password);
+        let creds = Credentials::new(cfg.username.clone(), cfg.password);
         let smtp_client = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&cfg.host)?
             .port(cfg.port)
             .credentials(creds)
             .build();
-        Ok(Self { smtp_client })
+        Ok(Self {
+            smtp_client,
+            username: cfg.username,
+        })
     }
 
     pub fn with_env() -> Result<Self, Error> {

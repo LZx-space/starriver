@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use starriver_infrastructure::{
     error::{ApiError, Cause},
     security::password_hasher::{from_hashed_password, hash_password, verify_password},
-    util::regex_utils::email_regex,
+    util::regex_utils::REGEX_EMAIL,
 };
 use time::OffsetDateTime;
 
@@ -100,7 +100,7 @@ pub struct Email(String);
 
 impl Email {
     pub fn new(email: &str) -> Result<Self, ApiError> {
-        if !email_regex().is_match(email) {
+        if !REGEX_EMAIL.is_match(email) {
             return Err(ApiError::new(
                 Cause::ClientBadRequest,
                 "Invalid email format".to_string(),

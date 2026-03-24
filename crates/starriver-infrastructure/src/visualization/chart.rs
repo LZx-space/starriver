@@ -113,21 +113,21 @@ mod tests {
         }
 
         struct TestDataset {
-            dateset: Vec<TestRow>,
+            dataset: Vec<TestRow>,
         }
 
         impl Dataset for TestDataset {
             type Row = TestRow;
 
             fn rows(&self) -> Vec<&Self::Row> {
-                self.dateset.iter().map(|e| e).collect()
+                self.dataset.iter().map(|e| e).collect()
             }
         }
 
         impl Debug for TestDataset {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 let show = self
-                    .dateset
+                    .dataset
                     .iter()
                     .map(|e| {
                         let x = &e.id;
@@ -145,7 +145,7 @@ mod tests {
         let ctx = TestCtx { q: query };
         let handler = DefaultChartHandler::new(|_ctx| {
             Ok(TestDataset {
-                dateset: vec![
+                dataset: vec![
                     TestRow {
                         id: "R1".to_string(),
                         column_1: "1".to_string(),

@@ -9,11 +9,10 @@ workspace = true
 
 [dependencies]
 starriver-infrastructure = { path = "../starriver-infrastructure" }
+
 anyhow = { workspace = true }
 argon2 = { workspace = true }
-
-time = { workspace = true }
-
 serde = { workspace = true }
+time = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }

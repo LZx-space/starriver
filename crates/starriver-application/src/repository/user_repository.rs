@@ -24,30 +24,35 @@ use time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-pub struct DefaultUserRepository<'a, T> {
-    conn: &'a T,
+pub struct DefaultUserRepository<T> {
+    conn: T,
 }
 
-impl<'a, T> DefaultUserRepository<'a, T>
+impl<T> DefaultUserRepository<T>
 where
     T: TransactionalConn,
 {
-    pub fn new(conn: &'a T) -> DefaultUserRepository<'a, T> {
+    /// 普通链接获取开启事物的链接
+    pub fn new(conn: T) -> DefaultUserRepository<T> {
         Self { conn }
+    }
+
+    pub fn conn(self) -> T {
+        self.conn
     }
 }
 
-impl<'a, T> UserRepository for DefaultUserRepository<'a, T>
+impl<T> UserRepository for DefaultUserRepository<T>
 where
     T: TransactionalConn,
 {
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        find_by_username(self.conn, username).await
+        find_by_username(&self.conn, username).await
     }
 
     async fn find_by_id(&self, user_id: Uuid) -> Result<Option<User>, ApiError> {
         let user = Entity::find_by_id(user_id)
-            .one(self.conn)
+            .one(&self.conn)
             .await?
             .map(model_to_entity)
             .transpose()?;
@@ -72,14 +77,14 @@ where
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: NotSet,
         }
-        .insert(self.conn)
+        .insert(&self.conn)
         .await
         .map(model_to_entity)?
     }
 
     async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, ApiError> {
         let result = Entity::delete_by_id(user_id)
-            .exec(self.conn)
+            .exec(&self.conn)
             .await?
             .rows_affected
             > 0;
@@ -87,7 +92,7 @@ where
     }
 
     async fn update(&self, mut user: User) -> Result<User, ApiError> {
-        match find_by_username(self.conn, user.username.as_str()).await? {
+        match find_by_username(&self.conn, user.username.as_str()).await? {
             Some(found) => {
                 let mut username = Unchanged(found.username.as_str().to_string());
                 username.set_if_not_equals(user.username.as_str().to_string());
@@ -122,10 +127,10 @@ where
                         create_at: Set(event.created_at),
                         update_at: NotSet,
                     };
-                    event_model.insert(self.conn).await?;
+                    event_model.insert(&self.conn).await?;
                 }
 
-                model.update(self.conn).await.map(model_to_entity)?
+                model.update(&self.conn).await.map(model_to_entity)?
             }
             None => Err(ApiError::new(Cause::ClientBadRequest, "User not found")),
         }
@@ -174,9 +179,9 @@ async fn find_by_username(
 
 #[inline]
 fn model_to_entity(m: Model) -> Result<User, ApiError> {
-    let username = Username::new(m.username.as_str())?;
+    let username = Username::new(m.username.as_str());
     let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
-    let email = Email::new(m.email.as_str())?;
+    let email = Email::new(m.email.as_str());
     Ok(User {
         id: m.id,
         username,

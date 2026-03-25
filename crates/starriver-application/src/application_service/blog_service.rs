@@ -14,26 +14,25 @@ use tracing::info;
 use uuid::Uuid;
 
 pub struct BlogApplication {
-    conn: &'static DatabaseConnection,
-    query_service: DefaultBlogQueryService,
+    conn: DatabaseConnection,
+    query: DefaultBlogQueryService,
+    repo: DefaultBlogRepository<DatabaseConnection>,
 }
 
 impl BlogApplication {
     /// 新建
-    pub fn new(conn: &'static DatabaseConnection) -> Self {
-        Self {
-            conn,
-            query_service: DefaultBlogQueryService { conn },
-        }
+    pub fn new(conn: DatabaseConnection) -> Self {
+        let query = DefaultBlogQueryService { conn: conn.clone() };
+        let repo = DefaultBlogRepository::new(conn.clone());
+        Self { conn, query, repo }
     }
 
     pub async fn page(&self, q: PageQuery) -> Result<PageResult<BlogSummary>, ApiError> {
-        self.query_service.find_page(q).await
+        self.query.find_page(q).await
     }
 
     pub async fn find_by_id(&self, id: Uuid) -> Result<BlogDetail, ApiError> {
-        let repo = DefaultBlogRepository::new(self.conn);
-        find_blog_by_id(&repo, id).await.map(entity_2_vo)
+        find_blog_by_id(&self.repo, id).await.map(entity_2_vo)
     }
 
     pub async fn add(
@@ -43,10 +42,7 @@ impl BlogApplication {
     ) -> Result<BlogDetail, ApiError> {
         let author_id = author.id;
         let blog = cmd_2_new_entity(author_id, cmd);
-        DefaultBlogRepository::new(self.conn)
-            .add(blog)
-            .await
-            .map(entity_2_vo)
+        self.repo.add(blog).await.map(entity_2_vo)
     }
 
     pub async fn update(
@@ -58,12 +54,12 @@ impl BlogApplication {
         info!("用户[{}]更新博客[{}]", operator.username, id);
         // 开启事务, update方法内部会再次查询获取副本以对比更新字段，这依赖于事务等级
         let tx = self.conn.begin().await.map_err(ApiError::from)?;
-        let repo = DefaultBlogRepository::new(&tx);
+        let repo = DefaultBlogRepository::new(tx);
         let found_blog = find_blog_by_id(&repo, id).await?;
         let updated_blog = cmd_2_update_entity(cmd, found_blog);
         let result = repo.update(updated_blog).await.map(entity_2_vo)?;
         // 提交事务
-        tx.commit().await?;
+        repo.conn().commit().await?;
         Ok(result)
     }
 
@@ -73,14 +69,14 @@ impl BlogApplication {
         id: Uuid,
     ) -> Result<bool, ApiError> {
         info!("用户[{}]删除博客[{}]", operator.username, id);
-        DefaultBlogRepository::new(self.conn).delete_by_id(id).await
+        self.repo.delete_by_id(id).await
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 async fn find_blog_by_id(
-    repo: &DefaultBlogRepository<'_, impl TransactionalConn>,
+    repo: &DefaultBlogRepository<impl TransactionalConn>,
     id: Uuid,
 ) -> Result<Blog, ApiError> {
     repo.find_by_id(id)

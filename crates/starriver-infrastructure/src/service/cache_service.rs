@@ -1,46 +1,53 @@
+use std::time::Duration;
+
 use moka::future::Cache;
-use std::{env, sync::OnceLock, time::Duration};
 
-use crate::error::{ApiError, Cause};
+use crate::{
+    error::{ApiError, Cause},
+    service::config_service::EmailVerificationCache,
+};
 
-static VERIFICATION_CODE_CACHE: OnceLock<Cache<String, String>> = OnceLock::new();
-
-// keep async for future expansion
-pub async fn get_or_init_verification_code_cache() -> &'static Cache<String, String> {
-    VERIFICATION_CODE_CACHE.get_or_init(|| {
-        let max_capacity = env::var("EMAIL_CACHE_MAX_CAPACITY").unwrap_or("10_000".to_string());
-        let max_capacity = max_capacity.parse::<u64>().unwrap_or(10_000);
-        Cache::builder()
-            .max_capacity(max_capacity)
-            .time_to_live(Duration::from_mins(30))
-            .build()
-    })
+pub struct VerificationCodeCache {
+    inner: Cache<String, String>,
 }
 
-pub async fn cache_email_verification_code(email: &str) -> String {
-    let code: String = (0..6)
-        .map(|_| rand::random::<u8>() % 10 + b'0')
-        .map(|b| b as char)
-        .collect();
-    get_or_init_verification_code_cache()
-        .await
-        .insert(email.to_string(), code.clone())
-        .await;
-    code
-}
-
-pub async fn verify_email_by_verification_code(email: &str, code: &str) -> Result<(), ApiError> {
-    let cache = get_or_init_verification_code_cache().await;
-    if let Some(cached_code) = cache.get(email).await
-        && cached_code == code
-    {
-        return Ok(());
+impl VerificationCodeCache {
+    pub fn new(cfg: EmailVerificationCache) -> Self {
+        Self {
+            inner: Cache::builder()
+                .max_capacity(cfg.max_capacity)
+                .time_to_live(Duration::from_hours(cfg.ttl_hours))
+                .build(),
+        }
     }
-    Err(ApiError::new(
-        Cause::ClientBadRequest,
-        "verification code does not match or invalid",
-    ))
+
+    pub async fn cache_email_verification_code(&self, email: &str) -> String {
+        let code: String = (0..6)
+            .map(|_| rand::random::<u8>() % 10 + b'0')
+            .map(|b| b as char)
+            .collect();
+        self.inner.insert(email.to_string(), code.clone()).await;
+        code
+    }
+
+    pub async fn verify_email_by_verification_code(
+        &self,
+        email: &str,
+        code: &str,
+    ) -> Result<(), ApiError> {
+        if let Some(cached_code) = self.inner.get(email).await
+            && cached_code == code
+        {
+            return Ok(());
+        }
+        Err(ApiError::new(
+            Cause::ClientBadRequest,
+            "verification code does not match or invalid",
+        ))
+    }
 }
+
+///////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
@@ -48,10 +55,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_verification_code() {
+        let cache = VerificationCodeCache::new(EmailVerificationCache {
+            max_capacity: 100,
+            ttl_hours: 60,
+        });
         let email = "test@example.com";
-        let code = cache_email_verification_code(email).await;
+        let code = cache.cache_email_verification_code(email).await;
         assert_eq!(code.len(), 6);
-        let result = verify_email_by_verification_code(email, code.as_str()).await;
+        let result = cache
+            .verify_email_by_verification_code(email, code.as_str())
+            .await;
         assert!(result.is_ok(), "verification code should match")
     }
 }

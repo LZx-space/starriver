@@ -8,14 +8,14 @@ pub trait UserQueryService {
 }
 
 pub struct DefaultUserQueryService {
-    pub conn: &'static DatabaseConnection,
+    pub conn: DatabaseConnection,
 }
 
 impl UserQueryService for DefaultUserQueryService {
     async fn find_by_email(&self, email: &str) -> Result<bool, ApiError> {
         let user = Entity::find()
             .filter(user_do::Column::Email.eq(email.to_string()))
-            .one(self.conn)
+            .one(&self.conn)
             .await?;
         Ok(user.is_some())
     }

@@ -1,0 +1,21 @@
+[http_server]
+ip = "127.0.0.1"
+port = 8080
+
+[database]
+url = "postgresql://postgres:postgres@localhost:5432/starriver"
+
+[email]
+smtp_username = "lzx@example.com"
+smtp_password = "cllaiqdcfqokgbbg"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+
+[regex]
+email = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+username = "^[a-zA-Z0-9_]{3,16}$"
+password = "^[A-Za-z\\d@!%*?]{6,}$"
+
+[email_verification_cache]
+max_capacity = 1000
+ttl_hours = 1

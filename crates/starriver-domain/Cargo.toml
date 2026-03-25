@@ -12,6 +12,7 @@ starriver-infrastructure = { path = "../starriver-infrastructure" }
 
 anyhow = { workspace = true }
 argon2 = { workspace = true }
+regex = { workspace = true }
 serde = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }

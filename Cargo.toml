@@ -9,7 +9,6 @@ edition = "2024"
 rust-version = "1.94"
 
 [workspace.lints.clippy]
-# 这就是你想要的配置
 unwrap_used = "deny"
 
 [workspace.dependencies]
@@ -18,7 +17,9 @@ axum-extra = { version = "^0", features = ["cookie","form"] }
 axum-valid = "^0"
 anyhow = "^1"
 argon2 = "^0"
+config = "^0"
 futures-util = "^0"
+regex = "^1"
 serde = { version = "^1", features = ["derive"] }
 serde_json = "^1"
 sea-orm = { version = "^1", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-bigdecimal", "with-json", "with-rust_decimal", "with-time", "with-uuid"] }

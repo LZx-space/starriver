@@ -8,18 +8,18 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct Repository {
-    conn: &'static DatabaseConnection,
+    conn: DatabaseConnection,
 }
 
 impl Repository {
-    pub fn new(conn: &'static DatabaseConnection) -> Self {
+    pub fn new(conn: DatabaseConnection) -> Self {
         Repository { conn }
     }
 
     pub async fn paging(&self, query: PageQuery) -> Result<PageResult<DictionaryEntry>, DbErr> {
         let paginator = Entity::find()
             .order_by_asc(Column::Id)
-            .paginate(self.conn, query.page_size);
+            .paginate(&self.conn, query.page_size);
         let num_items = paginator.num_items().await?;
 
         // Fetch paginated posts
@@ -48,7 +48,7 @@ impl Repository {
             create_at: Set(e.create_at),
             update_at: Set(None),
         };
-        model.insert(self.conn).await.err()
+        model.insert(&self.conn).await.err()
     }
 
     pub async fn update(&self, e: DictionaryEntry) -> Option<DbErr> {
@@ -60,7 +60,7 @@ impl Repository {
             create_at: Set(e.create_at),
             update_at: Set(Some(OffsetDateTime::now_utc())),
         };
-        model.update(self.conn).await.err()
+        model.update(&self.conn).await.err()
     }
 
     pub async fn delete(&self, e: DictionaryEntry) -> Option<DbErr> {
@@ -72,7 +72,7 @@ impl Repository {
             create_at: Set(e.create_at),
             update_at: Set(Some(OffsetDateTime::now_utc())),
         };
-        model.delete(self.conn).await.err()
+        model.delete(&self.conn).await.err()
     }
 }
 

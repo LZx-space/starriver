@@ -14,9 +14,10 @@ pub struct Dictionary {
 }
 
 impl Dictionary {
-    pub fn new(conn: &'static DatabaseConnection) -> Self {
-        let repo = Repository::new(conn);
-        Dictionary { repo }
+    pub fn new(conn: DatabaseConnection) -> Self {
+        Dictionary {
+            repo: Repository::new(conn),
+        }
     }
 
     pub async fn page(&self, query: PageQuery) -> Result<PageResult<DictionaryEntry>, DbErr> {

@@ -14,7 +14,6 @@ starriver-infrastructure = { path = "../starriver-infrastructure" }
 
 ferris-says = "^0"
 axum = { workspace = true }
-dotenvy = "^0"
 mimalloc = { version = "*", features = ["secure"] }
 tokio = { workspace = true }
 tracing = { workspace = true }

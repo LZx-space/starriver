@@ -1,35 +1,10 @@
-use std::env;
-
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     message::Mailbox,
     transport::smtp::{Error, authentication::Credentials, response::Response},
 };
 
-use crate::error::ApiError;
-
-pub async fn send_email_verification_mail(
-    to: &str,
-    verification_code: String,
-) -> Result<(), ApiError> {
-    let client = EmailClient::with_env().map_err(ApiError::with_inner_error)?;
-    let to = to.parse::<Mailbox>().map_err(ApiError::with_inner_error)?;
-    let from = client
-        .username
-        .parse::<Mailbox>()
-        .map_err(ApiError::with_inner_error)?;
-    let message = Message::builder()
-        .subject("Starriver User's Email Verification")
-        .from(from)
-        .to(to)
-        .body(format!("email verification code is {}", verification_code))
-        .map_err(ApiError::with_inner_error)?;
-    client
-        .send(message)
-        .await
-        .map_err(ApiError::with_inner_error)?;
-    Ok(())
-}
+use crate::{error::ApiError, service::config_service::Email};
 
 pub struct EmailClient {
     smtp_client: AsyncSmtpTransport<Tokio1Executor>,
@@ -37,33 +12,15 @@ pub struct EmailClient {
 }
 
 impl EmailClient {
-    pub fn new(cfg: StmpConfig) -> Result<Self, Error> {
-        let creds = Credentials::new(cfg.username.clone(), cfg.password);
-        let smtp_client = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&cfg.host)?
-            .port(cfg.port)
+    pub fn new(cfg: Email) -> Result<Self, Error> {
+        let creds = Credentials::new(cfg.smtp_username.clone(), cfg.smtp_password);
+        let smtp_client = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&cfg.smtp_host)?
+            .port(cfg.smtp_port)
             .credentials(creds)
             .build();
         Ok(Self {
             smtp_client,
-            username: cfg.username,
-        })
-    }
-
-    pub fn with_env() -> Result<Self, Error> {
-        let username =
-            env::var("EMAIL_USERNAME").expect("EMAIL_USERNAME environment variable not set");
-        let password =
-            env::var("EMAIL_PASSWORD").expect("EMAIL_PASSWORD environment variable not set");
-        let host = env::var("EMAIL_HOST").expect("EMAIL_HOST environment variable not set");
-        let port = env::var("EMAIL_PORT")
-            .expect("EMAIL_PORT environment variable not set")
-            .parse::<u16>()
-            .expect("EMAIL_PORT environment variable must be a valid port number");
-        Self::new(StmpConfig {
-            host,
-            port,
-            username,
-            password,
+            username: cfg.smtp_username,
         })
     }
 
@@ -75,6 +32,30 @@ impl EmailClient {
     /// 检查连接是否正常
     pub async fn test_conn(&self) -> Result<bool, Error> {
         self.smtp_client.test_connection().await
+    }
+
+    /// 发送邮件验证邮件
+    pub async fn send_email_verification_mail(
+        &self,
+        to: &str,
+        verification_code: String,
+    ) -> Result<(), ApiError> {
+        let to = to.parse::<Mailbox>().map_err(ApiError::with_inner_error)?;
+        let from = self
+            .username
+            .parse::<Mailbox>()
+            .map_err(ApiError::with_inner_error)?;
+        let message = Message::builder()
+            .subject("Starriver User's Email Verification")
+            .from(from)
+            .to(to)
+            .body(format!("email verification code is {}", verification_code))
+            .map_err(ApiError::with_inner_error)?;
+        self.smtp_client
+            .send(message)
+            .await
+            .map_err(ApiError::with_inner_error)?;
+        Ok(())
     }
 }
 
@@ -96,8 +77,12 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_send() {
-        dotenvy::dotenv().expect(".env file not found");
-        let client = EmailClient::with_env();
+        let client = EmailClient::new(Email {
+            smtp_host: "".to_string(),
+            smtp_port: 0,
+            smtp_username: "".to_string(),
+            smtp_password: "".to_string(),
+        });
         assert_eq!(
             client.is_ok(),
             true,

@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use starriver_infrastructure::{
     error::{ApiError, Cause},
     security::password_hasher::{from_hashed_password, hash_password, verify_password},
-    util::regex_utils::REGEX_EMAIL,
 };
 use time::OffsetDateTime;
 
@@ -28,14 +27,8 @@ pub enum UserState {
 pub struct Username(String);
 
 impl Username {
-    pub fn new(username: &str) -> Result<Self, ApiError> {
-        if username.len() < 3 || username.len() > 20 {
-            return Err(ApiError::new(
-                Cause::ClientBadRequest,
-                "must be less than 20 characters",
-            ));
-        }
-        Ok(Self(username.to_string()))
+    pub fn new(username: &str) -> Self {
+        Self(username.to_string())
     }
 
     pub fn as_str(&self) -> &str {
@@ -99,14 +92,8 @@ impl Password {
 pub struct Email(String);
 
 impl Email {
-    pub fn new(email: &str) -> Result<Self, ApiError> {
-        if !REGEX_EMAIL.is_match(email) {
-            return Err(ApiError::new(
-                Cause::ClientBadRequest,
-                "Invalid email format".to_string(),
-            ));
-        }
-        Ok(Self(email.to_string()))
+    pub fn new(email: &str) -> Self {
+        Self(email.to_string())
     }
 
     pub fn as_str(&self) -> &str {

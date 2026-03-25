@@ -12,14 +12,14 @@ axum = { workspace = true }
 axum-extra = { workspace = true }
 anyhow = { workspace = true }
 argon2 = { workspace = true }
-dotenvy = "^0"
+config = { workspace = true }
 lettre = { version = "^0", features = ["smtp-transport", "tokio1-native-tls", "builder"] }
 futures-util = { workspace = true }
 hmac = "^0"
 jsonwebtoken = { version = "^10", features = ["rust_crypto"] }
 moka = { version = "^0", features = ["future"] }
 rand = "^0"
-regex = "^1"
+regex = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

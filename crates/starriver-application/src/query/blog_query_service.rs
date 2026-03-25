@@ -16,7 +16,7 @@ pub trait BlogQueryService {
 }
 
 pub struct DefaultBlogQueryService {
-    pub conn: &'static DatabaseConnection,
+    pub conn: DatabaseConnection,
 }
 
 impl BlogQueryService for DefaultBlogQueryService {
@@ -28,13 +28,13 @@ impl BlogQueryService for DefaultBlogQueryService {
             .offset(q.page * q.page_size)
             .limit(q.page_size)
             .into_model::<BlogSummary>()
-            .all(self.conn)
+            .all(&self.conn)
             .await
             .map_err(ApiError::from)?;
         let record_total = Entity::find()
             .select_only()
             .column(Column::Id)
-            .count(self.conn)
+            .count(&self.conn)
             .await
             .map_err(ApiError::from)?;
         Ok(PageResult::new(q.page, q.page_size, record_total, blogs))

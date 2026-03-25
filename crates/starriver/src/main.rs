@@ -4,16 +4,12 @@ use axum::routing::{get, post};
 use ferris_says::say;
 use mimalloc::MiMalloc;
 use starriver_adapter::api::blog_handler;
-use starriver_adapter::api::dictionary_handler;
 use starriver_adapter::api::user_handler;
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
-use starriver_infrastructure::service::cache_service::get_or_init_verification_code_cache;
-use starriver_infrastructure::util::db::get_or_init_db_conn;
-use std::env;
+use starriver_infrastructure::service::config_service::load_config;
 use std::io::{BufWriter, stdout};
-use std::net::IpAddr;
 use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
@@ -27,18 +23,18 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
     say_hello();
-    dotenvy::dotenv().expect(".env file not found");
+    tracing_subscriber::fmt::init();
+    let config = load_config().expect("failed to load config");
 
-    let conn = get_or_init_db_conn().await;
-    get_or_init_verification_code_cache().await;
-
-    let addrs = http_server_bind_addrs();
-    let app_state = AppState::new(conn);
-    let user_service = app_state.user_application.clone();
+    let addrs = (config.http_server.ip.clone(), config.http_server.port);
+    let app_state = AppState::new(config)
+        .await
+        .expect("failed to create app state");
 
     let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
+
+    let user_service = app_state.user_application.clone();
     let middleware_service = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
@@ -56,15 +52,10 @@ async fn main() {
                 .put(blog_handler::update)
                 .delete(blog_handler::delete),
         )
-        .route(
-            "/dictionary-entries",
-            get(dictionary_handler::list_dictionary_entry)
-                .post(dictionary_handler::add_dictionary_entry),
-        )
         .nest_service("/static", serve_dir)
         .with_state(app_state)
         .layer(middleware_service);
-    let listener = TcpListener::bind(&addrs)
+    let listener = TcpListener::bind(addrs)
         .await
         .expect("Can't bind to address");
     axum::serve(listener, router)
@@ -77,15 +68,4 @@ fn say_hello() {
     let width = out.len();
     let mut writer = BufWriter::new(stdout());
     say(out, width, &mut writer).expect("Can't write to stdout")
-}
-
-fn http_server_bind_addrs() -> (IpAddr, u16) {
-    let http_server_ip =
-        env::var("HTTP_SERVER_IP").expect("HTTP_SERVER_IP environment variable not set");
-    let http_server_port =
-        env::var("HTTP_SERVER_PORT").expect("HTTP_SERVER_PORT environment variable not set");
-    (
-        http_server_ip.parse().expect("Can't parse server ip"),
-        http_server_port.parse().expect("Can't parse server port"),
-    )
 }

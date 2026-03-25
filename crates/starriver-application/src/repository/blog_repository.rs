@@ -12,25 +12,29 @@ use starriver_infrastructure::util::db::TransactionalConn;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-pub struct DefaultBlogRepository<'a, T> {
-    conn: &'a T,
+pub struct DefaultBlogRepository<T> {
+    conn: T,
 }
 
-impl<'a, T> DefaultBlogRepository<'a, T>
+impl<T> DefaultBlogRepository<T>
 where
     T: TransactionalConn,
 {
-    pub fn new(conn: &'a T) -> DefaultBlogRepository<'a, T> {
+    pub fn new(conn: T) -> DefaultBlogRepository<T> {
         Self { conn }
+    }
+
+    pub fn conn(self) -> T {
+        self.conn
     }
 }
 
-impl<'a, T> BlogRepository for DefaultBlogRepository<'a, T>
+impl<T> BlogRepository for DefaultBlogRepository<T>
 where
     T: TransactionalConn,
 {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Blog>, ApiError> {
-        find_by_id(self.conn, id).await
+        find_by_id(&self.conn, id).await
     }
 
     async fn add(&self, blog: Blog) -> Result<Blog, ApiError> {
@@ -43,7 +47,7 @@ where
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: NotSet,
         }
-        .insert(self.conn)
+        .insert(&self.conn)
         .await
         .map(|e| Blog {
             id: e.id,
@@ -59,7 +63,7 @@ where
 
     async fn delete_by_id(&self, id: Uuid) -> Result<bool, ApiError> {
         let result = Entity::delete_by_id(id)
-            .exec(self.conn)
+            .exec(&self.conn)
             .await?
             .rows_affected
             > 0;
@@ -67,7 +71,7 @@ where
     }
 
     async fn update(&self, blog: Blog) -> Result<Blog, ApiError> {
-        match find_by_id(self.conn, blog.id).await? {
+        match find_by_id(&self.conn, blog.id).await? {
             Some(found) => {
                 let mut title = Unchanged(found.title);
                 title.set_if_not_equals(blog.title);
@@ -92,7 +96,7 @@ where
                 };
 
                 model
-                    .update(self.conn)
+                    .update(&self.conn)
                     .await
                     .map(|updated| Blog {
                         id: updated.id,

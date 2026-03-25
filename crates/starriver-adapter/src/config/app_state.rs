@@ -3,7 +3,6 @@ use starriver_application::blog_service::BlogApplication;
 use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::service::cache_service::VerificationCodeCache;
 use starriver_infrastructure::service::config_service::AppConfig;
-use starriver_infrastructure::service::dictionary::dictionary_service::Dictionary;
 use starriver_infrastructure::service::email_service::EmailClient;
 use starriver_infrastructure::util::regex_patterns::Patterns;
 use std::sync::Arc;
@@ -17,7 +16,6 @@ pub struct AppState {
     pub verification_code_cache: Arc<VerificationCodeCache>,
     pub user_application: Arc<UserApplication>,
     pub blog_application: Arc<BlogApplication>,
-    pub dictionary: Arc<Dictionary>,
 }
 
 impl AppState {
@@ -40,7 +38,6 @@ impl AppState {
             patterns.clone(),
         ));
         let blog_application = Arc::new(BlogApplication::new(conn.clone()));
-        let dictionary = Arc::new(Dictionary::new(conn.clone()));
         Ok(AppState {
             conn,
             patterns,
@@ -48,7 +45,6 @@ impl AppState {
             verification_code_cache,
             user_application,
             blog_application,
-            dictionary,
         })
     }
 }

@@ -11,12 +11,9 @@ pub struct Patterns {
 impl Patterns {
     pub fn new(cfg: Config) -> Self {
         Self {
-            email: Regex::new(cfg.email.as_str())
-                .unwrap_or_else(|_| panic!("{} is not a valid regex", cfg.email)),
-            username: Regex::new(cfg.username.as_str())
-                .unwrap_or_else(|_| panic!("{} is not a valid regex", cfg.username)),
-            password: Regex::new(cfg.password.as_str())
-                .unwrap_or_else(|_| panic!("{} is not a valid regex", cfg.password)),
+            email: Regex::new(cfg.email.as_str()).unwrap_or_else(|e| panic!("{}", e)),
+            username: Regex::new(cfg.username.as_str()).unwrap_or_else(|e| panic!("{}", e)),
+            password: Regex::new(cfg.password.as_str()).unwrap_or_else(|e| panic!("{}", e)),
         }
     }
 }

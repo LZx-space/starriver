@@ -4,7 +4,6 @@ use axum::routing::{get, post};
 use ferris_says::say;
 use mimalloc::MiMalloc;
 use starriver_adapter::api::blog_handler;
-use starriver_adapter::api::dictionary_handler;
 use starriver_adapter::api::user_handler;
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
@@ -52,11 +51,6 @@ async fn main() {
             get(blog_handler::find_one)
                 .put(blog_handler::update)
                 .delete(blog_handler::delete),
-        )
-        .route(
-            "/dictionary-entries",
-            get(dictionary_handler::list_dictionary_entry)
-                .post(dictionary_handler::add_dictionary_entry),
         )
         .nest_service("/static", serve_dir)
         .with_state(app_state)

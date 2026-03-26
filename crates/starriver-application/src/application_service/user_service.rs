@@ -5,9 +5,10 @@ use crate::repository::user_repository::DefaultUserRepository;
 use crate::user_dto::req::{EmailVerifyCmd, UserCmd};
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use starriver_domain::user::repository::UserRepository;
-use starriver_domain::user::{factory::UserFactory, policy::UserPolicy};
+use starriver_domain::user::{factory::UserFactory, policy::UserLockPolicy};
 use starriver_infrastructure::security::password_encoder::Argon2PasswordEncoder;
 use starriver_infrastructure::service::cache_service::VerificationCodeCache;
+use starriver_infrastructure::service::config_service::UserPolicy as UserPolicyConfig;
 use starriver_infrastructure::service::email_service::EmailClient;
 use starriver_infrastructure::util::regex_patterns::Patterns;
 use starriver_infrastructure::{
@@ -24,6 +25,7 @@ pub struct UserApplication {
     email_client: EmailClient,
     verification_code_cache: VerificationCodeCache,
     factory: UserFactory,
+    user_lock_policy: UserLockPolicy,
     password_encoder: Argon2PasswordEncoder,
     query: DefaultUserQueryService,
     repo: DefaultUserRepository<DatabaseConnection>,
@@ -36,8 +38,10 @@ impl UserApplication {
         email_client: EmailClient,
         verification_code_cache: VerificationCodeCache,
         patterns: Patterns,
+        user_policy_cfg: UserPolicyConfig,
     ) -> Self {
         let factory = UserFactory { patterns };
+        let user_lock_policy = UserLockPolicy::new(&user_policy_cfg);
 
         let query = DefaultUserQueryService { conn: conn.clone() };
         let repo = DefaultUserRepository::new(conn.clone(), factory.clone());
@@ -47,6 +51,7 @@ impl UserApplication {
             email_client,
             verification_code_cache,
             factory,
+            user_lock_policy,
             password_encoder: Argon2PasswordEncoder::default(),
             query,
             repo,
@@ -79,8 +84,8 @@ impl UserApplication {
             error!("begin transaction error: {}", e);
             AuthenticationError::Unknown
         })?;
-        let repo = DefaultUserRepository::new(tx, self.factory.clone());
-        let opt = repo.find_by_username(username).await.map_err(|e| {
+        let tx_repo = DefaultUserRepository::new(tx, self.factory.clone());
+        let opt = tx_repo.find_by_username(username).await.map_err(|e| {
             // 用户名查不到用户不进这里，这里是异常才进
             error!("find by username error: {}", e);
             AuthenticationError::Unknown
@@ -88,7 +93,7 @@ impl UserApplication {
         if let Some(mut user) = opt {
             match user.authenticate_by_password(
                 password,
-                &UserPolicy::default(),
+                &self.user_lock_policy,
                 &self.password_encoder,
             ) {
                 Ok(_) => Ok(AuthenticatedUser {
@@ -99,12 +104,12 @@ impl UserApplication {
                 }),
                 Err(e) => {
                     // 更新用户
-                    repo.update(user).await.map_err(|e| {
+                    tx_repo.update(user).await.map_err(|e| {
                         error!("update user error: {}", e);
                         AuthenticationError::Unknown
                     })?;
                     // 提交事务
-                    repo.conn().commit().await.map_err(|e| {
+                    tx_repo.conn().commit().await.map_err(|e| {
                         error!("commit transaction error: {}", e);
                         AuthenticationError::Unknown
                     })?;

@@ -1,13 +1,23 @@
 use crate::user::{entity::SecurityEvent, value_object::SecurityEventType};
+use starriver_infrastructure::service::config_service::UserPolicy;
 use std::ops::Add;
-use time::{Duration, OffsetDateTime};
+use std::time::Duration;
+use time::OffsetDateTime;
 
-pub struct UserPolicy {
-    accumulate_bad_password_times_duration: Duration,
-    max_bad_password_times: usize,
+#[derive(Clone)]
+pub struct UserLockPolicy {
+    bad_password_window_mins: u64,
+    max_bad_password_attempts: usize,
 }
 
-impl UserPolicy {
+impl UserLockPolicy {
+    pub fn new(cfg: &UserPolicy) -> Self {
+        Self {
+            bad_password_window_mins: cfg.bad_password_window_mins,
+            max_bad_password_attempts: cfg.max_bad_password_attempts,
+        }
+    }
+
     /// 依据尝试密码次数来锁定账户
     pub fn should_lock(&self, security_events: &[SecurityEvent]) -> bool {
         let now = OffsetDateTime::now_utc();
@@ -16,19 +26,10 @@ impl UserPolicy {
             .filter(|e| SecurityEventType::TryLoginWithBadPwd.eq(&e.event_type))
             .filter(|e| {
                 e.created_at
-                    .add(self.accumulate_bad_password_times_duration)
+                    .add(Duration::from_mins(self.bad_password_window_mins))
                     >= now
             })
             .count()
-            > self.max_bad_password_times
-    }
-}
-
-impl Default for UserPolicy {
-    fn default() -> Self {
-        UserPolicy {
-            accumulate_bad_password_times_duration: Duration::minutes(10),
-            max_bad_password_times: 5,
-        }
+            > self.max_bad_password_attempts
     }
 }

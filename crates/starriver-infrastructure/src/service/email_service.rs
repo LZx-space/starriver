@@ -4,7 +4,7 @@ use lettre::{
     transport::smtp::{Error, authentication::Credentials, response::Response},
 };
 
-use crate::{error::ApiError, service::config_service::Email};
+use crate::{error::ApiError, service::config_service::EmailSmtp};
 
 #[derive(Clone)]
 pub struct EmailClient {
@@ -13,15 +13,15 @@ pub struct EmailClient {
 }
 
 impl EmailClient {
-    pub fn new(cfg: Email) -> Result<Self, Error> {
-        let creds = Credentials::new(cfg.smtp_username.clone(), cfg.smtp_password);
-        let smtp_client = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&cfg.smtp_host)?
-            .port(cfg.smtp_port)
+    pub fn new(cfg: EmailSmtp) -> Result<Self, Error> {
+        let creds = Credentials::new(cfg.username.clone(), cfg.password);
+        let smtp_client = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&cfg.host)?
+            .port(cfg.port)
             .credentials(creds)
             .build();
         Ok(Self {
             smtp_client,
-            username: cfg.smtp_username,
+            username: cfg.username,
         })
     }
 
@@ -78,11 +78,11 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_send() {
-        let client = EmailClient::new(Email {
-            smtp_host: "".to_string(),
-            smtp_port: 0,
-            smtp_username: "".to_string(),
-            smtp_password: "".to_string(),
+        let client = EmailClient::new(EmailSmtp {
+            host: "".to_string(),
+            port: 0,
+            username: "".to_string(),
+            password: "".to_string(),
         });
         assert_eq!(
             client.is_ok(),

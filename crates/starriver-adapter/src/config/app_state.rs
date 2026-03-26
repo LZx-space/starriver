@@ -27,15 +27,16 @@ impl AppState {
             .expect("create a DatabaseConnection failed");
         let patterns = Patterns::new(cfg.regex);
 
-        let email_client = EmailClient::new(cfg.email).map_err(|e| e.to_string())?;
+        let email_client = EmailClient::new(cfg.email.smtp).map_err(|e| e.to_string())?;
 
-        let verification_code_cache = VerificationCodeCache::new(cfg.email_verification_cache);
+        let verification_code_cache = VerificationCodeCache::new(cfg.email.verification_cache);
 
         let user_application = UserApplication::new(
             conn.clone(),
             email_client.clone(),
             verification_code_cache.clone(),
             patterns.clone(),
+            cfg.aggregate.user.policy,
         )
         .into();
         let blog_application = BlogApplication::new(conn.clone()).into();

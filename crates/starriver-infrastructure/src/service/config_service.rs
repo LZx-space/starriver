@@ -34,7 +34,7 @@ pub struct AppConfig {
     pub database: Database,
     pub email: Email,
     pub regex: Regex,
-    pub email_verification_cache: EmailVerificationCache,
+    pub aggregate: Aggregate,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,10 +50,22 @@ pub struct Database {
 
 #[derive(Debug, Deserialize)]
 pub struct Email {
-    pub smtp_username: String,
-    pub smtp_password: String,
-    pub smtp_host: String,
-    pub smtp_port: u16,
+    pub smtp: EmailSmtp,
+    pub verification_cache: EmailVerificationCache,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EmailSmtp {
+    pub username: String,
+    pub password: String,
+    pub host: String,
+    pub port: u16,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EmailVerificationCache {
+    pub max_capacity: u64,
+    pub ttl_hours: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,10 +75,22 @@ pub struct Regex {
     pub password: String,
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Debug, Deserialize)]
-pub struct EmailVerificationCache {
-    pub max_capacity: u64,
-    pub ttl_hours: u64,
+pub struct Aggregate {
+    pub user: User,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct User {
+    pub policy: UserPolicy,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UserPolicy {
+    pub bad_password_window_mins: u64,
+    pub max_bad_password_attempts: usize,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////

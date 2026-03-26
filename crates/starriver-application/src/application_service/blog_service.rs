@@ -54,12 +54,12 @@ impl BlogApplication {
         info!("用户[{}]更新博客[{}]", operator.username, id);
         // 开启事务, update方法内部会再次查询获取副本以对比更新字段，这依赖于事务等级
         let tx = self.conn.begin().await.map_err(ApiError::from)?;
-        let repo = DefaultBlogRepository::new(tx);
-        let found_blog = find_blog_by_id(&repo, id).await?;
+        let tx_repo = DefaultBlogRepository::new(tx);
+        let found_blog = find_blog_by_id(&tx_repo, id).await?;
         let updated_blog = cmd_2_update_entity(cmd, found_blog);
-        let result = repo.update(updated_blog).await.map(entity_2_vo)?;
+        let result = tx_repo.update(updated_blog).await.map(entity_2_vo)?;
         // 提交事务
-        repo.conn().commit().await?;
+        tx_repo.conn().commit().await?;
         Ok(result)
     }
 

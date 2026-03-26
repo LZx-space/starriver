@@ -1,3 +1,4 @@
+use axum::extract::FromRef;
 use sea_orm::{Database, DatabaseConnection};
 use starriver_application::blog_service::BlogApplication;
 use starriver_application::user_service::UserApplication;
@@ -46,5 +47,11 @@ impl AppState {
             user_application,
             blog_application,
         })
+    }
+}
+
+impl FromRef<AppState> for Patterns {
+    fn from_ref(state: &AppState) -> Patterns {
+        state.patterns.clone()
     }
 }

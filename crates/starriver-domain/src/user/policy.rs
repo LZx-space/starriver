@@ -1,30 +1,17 @@
 use crate::user::{entity::SecurityEvent, value_object::SecurityEventType};
-use starriver_infrastructure::error::{ApiError, Cause};
 use std::ops::Add;
 use time::{Duration, OffsetDateTime};
 
-pub struct PasswordSpecification {
-    min_length: u8,
-    max_length: u8,
+pub struct UserPolicy {
     accumulate_bad_password_times_duration: Duration,
     max_bad_password_times: usize,
 }
 
-impl PasswordSpecification {
-    pub fn validate_new_password(&self, password: &str) -> Result<(), ApiError> {
-        if password.len() < self.min_length as usize {
-            return Err(ApiError::new(Cause::ClientBadRequest, "password too short"));
-        }
-        if password.len() > self.max_length as usize {
-            return Err(ApiError::new(Cause::ClientBadRequest, "password too long"));
-        }
-        Ok(())
-    }
-
+impl UserPolicy {
     /// 依据尝试密码次数来锁定账户
-    pub fn lock_if_try_exceeded(&self, login_events: &[SecurityEvent]) -> bool {
+    pub fn should_lock(&self, security_events: &[SecurityEvent]) -> bool {
         let now = OffsetDateTime::now_utc();
-        login_events
+        security_events
             .iter()
             .filter(|e| SecurityEventType::TryLoginWithBadPwd.eq(&e.event_type))
             .filter(|e| {
@@ -37,11 +24,9 @@ impl PasswordSpecification {
     }
 }
 
-impl Default for PasswordSpecification {
+impl Default for UserPolicy {
     fn default() -> Self {
-        PasswordSpecification {
-            min_length: 6,
-            max_length: 20,
+        UserPolicy {
             accumulate_bad_password_times_duration: Duration::minutes(10),
             max_bad_password_times: 5,
         }

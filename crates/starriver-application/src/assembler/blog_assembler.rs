@@ -4,7 +4,8 @@ use uuid::Uuid;
 use starriver_domain::blog::entity::Blog;
 use starriver_domain::blog::value_object::BlogState::Draft;
 
-use crate::blog_dto::{BlogCmd, BlogDetail};
+use crate::blog_dto::req::BlogCmd;
+use crate::blog_dto::res::BlogDetail;
 
 #[inline]
 pub fn cmd_2_new_entity(author_id: Uuid, cmd: BlogCmd) -> Blog {

@@ -2,7 +2,8 @@ use crate::config::app_state::AppState;
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::response::IntoResponse;
-use starriver_application::blog_dto::BlogCmd;
+use axum_valid::Valid;
+use starriver_application::blog_dto::req::BlogCmd;
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::model::page::PageQuery;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
@@ -10,9 +11,9 @@ use uuid::Uuid;
 
 pub async fn page(
     state: State<AppState>,
-    params: Query<PageQuery>,
+    params: Valid<Query<PageQuery>>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let page_query = params.0;
+    let page_query = params.into_inner().0;
     state.blog_application.page(page_query).await.map(Json)
 }
 

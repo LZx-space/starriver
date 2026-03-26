@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use moka::future::Cache;
 
@@ -7,8 +7,9 @@ use crate::{
     service::config_service::EmailVerificationCache,
 };
 
+#[derive(Clone)]
 pub struct VerificationCodeCache {
-    inner: Cache<String, String>,
+    inner: Arc<Cache<String, String>>,
 }
 
 impl VerificationCodeCache {
@@ -17,7 +18,8 @@ impl VerificationCodeCache {
             inner: Cache::builder()
                 .max_capacity(cfg.max_capacity)
                 .time_to_live(Duration::from_hours(cfg.ttl_hours))
-                .build(),
+                .build()
+                .into(),
         }
     }
 

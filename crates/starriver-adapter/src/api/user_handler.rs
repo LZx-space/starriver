@@ -3,7 +3,7 @@ use axum::Json;
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum_valid::{Valid, ValidEx};
-use starriver_application::user_dto::{EmailVerifyCmd, UserCmd};
+use starriver_application::user_dto::req::{EmailVerifyCmd, UserCmd};
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 
 pub async fn me(user: AuthenticatedUser) -> impl IntoResponse {

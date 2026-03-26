@@ -31,3 +31,4 @@ tracing = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 uuid = { workspace = true }
+validator = { workspace = true }

@@ -14,9 +14,8 @@ use sea_orm::QueryFilter;
 use sea_orm::QueryOrder;
 use starriver_domain::user::entity::SecurityEvent;
 use starriver_domain::user::entity::User;
+use starriver_domain::user::factory::UserFactory;
 use starriver_domain::user::repository::UserRepository;
-use starriver_domain::user::value_object::Email;
-use starriver_domain::user::value_object::{Password, Username};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::error::Cause;
 use starriver_infrastructure::util::db::TransactionalConn;
@@ -26,6 +25,7 @@ use uuid::Uuid;
 
 pub struct DefaultUserRepository<T> {
     conn: T,
+    factory: UserFactory,
 }
 
 impl<T> DefaultUserRepository<T>
@@ -33,8 +33,8 @@ where
     T: TransactionalConn,
 {
     /// 普通链接获取开启事物的链接
-    pub fn new(conn: T) -> DefaultUserRepository<T> {
-        Self { conn }
+    pub fn new(conn: T, factory: UserFactory) -> DefaultUserRepository<T> {
+        Self { conn, factory }
     }
 
     pub fn conn(self) -> T {
@@ -47,14 +47,14 @@ where
     T: TransactionalConn,
 {
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
-        find_by_username(&self.conn, username).await
+        find_by_username(&self.conn, username, &self.factory).await
     }
 
     async fn find_by_id(&self, user_id: Uuid) -> Result<Option<User>, ApiError> {
         let user = Entity::find_by_id(user_id)
             .one(&self.conn)
             .await?
-            .map(model_to_entity)
+            .map(|e| model_to_entity(e, &self.factory))
             .transpose()?;
         Ok(user)
     }
@@ -71,7 +71,7 @@ where
         ActiveModel {
             id: Set(user.id),
             username: Set(username.to_string()),
-            password: Set(user.password.hashed_password_string().to_string()),
+            password: Set(user.password.as_str().to_string()),
             email: Set(user.email.to_string()),
             state: Set(UserStateDo::Active),
             create_at: Set(OffsetDateTime::now_utc()),
@@ -79,7 +79,7 @@ where
         }
         .insert(&self.conn)
         .await
-        .map(model_to_entity)?
+        .map(|e| model_to_entity(e, &self.factory))?
     }
 
     async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, ApiError> {
@@ -92,13 +92,13 @@ where
     }
 
     async fn update(&self, mut user: User) -> Result<User, ApiError> {
-        match find_by_username(&self.conn, user.username.as_str()).await? {
+        match find_by_username(&self.conn, user.username.as_str(), &self.factory).await? {
             Some(found) => {
                 let mut username = Unchanged(found.username.as_str().to_string());
                 username.set_if_not_equals(user.username.as_str().to_string());
 
-                let mut password = Unchanged(found.password.hashed_password_string().to_string());
-                password.set_if_not_equals(user.password.hashed_password_string().to_string());
+                let mut password = Unchanged(found.password.as_str().to_string());
+                password.set_if_not_equals(user.password.as_str().to_string());
 
                 let mut email = Unchanged(found.email.to_string());
                 email.set_if_not_equals(user.email.to_string());
@@ -130,7 +130,10 @@ where
                     event_model.insert(&self.conn).await?;
                 }
 
-                model.update(&self.conn).await.map(model_to_entity)?
+                model
+                    .update(&self.conn)
+                    .await
+                    .map(|e| model_to_entity(e, &self.factory))?
             }
             None => Err(ApiError::new(Cause::ClientBadRequest, "User not found")),
         }
@@ -143,12 +146,13 @@ where
 async fn find_by_username(
     conn: &impl sea_orm::ConnectionTrait,
     username: &str,
+    factory: &UserFactory,
 ) -> Result<Option<User>, ApiError> {
     let user = Entity::find()
         .filter(Column::Username.eq(username))
         .one(conn)
         .await?
-        .map(model_to_entity)
+        .map(|e| model_to_entity(e, factory))
         .transpose()?;
     if let Some(mut user) = user {
         let mut events: Vec<SecurityEvent> = user_security_event_do::Entity::find()
@@ -178,17 +182,14 @@ async fn find_by_username(
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[inline]
-fn model_to_entity(m: Model) -> Result<User, ApiError> {
-    let username = Username::new(m.username.as_str());
-    let password = Password::restore_by_hashed_pwd(m.password.as_str(), OffsetDateTime::now_utc())?;
-    let email = Email::new(m.email.as_str());
-    Ok(User {
-        id: m.id,
-        username,
-        password,
-        email,
-        state: m.state.into(),
-        created_at: m.create_at,
-        security_events: vec![],
-    })
+fn model_to_entity(m: Model, factory: &UserFactory) -> Result<User, ApiError> {
+    factory.restore_user(
+        m.id,
+        m.username.as_str(),
+        m.password.as_str(),
+        m.email.as_str(),
+        m.state.into(),
+        m.create_at,
+        vec![],
+    )
 }

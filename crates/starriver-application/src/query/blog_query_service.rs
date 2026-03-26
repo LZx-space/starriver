@@ -5,7 +5,7 @@ use starriver_infrastructure::{
     model::page::{PageQuery, PageResult},
 };
 
-use crate::blog_dto::BlogSummary;
+use crate::blog_dto::res::BlogSummary;
 
 pub trait BlogQueryService {
     /// 查询一页数据

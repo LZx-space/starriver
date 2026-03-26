@@ -1,12 +1,12 @@
 use crate::user::{
-    specification::PasswordSpecification,
+    policy::UserPolicy,
     value_object::{Email, Password, SecurityEventType, UserState, Username},
 };
+use regex::Regex;
 use starriver_infrastructure::{
     error::ApiError,
     security::{
-        authentication::core::authenticator::AuthenticationError,
-        password_hasher::{from_hashed_password, verify_password},
+        authentication::core::authenticator::AuthenticationError, password_encoder::PasswordEncoder,
     },
 };
 use time::OffsetDateTime;
@@ -27,20 +27,22 @@ pub struct User {
 }
 
 impl User {
-    pub fn change_password(
-        &mut self,
-        new_password: &str,
-        spec: &PasswordSpecification,
-    ) -> Result<(), ApiError> {
-        self.password = Password::create_password(new_password, spec)?;
-        Ok(())
+    pub fn encode_password(
+        &self,
+        raw_password: &str,
+        regex: &Regex,
+        encoder: &impl PasswordEncoder,
+    ) -> Result<Password, ApiError> {
+        let pwd = Password::new(raw_password, regex, encoder)?;
+        Ok(pwd)
     }
 
     /// 通过密码认证
     pub fn authenticate_by_password(
         &mut self,
         raw_pwd: &str,
-        spec: &PasswordSpecification,
+        policy: &UserPolicy,
+        encoder: &impl PasswordEncoder,
     ) -> Result<(), AuthenticationError> {
         // 先检查用户状态
         match self.state {
@@ -49,41 +51,31 @@ impl User {
             UserState::Disabled => return Err(AuthenticationError::UserDisabled),
         };
 
-        from_hashed_password(self.password.hashed_password_string())
+        encoder
+            .verify(raw_pwd, self.password.as_str())
+            .map(|_| Ok(()))
             .map_err(|e| {
                 error!(
-                    "bad hashed password string in {} repository, {}",
+                    "verify {} hashed password error: {}",
                     self.username.as_str(),
                     e
                 );
-                // 数据库数据错误，不做状态变更
+                // 密码错误，记录登录事件
+                let event = SecurityEvent {
+                    id: Uuid::now_v7(),
+                    user_id: self.id,
+                    event_type: SecurityEventType::TryLoginWithBadPwd,
+                    message: "bad password".to_string(),
+                    created_at: OffsetDateTime::now_utc(),
+                };
+                self.security_events.push(event);
+                // 检查是否需要锁定用户
+                if policy.should_lock(&self.security_events) {
+                    info!("user[{}] locked，bad password too many times", self.id);
+                    self.state = UserState::Locked;
+                }
                 AuthenticationError::BadPassword
-            })
-            .and_then(|pwd_hash_str| {
-                verify_password(raw_pwd, &pwd_hash_str).map_err(|e| {
-                    error!(
-                        "verify {} hashed password error: {}",
-                        self.username.as_str(),
-                        e
-                    );
-                    // 密码错误，记录登录事件
-                    let event = SecurityEvent {
-                        id: Uuid::now_v7(),
-                        user_id: self.id,
-                        event_type: SecurityEventType::TryLoginWithBadPwd,
-                        message: "bad password".to_string(),
-                        created_at: OffsetDateTime::now_utc(),
-                    };
-                    self.security_events.push(event);
-                    // 检查是否需要锁定用户
-                    if spec.lock_if_try_exceeded(&self.security_events) {
-                        info!("user[{}] locked，bad password too many times", self.id);
-                        self.state = UserState::Locked;
-                    }
-                    AuthenticationError::BadPassword
-                })?;
-                Ok(())
-            })
+            })?
     }
 
     pub fn activate(&mut self) {

@@ -6,6 +6,7 @@ use lettre::{
 
 use crate::{error::ApiError, service::config_service::Email};
 
+#[derive(Clone)]
 pub struct EmailClient {
     smtp_client: AsyncSmtpTransport<Tokio1Executor>,
     username: String,

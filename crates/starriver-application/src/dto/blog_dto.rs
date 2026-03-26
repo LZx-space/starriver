@@ -1,31 +1,40 @@
-use sea_orm::FromQueryResult;
-use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
-use uuid::Uuid;
+pub mod req {
+    use serde::Deserialize;
+    use validator::Validate;
 
-#[derive(Debug, Deserialize)]
-pub struct BlogCmd {
-    pub title: String,
-    pub body: String,
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct BlogCmd {
+        #[validate(length(min = 1, max = 30))]
+        pub title: String,
+        #[validate(length(min = 1, max = 50000))]
+        pub body: String,
+    }
 }
 
-#[derive(Serialize)]
-pub struct BlogDetail {
-    pub title: String,
+pub mod res {
+    use sea_orm::FromQueryResult;
+    use serde::Serialize;
+    use time::OffsetDateTime;
+    use uuid::Uuid;
 
-    pub body: String,
+    #[derive(Serialize)]
+    pub struct BlogDetail {
+        pub title: String,
 
-    pub state: String,
-}
+        pub body: String,
 
-#[derive(Serialize, FromQueryResult)]
-pub struct BlogSummary {
-    pub id: Uuid,
+        pub state: String,
+    }
 
-    pub title: String,
+    #[derive(Serialize, FromQueryResult)]
+    pub struct BlogSummary {
+        pub id: Uuid,
 
-    #[sea_orm(from_alias = "body")]
-    pub summary: String,
+        pub title: String,
 
-    pub create_at: OffsetDateTime,
+        #[sea_orm(from_alias = "body")]
+        pub summary: String,
+
+        pub create_at: OffsetDateTime,
+    }
 }

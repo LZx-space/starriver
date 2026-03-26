@@ -1,14 +1,11 @@
 use std::fmt::Display;
 
-use argon2::password_hash::PasswordHashString;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use starriver_infrastructure::{
     error::{ApiError, Cause},
-    security::password_hasher::{from_hashed_password, hash_password, verify_password},
+    security::password_encoder::PasswordEncoder,
 };
-use time::OffsetDateTime;
-
-use crate::user::specification::PasswordSpecification;
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub enum UserState {
@@ -24,11 +21,17 @@ pub enum UserState {
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Username(String);
+pub struct Username(pub(crate) String);
 
 impl Username {
-    pub fn new(username: &str) -> Self {
-        Self(username.to_string())
+    pub fn new(username: &str, regex: &Regex) -> Result<Self, ApiError> {
+        if !regex.is_match(username) {
+            return Err(ApiError::new(
+                Cause::ClientBadRequest,
+                "Invalid username format".to_string(),
+            ));
+        }
+        Ok(Self(username.to_string()))
     }
 
     pub fn as_str(&self) -> &str {
@@ -39,61 +42,45 @@ impl Username {
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Password {
-    hashed_string: String,
-    set_at: OffsetDateTime,
-}
+pub struct Password(pub(crate) String);
 
 impl Password {
-    pub fn create_password(
-        raw_password: &str,
-        spec: &PasswordSpecification,
+    pub fn new(
+        password: &str,
+        regex: &Regex,
+        encoder: &impl PasswordEncoder,
     ) -> Result<Self, ApiError> {
-        spec.validate_new_password(raw_password)?;
-        hash_password(raw_password)
-            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
-            .map(|e| Password {
-                hashed_string: e.to_string(),
-                set_at: OffsetDateTime::now_utc(),
-            })
-    }
-
-    pub fn restore_by_hashed_pwd(
-        hashed_string: &str,
-        set_at: OffsetDateTime,
-    ) -> Result<Self, ApiError> {
-        from_hashed_password(hashed_string)
-            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
-            .map(|e| Password {
-                hashed_string: e.to_string(),
-                set_at,
-            })
-    }
-
-    pub fn verify_password(&self, raw_pwd: &str) -> Result<(), ApiError> {
-        let password_hash_string = PasswordHashString::new(&self.hashed_string)
+        if !regex.is_match(password) {
+            return Err(ApiError::new(
+                Cause::ClientBadRequest,
+                "Invalid password format".to_string(),
+            ));
+        }
+        let hashed_string = encoder
+            .encode(password)
             .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
-        verify_password(raw_pwd, &password_hash_string)
-            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))
+        Ok(Self(hashed_string))
     }
 
-    pub fn hashed_password_string(&self) -> &str {
-        &self.hashed_string
-    }
-
-    pub fn set_at(&self) -> OffsetDateTime {
-        self.set_at
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Email(String);
+pub struct Email(pub(crate) String);
 
 impl Email {
-    pub fn new(email: &str) -> Self {
-        Self(email.to_string())
+    pub fn new(email: &str, regex: &Regex) -> Result<Self, ApiError> {
+        if !regex.is_match(email) {
+            return Err(ApiError::new(
+                Cause::ClientBadRequest,
+                "Invalid email format".to_string(),
+            ));
+        }
+        Ok(Self(email.to_string()))
     }
 
     pub fn as_str(&self) -> &str {

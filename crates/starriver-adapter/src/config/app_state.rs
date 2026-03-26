@@ -13,8 +13,9 @@ use std::sync::Arc;
 pub struct AppState {
     pub conn: DatabaseConnection,
     pub patterns: Patterns,
-    pub email_client: Arc<EmailClient>,
-    pub verification_code_cache: Arc<VerificationCodeCache>,
+    pub email_client: EmailClient,
+    pub verification_code_cache: VerificationCodeCache,
+    //////////////////////////////////////////
     pub user_application: Arc<UserApplication>,
     pub blog_application: Arc<BlogApplication>,
 }
@@ -27,18 +28,17 @@ impl AppState {
         let patterns = Patterns::new(cfg.regex);
 
         let email_client = EmailClient::new(cfg.email).map_err(|e| e.to_string())?;
-        let email_client = Arc::new(email_client);
 
         let verification_code_cache = VerificationCodeCache::new(cfg.email_verification_cache);
-        let verification_code_cache = Arc::new(verification_code_cache);
 
-        let user_application = Arc::new(UserApplication::new(
+        let user_application = UserApplication::new(
             conn.clone(),
             email_client.clone(),
             verification_code_cache.clone(),
             patterns.clone(),
-        ));
-        let blog_application = Arc::new(BlogApplication::new(conn.clone()));
+        )
+        .into();
+        let blog_application = BlogApplication::new(conn.clone()).into();
         Ok(AppState {
             conn,
             patterns,

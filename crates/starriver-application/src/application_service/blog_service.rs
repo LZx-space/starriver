@@ -1,6 +1,6 @@
 use crate::assembler::blog_assembler::{cmd_2_new_entity, cmd_2_update_entity, entity_2_vo};
-use crate::blog_dto::BlogCmd;
-use crate::dto::blog_dto::{BlogDetail, BlogSummary};
+use crate::blog_dto::req::BlogCmd;
+use crate::dto::blog_dto::res::{BlogDetail, BlogSummary};
 use crate::query::blog_query_service::{BlogQueryService, DefaultBlogQueryService};
 use crate::repository::blog_repository::DefaultBlogRepository;
 use sea_orm::{DatabaseConnection, TransactionTrait};

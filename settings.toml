@@ -5,17 +5,21 @@ port = 8080
 [database]
 url = "postgresql://postgres:postgres@localhost:5432/starriver"
 
-[email]
-smtp_username = "lzx@example.com"
-smtp_password = "cllaiqdcfqokgbbg"
-smtp_host = "smtp.example.com"
-smtp_port = 587
+[email.smtp]
+username = "lzx@example.com"
+password = "cllaiqdcfqokgbbg"
+host = "smtp.example.com"
+port = 587
+
+[email.verification_cache]
+max_capacity = 1000
+ttl_hours = 1
 
 [regex]
 email = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
 username = "^[a-zA-Z0-9_]{3,16}$"
 password = "^[A-Za-z0-9@$!%*?&]{8,12}$"
 
-[email_verification_cache]
-max_capacity = 1000
-ttl_hours = 1
+[aggregate.user.policy]
+bad_password_window_mins = 10
+max_bad_password_attempts = 5

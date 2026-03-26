@@ -1,5 +1,5 @@
 use crate::user::{
-    policy::UserPolicy,
+    policy::UserLockPolicy,
     value_object::{Email, Password, SecurityEventType, UserState, Username},
 };
 use regex::Regex;
@@ -41,7 +41,7 @@ impl User {
     pub fn authenticate_by_password(
         &mut self,
         raw_pwd: &str,
-        policy: &UserPolicy,
+        policy: &UserLockPolicy,
         encoder: &impl PasswordEncoder,
     ) -> Result<(), AuthenticationError> {
         // 先检查用户状态

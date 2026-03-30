@@ -103,16 +103,18 @@ impl UserApplication {
                     authorities: vec![],
                 }),
                 Err(e) => {
-                    // 更新用户
-                    tx_repo.update(user).await.map_err(|e| {
-                        error!("update user error: {}", e);
-                        AuthenticationError::Unknown
-                    })?;
-                    // 提交事务
-                    tx_repo.conn().commit().await.map_err(|e| {
-                        error!("commit transaction error: {}", e);
-                        AuthenticationError::Unknown
-                    })?;
+                    if AuthenticationError::BadPassword.eq(&e) {
+                        // 更新用户
+                        tx_repo.update(user).await.map_err(|e| {
+                            error!("update user error: {}", e);
+                            AuthenticationError::Unknown
+                        })?;
+                        // 提交事务
+                        tx_repo.conn().commit().await.map_err(|e| {
+                            error!("commit transaction error: {}", e);
+                            AuthenticationError::Unknown
+                        })?;
+                    }
                     Err(e)
                 }
             }
@@ -139,7 +141,7 @@ impl UserApplication {
                     .send_email_verification_mail(email, verification_code)
                     .await
                 {
-                    error!("send verification email error {}", e)
+                    error!("send verification email error {}", e);
                 }
                 Ok(())
             }

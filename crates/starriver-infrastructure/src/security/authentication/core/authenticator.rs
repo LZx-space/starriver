@@ -40,6 +40,6 @@ pub enum AuthenticationError {
     UserDisabled,
 
     /////////////////////////
-    #[error("unknown error")]
-    Unknown,
+    #[error("inner error")]
+    InnerError,
 }

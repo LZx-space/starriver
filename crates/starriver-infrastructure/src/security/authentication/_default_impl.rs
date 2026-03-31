@@ -214,7 +214,7 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
         let (cause, message) = match err {
             AuthenticationError::UserLocked => (Cause::Forbidden, "user locked"),
             AuthenticationError::UserDisabled => (Cause::Forbidden, "user disabled"),
-            AuthenticationError::Unknown => (Cause::InnerError, "unknown error"),
+            AuthenticationError::InnerError => (Cause::InnerError, "inner error"),
             _ => (Cause::ClientBadRequest, "username or password incorrect"),
         };
         ApiError::new(cause, message).into_response()
@@ -240,7 +240,7 @@ impl CredentialsExtractor for DefaultCredentialsExtractor {
         // 提取表单数据
         let form = Form::<FormLoginCmd>::from_request(req, &())
             .await
-            .map_err(|_| AuthenticationError::Unknown)?;
+            .map_err(|_| AuthenticationError::InnerError)?;
         info!(name: "login", "form login cmd: {:?}", form.0);
         // 创建凭证
         let credentials = UsernamePasswordCredentials {

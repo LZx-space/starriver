@@ -38,6 +38,12 @@ impl User {
     }
 
     /// 通过密码认证
+    /// # 返回值
+    /// * `Ok(())` - 认证成功
+    /// * `Err(AuthenticationError)` - 认证失败
+    ///     * `AuthenticationError::UserLocked` - 用户已锁定
+    ///     * `AuthenticationError::UserDisabled` - 用户已禁用
+    ///     * `AuthenticationError::BadPassword` - 密码不匹配
     pub fn authenticate_by_password(
         &mut self,
         raw_pwd: &str,

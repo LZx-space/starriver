@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use crate::query::user_query_service::{DefaultUserQueryService, UserQueryService};
 use crate::repository::user_repository::DefaultUserRepository;
 use crate::user_dto::req::{EmailVerifyCmd, UserCmd};
-use sea_orm::{DatabaseConnection, TransactionTrait};
+use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::{factory::UserFactory, policy::UserLockPolicy};
 use starriver_infrastructure::security::password_encoder::Argon2PasswordEncoder;
@@ -77,47 +77,37 @@ impl UserApplication {
         &self,
         credentials: &UsernamePasswordCredentials,
     ) -> Result<AuthenticatedUser, AuthenticationError> {
-        let username = credentials.username.as_str();
-        let password = credentials.password.as_str();
         // 开启事务, update方法内部会再次查询获取副本以对比更新字段，当心事务等级
         let tx = self.conn.begin().await.map_err(|e| {
             error!("begin transaction error: {}", e);
-            AuthenticationError::Unknown
+            AuthenticationError::InnerError
         })?;
         let tx_repo = DefaultUserRepository::new(tx, self.factory.clone());
-        let opt = tx_repo.find_by_username(username).await.map_err(|e| {
-            // 用户名查不到用户不进这里，这里是异常才进
-            error!("find by username error: {}", e);
-            AuthenticationError::Unknown
-        })?;
-        if let Some(mut user) = opt {
-            match user.authenticate_by_password(
-                password,
-                &self.user_lock_policy,
-                &self.password_encoder,
-            ) {
-                Ok(_) => Ok(AuthenticatedUser {
-                    id: user.id,
-                    username: username.to_string(),
-                    email: user.email.to_string(),
-                    authorities: vec![],
-                }),
-                Err(e) => {
-                    // 更新用户
-                    tx_repo.update(user).await.map_err(|e| {
-                        error!("update user error: {}", e);
-                        AuthenticationError::Unknown
-                    })?;
-                    // 提交事务
-                    tx_repo.conn().commit().await.map_err(|e| {
-                        error!("commit transaction error: {}", e);
-                        AuthenticationError::Unknown
-                    })?;
-                    Err(e)
-                }
+        match self.transaction_authenticate(credentials, &tx_repo).await {
+            Ok(user) => {
+                // 提交事务
+                tx_repo.conn().commit().await.map_err(|e| {
+                    error!("commit transaction error: {}", e);
+                    AuthenticationError::InnerError
+                })?;
+                Ok(user)
             }
-        } else {
-            Err(AuthenticationError::UsernameNotFound)
+            Err(AuthenticationError::InnerError) => {
+                // 回滚事务
+                tx_repo.conn().rollback().await.map_err(|e| {
+                    error!("rollback transaction error: {}", e);
+                    AuthenticationError::InnerError
+                })?;
+                Err(AuthenticationError::InnerError)
+            }
+            Err(e) => {
+                // 提交事务
+                tx_repo.conn().commit().await.map_err(|e| {
+                    error!("commit transaction error: {}", e);
+                    AuthenticationError::InnerError
+                })?;
+                Err(e)
+            }
         }
     }
 
@@ -139,7 +129,7 @@ impl UserApplication {
                     .send_email_verification_mail(email, verification_code)
                     .await
                 {
-                    error!("send verification email error {}", e)
+                    error!("send verification email error {}", e);
                 }
                 Ok(())
             }
@@ -147,6 +137,50 @@ impl UserApplication {
                 error!("find user by email error {}", e);
                 Ok(())
             }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    async fn transaction_authenticate(
+        &self,
+        credentials: &UsernamePasswordCredentials,
+        tx_repo: &DefaultUserRepository<DatabaseTransaction>,
+    ) -> Result<AuthenticatedUser, AuthenticationError> {
+        let username = credentials.username.as_str();
+        let password = credentials.password.as_str();
+        let opt = match tx_repo.find_by_username(username).await {
+            Ok(opt) => opt,
+            Err(e) => {
+                error!("find by username error: {}", e);
+                return Err(AuthenticationError::InnerError);
+            }
+        };
+        let mut user = match opt {
+            Some(user) => user,
+            None => {
+                return Err(AuthenticationError::UsernameNotFound);
+            }
+        };
+        match user.authenticate_by_password(
+            password,
+            &self.user_lock_policy,
+            &self.password_encoder,
+        ) {
+            Ok(_) => Ok(AuthenticatedUser {
+                id: user.id,
+                username: username.to_string(),
+                email: user.email.to_string(),
+                authorities: vec![],
+            }),
+            Err(AuthenticationError::BadPassword) => {
+                // 更新用户
+                tx_repo.update(user).await.map_err(|e| {
+                    error!("update user error: {}", e);
+                    AuthenticationError::InnerError
+                })?;
+                Err(AuthenticationError::BadPassword)
+            }
+            Err(e) => Err(e),
         }
     }
 }

@@ -1,10 +1,12 @@
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect,
+};
 use starriver_infrastructure::error::ApiError;
 
 use crate::db::user_do::{self, Entity};
 
 pub trait UserQueryService {
-    async fn find_by_email(&self, email: &str) -> Result<bool, ApiError>;
+    async fn exists_by_email(&self, email: &str) -> Result<bool, ApiError>;
 }
 
 pub struct DefaultUserQueryService {
@@ -12,11 +14,12 @@ pub struct DefaultUserQueryService {
 }
 
 impl UserQueryService for DefaultUserQueryService {
-    async fn find_by_email(&self, email: &str) -> Result<bool, ApiError> {
-        let user = Entity::find()
+    async fn exists_by_email(&self, email: &str) -> Result<bool, ApiError> {
+        Entity::find()
+            .select_only()
             .filter(user_do::Column::Email.eq(email.to_string()))
-            .one(&self.conn)
-            .await?;
-        Ok(user.is_some())
+            .exists(&self.conn)
+            .await
+            .map_err(ApiError::from)
     }
 }

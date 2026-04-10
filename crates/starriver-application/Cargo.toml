@@ -11,7 +11,10 @@ workspace = true
 starriver-domain = { path = "../starriver-domain" }
 starriver-infrastructure = { path = "../starriver-infrastructure" }
 
+axum-extra = { workspace = true }
 axum-valid = { workspace = true }
+bytes = { workspace = true }
+infer = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 time = { workspace = true }

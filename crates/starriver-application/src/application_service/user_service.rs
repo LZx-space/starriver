@@ -40,7 +40,7 @@ impl UserApplication {
         patterns: Patterns,
         user_policy_cfg: UserPolicyConfig,
     ) -> Self {
-        let factory = UserFactory { patterns };
+        let factory = UserFactory::new(patterns);
         let user_lock_policy = UserLockPolicy::new(&user_policy_cfg);
 
         let query = DefaultUserQueryService { conn: conn.clone() };
@@ -167,9 +167,9 @@ impl UserApplication {
             &self.password_encoder,
         ) {
             Ok(_) => Ok(AuthenticatedUser {
-                id: user.id,
+                id: user.id().to_owned(),
                 username: username.to_string(),
-                email: user.email.to_string(),
+                email: user.email().to_string(),
                 authorities: vec![],
             }),
             Err(AuthenticationError::BadPassword) => {

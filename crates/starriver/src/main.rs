@@ -45,12 +45,19 @@ async fn main() {
         .route("/users/me", get(user_handler::me))
         .route("/users", post(user_handler::register_inactive_user))
         .route("/email-verifications", post(user_handler::verify_email))
-        .route("/blogs", get(blog_handler::page).post(blog_handler::insert))
+        .route(
+            "/blogs",
+            get(blog_handler::page).post(blog_handler::insert_empty_draft),
+        )
         .route(
             "/blogs/{id}",
             get(blog_handler::find_one)
                 .put(blog_handler::update)
                 .delete(blog_handler::delete),
+        )
+        .route(
+            "/blogs/{id}/attachments",
+            post(blog_handler::upload_attachment),
         )
         .nest_service("/static", serve_dir)
         .with_state(app_state)

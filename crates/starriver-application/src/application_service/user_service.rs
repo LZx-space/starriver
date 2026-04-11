@@ -40,7 +40,7 @@ impl UserApplication {
         patterns: Patterns,
         user_policy_cfg: UserPolicyConfig,
     ) -> Self {
-        let factory = UserFactory { patterns };
+        let factory = UserFactory::new(patterns);
         let user_lock_policy = UserLockPolicy::new(&user_policy_cfg);
 
         let query = DefaultUserQueryService { conn: conn.clone() };
@@ -114,7 +114,7 @@ impl UserApplication {
     /// 发送邮箱验证邮件，永远不返回失败以防暴力核验邮箱
     pub async fn send_verification_email(&self, cmd: EmailVerifyCmd) -> Result<(), Infallible> {
         let email = cmd.email.as_str();
-        match self.query.find_by_email(email).await {
+        match self.query.exists_by_email(email).await {
             Ok(found) => {
                 if found {
                     warn!("email already registered: {}", email);
@@ -129,12 +129,12 @@ impl UserApplication {
                     .send_email_verification_mail(email, verification_code)
                     .await
                 {
-                    error!("send verification email error {}", e);
+                    error!("send verification email error: {}", e);
                 }
                 Ok(())
             }
             Err(e) => {
-                error!("find user by email error {}", e);
+                error!("find user by email error: {}", e);
                 Ok(())
             }
         }
@@ -167,9 +167,9 @@ impl UserApplication {
             &self.password_encoder,
         ) {
             Ok(_) => Ok(AuthenticatedUser {
-                id: user.id,
+                id: user.id().to_owned(),
                 username: username.to_string(),
-                email: user.email.to_string(),
+                email: user.email().to_string(),
                 authorities: vec![],
             }),
             Err(AuthenticationError::BadPassword) => {

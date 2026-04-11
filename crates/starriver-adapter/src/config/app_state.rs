@@ -3,7 +3,7 @@ use sea_orm::{Database, DatabaseConnection};
 use starriver_application::blog_service::BlogApplication;
 use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::service::cache_service::VerificationCodeCache;
-use starriver_infrastructure::service::config_service::AppConfig;
+use starriver_infrastructure::service::config_service::{AppConfig, Assets};
 use starriver_infrastructure::service::email_service::EmailClient;
 use starriver_infrastructure::util::regex_patterns::Patterns;
 use std::sync::Arc;
@@ -12,6 +12,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct AppState {
     pub conn: DatabaseConnection,
+    pub assets: Assets,
     pub patterns: Patterns,
     pub email_client: EmailClient,
     pub verification_code_cache: VerificationCodeCache,
@@ -39,9 +40,10 @@ impl AppState {
             cfg.aggregate.user.policy,
         )
         .into();
-        let blog_application = BlogApplication::new(conn.clone()).into();
+        let blog_application = BlogApplication::new(conn.clone(), cfg.assets.clone()).into();
         Ok(AppState {
             conn,
+            assets: cfg.assets,
             patterns,
             email_client,
             verification_code_cache,

@@ -12,6 +12,7 @@ use sea_orm::ColumnTrait;
 use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
 use sea_orm::QueryOrder;
+use sea_orm::sea_query::Cond;
 use starriver_domain::user::entity::SecurityEvent;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::factory::UserFactory;
@@ -60,19 +61,20 @@ where
     }
 
     async fn insert(&self, user: User) -> Result<User, ApiError> {
-        let username = user.username.as_str();
+        let (id, username, password, email, _, _, _) = user.dissolve();
+        let username = username.as_str();
         let found = self.find_by_username(username).await?;
-        if let Some(user) = found {
+        if found.is_some() {
             return Err(ApiError::new(
                 Cause::ClientBadRequest,
-                format!("username[{}] already exists", user.username.as_str()),
+                format!("username[{}] already exists", username),
             ));
         }
         ActiveModel {
-            id: Set(user.id),
+            id: Set(id),
             username: Set(username.to_string()),
-            password: Set(user.password.as_str().to_string()),
-            email: Set(user.email.to_string()),
+            password: Set(password.as_str().to_string()),
+            email: Set(email.to_string()),
             state: Set(UserStateDo::Active),
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: NotSet,
@@ -91,44 +93,52 @@ where
         Ok(result)
     }
 
-    async fn update(&self, mut user: User) -> Result<User, ApiError> {
-        match find_by_username(&self.conn, user.username.as_str(), &self.factory).await? {
+    async fn update(&self, user: User) -> Result<User, ApiError> {
+        let (id, new_username, new_password, new_email, new_state, _, mut new_security_events) =
+            user.dissolve();
+        let username = new_username.as_str();
+        match find_by_username(&self.conn, username, &self.factory).await? {
             Some(found) => {
-                let mut username = Unchanged(found.username.as_str().to_string());
-                username.set_if_not_equals(user.username.as_str().to_string());
-
-                let mut password = Unchanged(found.password.as_str().to_string());
-                password.set_if_not_equals(user.password.as_str().to_string());
-
-                let mut email = Unchanged(found.email.to_string());
-                email.set_if_not_equals(user.email.to_string());
-
-                let mut state = Unchanged(found.state.into());
-                state.set_if_not_equals(user.state.into());
-
-                let model = ActiveModel {
-                    id: Unchanged(found.id),
-                    username,
-                    password,
-                    email,
-                    state,
-                    create_at: Unchanged(found.created_at),
-                    update_at: Set(Some(OffsetDateTime::now_utc())),
-                };
-
-                if found.security_events != user.security_events
-                    && let Some(event) = user.security_events.pop()
+                let (_, username, password, email, state, create_at, security_events) =
+                    found.dissolve();
+                // 更新事件，一次请求仅可能新增一条记录
+                if security_events != new_security_events
+                    && let Some(event) = new_security_events.pop()
                 {
+                    let (id, user_id, event_type, message, created_at) = event.dissolve();
                     let event_model = user_security_event_do::ActiveModel {
-                        id: Set(event.id),
-                        user_id: Set(event.user_id),
-                        event_type: Set(event.event_type.into()),
-                        message: Set(event.message),
-                        create_at: Set(event.created_at),
+                        id: Set(id),
+                        user_id: Set(user_id),
+                        event_type: Set(event_type.into()),
+                        message: Set(message),
+                        create_at: Set(created_at),
                         update_at: NotSet,
                     };
                     event_model.insert(&self.conn).await?;
                 }
+
+                // 更新用户
+                let mut username = Unchanged(username.as_str().to_string());
+                username.set_if_not_equals(new_username.as_str().to_string());
+
+                let mut password = Unchanged(password.as_str().to_string());
+                password.set_if_not_equals(new_password.as_str().to_string());
+
+                let mut email = Unchanged(email.to_string());
+                email.set_if_not_equals(new_email.to_string());
+
+                let mut state = Unchanged(state.into());
+                state.set_if_not_equals(new_state.into());
+
+                let model = ActiveModel {
+                    id: Unchanged(id),
+                    username,
+                    password,
+                    email,
+                    state,
+                    create_at: Unchanged(create_at),
+                    update_at: Set(Some(OffsetDateTime::now_utc())),
+                };
 
                 model
                     .update(&self.conn)
@@ -156,24 +166,30 @@ async fn find_by_username(
         .transpose()?;
     if let Some(mut user) = user {
         let mut events: Vec<SecurityEvent> = user_security_event_do::Entity::find()
-            .filter(user_security_event_do::Column::UserId.eq(user.id))
-            .filter(
-                user_security_event_do::Column::CreateAt
-                    .gt(OffsetDateTime::now_utc().saturating_sub(Duration::minutes(30))), // 最近30分钟内的事件，注意当前此处没有与PasswordSpecification同步
-            )
+            .filter({
+                // 最近30分钟内的事件，注意当前此处没有与PasswordSpecification同步
+                Cond::all()
+                    .add(user_security_event_do::Column::UserId.eq(user.id().to_owned()))
+                    .add(
+                        user_security_event_do::Column::CreateAt
+                            .gt(OffsetDateTime::now_utc().saturating_sub(Duration::minutes(30))),
+                    )
+            })
             .order_by_desc(user_security_event_do::Column::CreateAt) // 按时间倒序取最新
             .all(conn)
             .await?
             .iter()
-            .map(|e| SecurityEvent {
-                id: e.id,
-                user_id: e.user_id,
-                event_type: e.event_type.clone().into(),
-                message: e.message.to_owned(),
-                created_at: e.create_at,
+            .map(|e| {
+                SecurityEvent::from_repo(
+                    e.id,
+                    e.user_id,
+                    e.event_type.to_owned().into(),
+                    e.message.to_owned(),
+                    e.create_at,
+                )
             })
             .collect();
-        user.security_events.append(&mut events);
+        user.security_events().append(&mut events);
         return Ok(Some(user));
     }
     Ok(user)
@@ -183,7 +199,7 @@ async fn find_by_username(
 
 #[inline]
 fn model_to_entity(m: Model, factory: &UserFactory) -> Result<User, ApiError> {
-    factory.restore_user(
+    factory.from_repo(
         m.id,
         m.username.as_str(),
         m.password.as_str(),

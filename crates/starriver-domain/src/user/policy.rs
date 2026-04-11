@@ -23,11 +23,11 @@ impl UserLockPolicy {
         let now = OffsetDateTime::now_utc();
         security_events
             .iter()
-            .filter(|e| SecurityEventType::TryLoginWithBadPwd.eq(&e.event_type))
             .filter(|e| {
-                e.created_at
-                    .add(Duration::from_mins(self.bad_password_window_mins))
-                    >= now
+                let event_type = e.event_type();
+                let create_at = e.created_at();
+                matches!(event_type, SecurityEventType::TryLoginWithBadPwd)
+                    && create_at.add(Duration::from_mins(self.bad_password_window_mins)) >= now
             })
             .count()
             > self.max_bad_password_attempts

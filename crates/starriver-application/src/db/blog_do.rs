@@ -12,7 +12,7 @@ pub struct Model {
     pub id: Uuid,
     pub title: String,
     #[sea_orm(column_type = "Text")]
-    pub body: String,
+    pub content: String,
     pub state: BlogStateDo,
     pub author_id: Uuid,
     pub create_at: OffsetDateTime,
@@ -41,7 +41,7 @@ impl From<BlogStateDo> for BlogState {
         if value.eq(&BlogStateDo::Draft) {
             BlogState::Draft
         } else {
-            BlogState::Released
+            BlogState::Published
         }
     }
 }

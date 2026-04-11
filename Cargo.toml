@@ -12,13 +12,16 @@ rust-version = "1.94"
 unwrap_used = "deny"
 
 [workspace.dependencies]
-axum = { version = "^0", features = ["macros"] }
-axum-extra = { version = "^0", features = ["cookie","form"] }
+axum = { version = "^0", features = ["macros", "multipart"] }
+axum-extra = { version = "^0", features = ["cookie", "form"] }
 axum-valid = "^0"
 anyhow = "^1"
 argon2 = "^0"
+bytes = "^1"
 config = "^0"
+derive-getters = "^0"
 futures-util = "^0"
+infer = "^0"
 regex = { version = "^1" }
 serde = { version = "^1", features = ["derive"] }
 serde_json = "^1"

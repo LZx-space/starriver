@@ -23,3 +23,8 @@ password = "^[A-Za-z0-9@$!%*?&]{8,12}$"
 [aggregate.user.policy]
 bad_password_window_mins = 10
 max_bad_password_attempts = 5
+
+[assets]
+static_base_dir = ".."
+[assets.uploads]
+relative_dir = "uploads"

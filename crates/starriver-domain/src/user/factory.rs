@@ -11,10 +11,14 @@ use crate::user::{
 
 #[derive(Clone)]
 pub struct UserFactory {
-    pub patterns: Patterns,
+    patterns: Patterns,
 }
 
 impl UserFactory {
+    pub fn new(patterns: Patterns) -> Self {
+        Self { patterns }
+    }
+
     pub fn create_user(
         &self,
         username: &str,
@@ -25,19 +29,19 @@ impl UserFactory {
         let username = Username::new(username, &self.patterns.username)?;
         let password = Password::new(password, &self.patterns.password, password_encoder)?;
         let email = Email::new(email, &self.patterns.email)?;
-        Ok(User {
-            id: Uuid::now_v7(),
+        Ok(User::new(
+            Uuid::now_v7(),
             username,
             password,
             email,
-            state: Default::default(),
-            created_at: OffsetDateTime::now_utc(),
-            security_events: vec![],
-        })
+            Default::default(),
+            OffsetDateTime::now_utc(),
+            vec![],
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn restore_user(
+    pub fn from_repo(
         &self,
         id: Uuid,
         username: &str,
@@ -50,7 +54,7 @@ impl UserFactory {
         let username = Username(username.to_string());
         let password = Password(password.to_string());
         let email = Email(email.to_string());
-        Ok(User {
+        Ok(User::new(
             id,
             username,
             password,
@@ -58,6 +62,6 @@ impl UserFactory {
             state,
             created_at,
             security_events,
-        })
+        ))
     }
 }

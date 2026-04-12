@@ -1,4 +1,4 @@
-use crate::db::blog_do::{Column, Entity};
+use crate::db::article_do::{Column, Entity};
 use sea_orm::{DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
 use starriver_infrastructure::{
     error::ApiError,
@@ -6,23 +6,23 @@ use starriver_infrastructure::{
     util::html_utils::{DefaultExcerptor, Excerptor},
 };
 
-use crate::blog_dto::res::BlogExcerpt;
+use crate::article_dto::res::ArticleExcerpt;
 
-pub trait BlogQueryService {
+pub trait ArticleQueryService {
     /// 查询一页数据
     fn find_page(
         &self,
         query: PageQuery,
-    ) -> impl Future<Output = Result<PageResult<BlogExcerpt>, ApiError>> + Send;
+    ) -> impl Future<Output = Result<PageResult<ArticleExcerpt>, ApiError>> + Send;
 }
 
-pub struct DefaultBlogQueryService {
+pub struct DefaultArticleQueryService {
     pub conn: DatabaseConnection,
 }
 
-impl BlogQueryService for DefaultBlogQueryService {
-    async fn find_page(&self, q: PageQuery) -> Result<PageResult<BlogExcerpt>, ApiError> {
-        let blogs = Entity::find()
+impl ArticleQueryService for DefaultArticleQueryService {
+    async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleExcerpt>, ApiError> {
+        let articles = Entity::find()
             .select_only()
             .columns([
                 Column::Id,
@@ -33,7 +33,7 @@ impl BlogQueryService for DefaultBlogQueryService {
             ])
             .offset(q.page * q.page_size)
             .limit(q.page_size)
-            .into_model::<BlogExcerpt>()
+            .into_model::<ArticleExcerpt>()
             .all(&self.conn)
             .await
             .map_err(ApiError::from)?
@@ -49,6 +49,6 @@ impl BlogQueryService for DefaultBlogQueryService {
             .count(&self.conn)
             .await
             .map_err(ApiError::from)?;
-        Ok(PageResult::new(q.page, q.page_size, record_total, blogs))
+        Ok(PageResult::new(q.page, q.page_size, record_total, articles))
     }
 }

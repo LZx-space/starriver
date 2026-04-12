@@ -3,7 +3,7 @@ use axum::Router;
 use axum::routing::{get, post};
 use ferris_says::say;
 use mimalloc::MiMalloc;
-use starriver_adapter::api::blog_handler;
+use starriver_adapter::api::article_handler;
 use starriver_adapter::api::user_handler;
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
@@ -46,18 +46,18 @@ async fn main() {
         .route("/users", post(user_handler::register_inactive_user))
         .route("/email-verifications", post(user_handler::verify_email))
         .route(
-            "/blogs",
-            get(blog_handler::page).post(blog_handler::insert_empty_draft),
+            "/articles",
+            get(article_handler::page).post(article_handler::insert_empty_draft),
         )
         .route(
-            "/blogs/{id}",
-            get(blog_handler::find_one)
-                .put(blog_handler::update)
-                .delete(blog_handler::delete),
+            "/articles/{id}",
+            get(article_handler::find_one)
+                .put(article_handler::update)
+                .delete(article_handler::delete),
         )
         .route(
-            "/blogs/{id}/attachments",
-            post(blog_handler::upload_attachment),
+            "/articles/{id}/attachments",
+            post(article_handler::upload_attachment),
         )
         .nest_service("/static", serve_dir)
         .with_state(app_state)

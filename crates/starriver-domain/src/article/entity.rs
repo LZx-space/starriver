@@ -1,21 +1,21 @@
 use std::collections::HashSet;
 
-use crate::blog::{
-    params::BlogUpdate,
-    value_object::{BlogState, Content, Title},
+use crate::article::{
+    params::ArticleUpdate,
+    value_object::{ArticleState, Content, Title},
 };
 use derive_getters::{Dissolve, Getters};
 use starriver_infrastructure::error::ApiError;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-/// The blog aggregate. Blog is the aggregate root.
+/// The article aggregate
 #[derive(Debug, Getters, Dissolve)]
-pub struct Blog {
+pub struct Article {
     id: Uuid,
     title: Title,
     content: Content,
-    state: BlogState,
+    state: ArticleState,
     #[getter(skip)]
     attachments: Vec<Attachment>,
     author_id: Uuid,
@@ -23,11 +23,11 @@ pub struct Blog {
     update_at: Option<OffsetDateTime>,
 }
 
-impl Blog {
+impl Article {
     pub fn new(
         title: Title,
         content: Content,
-        state: BlogState,
+        state: ArticleState,
         attachments: Vec<Attachment>,
         author_id: Uuid,
     ) -> Self {
@@ -48,7 +48,7 @@ impl Blog {
         id: Uuid,
         title: Title,
         content: Content,
-        state: BlogState,
+        state: ArticleState,
         attachments: Vec<Attachment>,
         author_id: Uuid,
         create_at: OffsetDateTime,
@@ -78,7 +78,7 @@ impl Blog {
             id: Uuid::now_v7(),
             title,
             content,
-            state: BlogState::Draft,
+            state: ArticleState::Draft,
             attachments: Vec::new(),
             author_id,
             create_at: OffsetDateTime::now_utc(),
@@ -93,7 +93,7 @@ impl Blog {
     }
 
     /// 非附件属性更新
-    pub fn update(&mut self, update: BlogUpdate) -> Result<(), ApiError> {
+    pub fn update(&mut self, update: ArticleUpdate) -> Result<(), ApiError> {
         self.title = Title::new(update.title)?;
         self.content = Content::new(update.content)?;
         self.update_at = Some(OffsetDateTime::now_utc());
@@ -106,7 +106,7 @@ impl Blog {
             if !self.attachments.iter().any(|att| att.id == id) {
                 self.attachments.push(Attachment {
                     id,
-                    blog_id: self.id,
+                    article_id: self.id,
                     create_at: OffsetDateTime::now_utc(),
                     update_at: None,
                 });
@@ -120,7 +120,7 @@ impl Blog {
 
     /// 将博客状态设置为草稿，已发布等状态的也能设为草稿
     pub fn draft(&mut self) {
-        self.state = BlogState::Draft;
+        self.state = ArticleState::Draft;
     }
 
     /// 发布博客，将状态从草稿变为已发布
@@ -131,13 +131,13 @@ impl Blog {
         if self.content.0.is_empty() {
             return Err(ApiError::with_bad_request("content can't be empty"));
         }
-        self.state = BlogState::Published;
+        self.state = ArticleState::Published;
         Ok(())
     }
 
     /// 归档
     pub fn archive(&mut self) {
-        self.state = BlogState::Archived;
+        self.state = ArticleState::Archived;
     }
 }
 
@@ -147,16 +147,16 @@ impl Blog {
 pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,
-    blog_id: Uuid,
+    article_id: Uuid,
     create_at: OffsetDateTime,
     update_at: Option<OffsetDateTime>,
 }
 
 impl Attachment {
-    pub fn new(blog_id: Uuid) -> Self {
+    pub fn new(article_id: Uuid) -> Self {
         Self {
             id: Uuid::now_v7(),
-            blog_id,
+            article_id,
             create_at: OffsetDateTime::now_utc(),
             update_at: None,
         }
@@ -164,13 +164,13 @@ impl Attachment {
 
     pub fn from_repo(
         id: Uuid,
-        blog_id: Uuid,
+        article_id: Uuid,
         create_at: OffsetDateTime,
         update_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             id,
-            blog_id,
+            article_id,
             create_at,
             update_at,
         }

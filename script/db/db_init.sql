@@ -9,8 +9,8 @@
 
 \i ./db/ddl/02_create_table_user.sql;
 \i ./db/ddl/03_create_table_user_security_event.sql;
-\i ./db/ddl/04_create_table_blog.sql;
-\i ./db/ddl/05_create_table_blog_attachment.sql;
+\i ./db/ddl/04_create_table_article.sql;
+\i ./db/ddl/05_create_table_article_attachment.sql;
 
 -- 按顺序执行dml目录下的所有SQL文件
 \i ./db/dml/01_insert_user.sql;

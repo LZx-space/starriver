@@ -3,7 +3,7 @@ use axum::Json;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::response::IntoResponse;
 use axum_valid::Valid;
-use starriver_application::blog_dto::req::{BlogAttachmentCmd, BlogCmd};
+use starriver_application::article_dto::req::{ArticleAttachmentCmd, ArticleCmd};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::model::page::PageQuery;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
@@ -16,32 +16,40 @@ pub async fn page(
     params: Valid<Query<PageQuery>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let page_query = params.into_inner().0;
-    state.blog_application.page(page_query).await.map(Json)
+    state.article_application.page(page_query).await.map(Json)
 }
 
 pub async fn find_one(
     state: State<AppState>,
     id: Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state.blog_application.find_by_id(id.0).await.map(Json)
+    state.article_application.find_by_id(id.0).await.map(Json)
 }
 
 pub async fn insert_empty_draft(
     state: State<AppState>,
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, ApiError> {
-    state.blog_application.add_empty_draft(user).await.map(Json)
+    state
+        .article_application
+        .add_empty_draft(user)
+        .await
+        .map(Json)
 }
 
 pub async fn update(
     state: State<AppState>,
     id: Path<Uuid>,
     user: AuthenticatedUser,
-    cmd: Json<BlogCmd>,
+    cmd: Json<ArticleCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     let id = id.0;
     let cmd = cmd.0;
-    state.blog_application.update(user, id, cmd).await.map(Json)
+    state
+        .article_application
+        .update(user, id, cmd)
+        .await
+        .map(Json)
 }
 
 pub async fn upload_attachment(
@@ -62,12 +70,12 @@ pub async fn upload_attachment(
             Err(_) => continue,
         };
 
-        let file = BlogAttachmentCmd {
+        let file = ArticleAttachmentCmd {
             extension: extension.to_string(),
             data,
         };
         let url = state
-            .blog_application
+            .article_application
             .upload_attachment(user, id.0, file)
             .await?;
         return Ok(Json::from(url));
@@ -81,7 +89,7 @@ pub async fn delete(
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .blog_application
+        .article_application
         .delete_by_id(user, id.0)
         .await
         .map(Json)

@@ -4,7 +4,7 @@ pub mod req {
     use validator::Validate;
 
     #[derive(Debug, Deserialize, Validate)]
-    pub struct BlogCmd {
+    pub struct ArticleCmd {
         #[validate(length(min = 1, max = 30))]
         pub title: String,
         #[validate(length(min = 1, max = 50000))]
@@ -15,7 +15,7 @@ pub mod req {
         pub publish: bool,
     }
 
-    pub struct BlogAttachmentCmd {
+    pub struct ArticleAttachmentCmd {
         pub extension: String,
         pub data: Bytes,
     }
@@ -24,12 +24,12 @@ pub mod req {
 pub mod res {
     use sea_orm::FromQueryResult;
     use serde::Serialize;
-    use starriver_domain::blog::entity::Blog;
+    use starriver_domain::article::entity::Article;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
     #[derive(Serialize)]
-    pub struct BlogDetail {
+    pub struct ArticleDetail {
         pub id: Uuid,
 
         pub title: String,
@@ -40,7 +40,7 @@ pub mod res {
     }
 
     #[derive(Serialize, FromQueryResult)]
-    pub struct BlogExcerpt {
+    pub struct ArticleExcerpt {
         pub id: Uuid,
 
         pub title: String,
@@ -54,8 +54,8 @@ pub mod res {
     }
 
     //////////////////////////////////////////
-    impl From<Blog> for BlogDetail {
-        fn from(value: Blog) -> Self {
+    impl From<Article> for ArticleDetail {
+        fn from(value: Article) -> Self {
             let (id, title, content, state, _, _, _, _) = value.dissolve();
             Self {
                 id,

@@ -1,2 +1,2 @@
-pub mod blog_service;
+pub mod article_service;
 pub mod user_service;

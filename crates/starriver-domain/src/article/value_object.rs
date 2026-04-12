@@ -4,19 +4,19 @@ use serde::Serialize;
 use starriver_infrastructure::error::ApiError;
 
 #[derive(Default, Debug, Eq, PartialEq, Serialize)]
-pub enum BlogState {
+pub enum ArticleState {
     #[default]
     Draft,
     Published,
     Archived,
 }
 
-impl Display for BlogState {
+impl Display for ArticleState {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
-            BlogState::Draft => f.write_str("draft"),
-            BlogState::Published => f.write_str("published"),
-            BlogState::Archived => f.write_str("archived"),
+            ArticleState::Draft => f.write_str("draft"),
+            ArticleState::Published => f.write_str("published"),
+            ArticleState::Archived => f.write_str("archived"),
         }
     }
 }

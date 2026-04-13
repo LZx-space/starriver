@@ -11,7 +11,6 @@ use starriver_infrastructure::security::authentication::web::middleware::Authent
 use starriver_infrastructure::service::config_service::load_config;
 use std::io::{BufWriter, stdout};
 use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
-use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 use tower::ServiceBuilder;
@@ -31,8 +30,6 @@ async fn main() {
     let app_state = AppState::new(config)
         .await
         .expect("failed to create app state");
-
-    let serve_dir = ServeDir::new("static").fallback(ServeDir::new("static/index.html"));
 
     let user_service = app_state.user_application.clone();
     let middleware_service = ServiceBuilder::new()
@@ -59,7 +56,6 @@ async fn main() {
             "/articles/{id}/attachments",
             post(article_handler::upload_attachment),
         )
-        .nest_service("/static", serve_dir)
         .with_state(app_state)
         .layer(middleware_service);
     let listener = TcpListener::bind(addrs)

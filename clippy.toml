@@ -1,6 +1,6 @@
 disallowed-types = [
-    { path = "axum::extract::query::Query", reason = "此 crate 禁止使用 axum::extract::query，请改用starriver_infrastructure::extract::Query" },
-    { path = "axum::extract::path::Path", reason = "此 crate 禁止使用 axum::extract::path，请改用starriver_infrastructure::extract::Path" },
-    { path = "axum::Json", reason = "此 crate 禁止使用 axum::Json，请改用starriver_infrastructure::extract::Json/JsonEx" },
-    { path = "axum::extract::multipart::Multipart", reason = "此 crate 禁止使用 axum::extract::multipart，请改用starriver_infrastructure::extract::Multipart" },
+    { path = "axum::extract::query::Query", reason = "此 crate 禁止使用 axum::extract::query", replacement = "starriver_infrastructure::extract::Query" },
+    { path = "axum::extract::path::Path", reason = "此 crate 禁止使用 axum::extract::path", replacement = "starriver_infrastructure::extract::Path" },
+    { path = "axum::Json", reason = "此 crate 禁止使用 axum::Json", replacement = "starriver_infrastructure::extract::Json/JsonEx" },
+    { path = "axum::extract::multipart::Multipart", reason = "此 crate 禁止使用 axum::extract::multipart", replacement = "starriver_infrastructure::extract::Multipart" },
 ]

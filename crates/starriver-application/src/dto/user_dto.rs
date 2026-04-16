@@ -26,14 +26,20 @@ pub mod req {
 
     fn validate_username(value: &str, context: &Patterns) -> Result<(), ValidationError> {
         if !context.username.is_match(value) {
-            return Err(ValidationError::new("username does not match pattern"));
+            let reg = context.username.as_str();
+            let msg = format!("username does not match pattern [{reg}]");
+            let err = ValidationError::new("invalid_username").with_message(msg.into());
+            return Err(err);
         }
         Ok(())
     }
 
     fn validate_password(value: &str, context: &Patterns) -> Result<(), ValidationError> {
         if !context.password.is_match(value) {
-            return Err(ValidationError::new("password does not match pattern"));
+            let reg = context.password.as_str();
+            let msg = format!("password does not match pattern [{reg}]");
+            let err = ValidationError::new("invalid_password").with_message(msg.into());
+            return Err(err);
         }
         Ok(())
     }

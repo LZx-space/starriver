@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use axum::{
+    extract::rejection::{JsonRejection, QueryRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -8,6 +9,7 @@ use sea_orm::{DbErr, TransactionError};
 use serde::Serialize;
 use strum::EnumIter;
 use tracing::error;
+use validator::ValidationError;
 
 #[derive(Debug, Serialize)]
 pub struct ApiError {
@@ -17,6 +19,13 @@ pub struct ApiError {
 
 impl ApiError {
     pub fn new<S: Display>(cause: Cause, message: S) -> Self {
+        ApiError {
+            cause,
+            message: message.to_string(),
+        }
+    }
+
+    pub fn with_data<S: Display>(cause: Cause, message: S) -> Self {
         ApiError {
             cause,
             message: message.to_string(),
@@ -69,6 +78,25 @@ impl From<TransactionError<ApiError>> for ApiError {
         ApiError::new(Cause::DbError, err.to_string())
     }
 }
+
+impl From<ValidationError> for ApiError {
+    fn from(err: ValidationError) -> Self {
+        ApiError::new(Cause::ValidationError, err.to_string())
+    }
+}
+
+impl From<QueryRejection> for ApiError {
+    fn from(err: QueryRejection) -> Self {
+        ApiError::new(Cause::ClientBadRequest, err.to_string())
+    }
+}
+
+impl From<JsonRejection> for ApiError {
+    fn from(err: JsonRejection) -> Self {
+        ApiError::new(Cause::ClientBadRequest, err.to_string())
+    }
+}
+
 // ----------------------------------------------------------------------------------------
 #[derive(Serialize)]
 pub struct ApiErrorResponse<T: Serialize> {
@@ -120,6 +148,7 @@ impl Display for PageError {
 #[derive(Debug, Serialize, EnumIter)]
 pub enum Cause {
     ClientBadRequest,
+    ValidationError,
     Forbidden,
     DbError,
     InnerError,
@@ -130,6 +159,7 @@ impl Cause {
     fn to_http_status(&self) -> (StatusCode, u16) {
         match self {
             Cause::ClientBadRequest => (StatusCode::BAD_REQUEST, 40001),
+            Cause::ValidationError => (StatusCode::UNPROCESSABLE_ENTITY, 42201),
             Cause::Forbidden => (StatusCode::FORBIDDEN, 40301),
             Cause::DbError => (StatusCode::INTERNAL_SERVER_ERROR, 50001),
             Cause::InnerError => (StatusCode::INTERNAL_SERVER_ERROR, 50002),

@@ -1,22 +1,21 @@
 use crate::config::app_state::AppState;
-use axum::Json;
-use axum::extract::{Multipart, Path, Query, State};
+use axum::extract::State;
 use axum::response::IntoResponse;
-use axum_valid::Valid;
 use starriver_application::article_dto::req::{ArticleAttachmentCmd, ArticleCmd};
 use starriver_infrastructure::error::ApiError;
+use starriver_infrastructure::extract::{Json, Multipart, Path, Query};
 use starriver_infrastructure::model::page::PageQuery;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use starriver_infrastructure::util::file_utils::get_extension;
 use tracing::info;
 use uuid::Uuid;
 
+#[axum::debug_handler]
 pub async fn page(
     state: State<AppState>,
-    params: Valid<Query<PageQuery>>,
+    query: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let page_query = params.into_inner().0;
-    state.article_application.page(page_query).await.map(Json)
+    state.article_application.page(query.0).await.map(Json)
 }
 
 pub async fn find_one(
@@ -43,11 +42,9 @@ pub async fn update(
     user: AuthenticatedUser,
     cmd: Json<ArticleCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let id = id.0;
-    let cmd = cmd.0;
     state
         .article_application
-        .update(user, id, cmd)
+        .update(user, id.0, cmd.0)
         .await
         .map(Json)
 }
@@ -58,7 +55,7 @@ pub async fn upload_attachment(
     user: AuthenticatedUser,
     mut file: Multipart,
 ) -> Result<impl IntoResponse, ApiError> {
-    while let Ok(Some(field)) = file.next_field().await {
+    while let Ok(Some(field)) = file.0.next_field().await {
         let file_name = field.file_name().unwrap_or("unknown").to_string();
         info!("user [{}] upload file [{}]", user.id, file_name);
         // 获取文件格式（从文件名中提取）

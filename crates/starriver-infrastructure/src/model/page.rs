@@ -3,7 +3,7 @@ use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct PageQuery {
-    #[validate(range(min = 0))]
+    #[validate(range(min = 0, max = 10))]
     pub page: u64,
 
     #[validate(range(min = 1, max = 20))]

@@ -22,6 +22,8 @@ pub mod req {
 }
 
 pub mod res {
+    use std::fmt::Display;
+
     use sea_orm::FromQueryResult;
     use serde::Serialize;
     use starriver_domain::article::entity::Article;
@@ -36,7 +38,11 @@ pub mod res {
 
         pub content: String,
 
-        pub state: String,
+        pub state: i16,
+
+        pub published_at: Option<OffsetDateTime>,
+
+        pub create_at: OffsetDateTime,
     }
 
     #[derive(Serialize, FromQueryResult)]
@@ -50,18 +56,22 @@ pub mod res {
 
         pub state: i16,
 
+        pub published_at: Option<OffsetDateTime>,
+
         pub create_at: OffsetDateTime,
     }
 
     //////////////////////////////////////////
     impl From<Article> for ArticleDetail {
         fn from(value: Article) -> Self {
-            let (id, title, content, state, _, _, _, _) = value.dissolve();
+            let (id, title, content, state, _, _, published_at, create_at, _) = value.dissolve();
             Self {
                 id,
                 title: title.to_string(),
                 content: content.to_string(),
-                state: state.to_string(),
+                state: state.into(),
+                published_at,
+                create_at,
             }
         }
     }

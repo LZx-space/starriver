@@ -48,13 +48,14 @@ where
     }
 
     async fn add(&self, article: Article) -> Result<Article, ApiError> {
-        let (id, title, content, state, _, author_id, _, _) = article.dissolve();
+        let (id, title, content, state, _, author_id, _, _, _) = article.dissolve();
         ActiveModel {
             id: Set(id),
             title: Set(title.to_string()),
             content: Set(content.to_string()),
             state: Set(state.into()),
             author_id: Set(author_id),
+            published_at: NotSet,
             create_at: Set(OffsetDateTime::now_utc()),
             update_at: NotSet,
         }
@@ -68,6 +69,7 @@ where
                 e.state.into(),
                 Vec::new(),
                 e.author_id,
+                e.published_at,
                 e.create_at,
                 e.update_at,
             )
@@ -85,11 +87,20 @@ where
     }
 
     async fn update(&self, article: Article) -> Result<Article, ApiError> {
-        let (id, new_title, new_content, new_state, new_attachments, new_author_id, _, _) =
-            article.dissolve();
+        let (
+            id,
+            new_title,
+            new_content,
+            new_state,
+            new_attachments,
+            new_author_id,
+            new_published_at,
+            _,
+            _,
+        ) = article.dissolve();
         match find_by_id(&self.conn, id).await? {
             Some(found) => {
-                let (_, title, content, state, attachments, author_id, create_at, _) =
+                let (_, title, content, state, attachments, author_id, published_at, create_at, _) =
                     found.dissolve();
 
                 let (to_delete, to_insert) = diff_attachments(&attachments, new_attachments);
@@ -124,12 +135,16 @@ where
                 let mut author_id = Unchanged(author_id);
                 author_id.set_if_not_equals(new_author_id);
 
+                let mut published_at = Unchanged(published_at);
+                published_at.set_if_not_equals(new_published_at);
+
                 let model = ActiveModel {
                     id: Unchanged(id),
                     title,
                     content,
                     state,
                     author_id,
+                    published_at,
                     create_at: Unchanged(create_at),
                     update_at: Set(Some(OffsetDateTime::now_utc())),
                 };
@@ -145,6 +160,7 @@ where
                             e.state.into(),
                             Vec::new(),
                             e.author_id,
+                            e.published_at,
                             e.create_at,
                             e.update_at,
                         )
@@ -172,6 +188,7 @@ async fn find_by_id(
                     e.state.into(),
                     Vec::new(),
                     e.author_id,
+                    e.published_at,
                     e.create_at,
                     e.update_at,
                 )

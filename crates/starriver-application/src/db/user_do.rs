@@ -14,6 +14,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub username: String,
     pub password: String,
+    #[sea_orm(unique)]
     pub email: String,
     pub state: UserStateDo,
     pub create_at: OffsetDateTime,

@@ -10,11 +10,14 @@ use starriver_domain::article::value_object::ArticleState;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
+    #[sea_orm(indexed)]
     pub title: String,
     #[sea_orm(column_type = "Text")]
     pub content: String,
     pub state: ArticleStateDo,
     pub author_id: Uuid,
+    #[sea_orm(indexed)]
+    pub published_at: Option<OffsetDateTime>,
     pub create_at: OffsetDateTime,
     pub update_at: Option<OffsetDateTime>,
 }

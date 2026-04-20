@@ -22,7 +22,6 @@ pub mod req {
 }
 
 pub mod res {
-    use std::fmt::Display;
 
     use sea_orm::FromQueryResult;
     use serde::Serialize;
@@ -38,7 +37,7 @@ pub mod res {
 
         pub content: String,
 
-        pub state: i16,
+        pub state: String,
 
         pub published_at: Option<OffsetDateTime>,
 
@@ -69,7 +68,7 @@ pub mod res {
                 id,
                 title: title.to_string(),
                 content: content.to_string(),
-                state: state.into(),
+                state: state.to_string(),
                 published_at,
                 create_at,
             }

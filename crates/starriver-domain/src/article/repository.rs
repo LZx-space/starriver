@@ -1,4 +1,4 @@
-use starriver_infrastructure::error::ApiError;
+use starriver_infrastructure::{error::ApiError, model::aggregate_revision::Revision};
 use uuid::Uuid;
 
 use crate::article::entity::Article;
@@ -18,5 +18,8 @@ pub trait ArticleRepository {
     fn delete_by_id(&self, id: Uuid) -> impl Future<Output = Result<bool, ApiError>> + Send;
 
     /// 修改
-    fn update(&self, article: Article) -> impl Future<Output = Result<Article, ApiError>> + Send;
+    fn update(
+        &self,
+        article: Revision<Article>,
+    ) -> impl Future<Output = Result<Article, ApiError>> + Send;
 }

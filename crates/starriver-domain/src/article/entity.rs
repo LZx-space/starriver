@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// The article aggregate
-#[derive(Debug, Getters, Dissolve)]
+#[derive(Clone, Debug, Getters, Dissolve)]
 pub struct Article {
     id: Uuid,
     title: Title,
@@ -150,7 +150,7 @@ impl Article {
 
 ////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Getters, Dissolve)]
+#[derive(Clone, Debug, Getters, Dissolve)]
 pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,

@@ -16,7 +16,7 @@ use starriver_domain::article::repository::ArticleRepository;
 use starriver_domain::article::value_object::Content;
 use starriver_domain::article::value_object::Title;
 use starriver_infrastructure::error::ApiError;
-use starriver_infrastructure::error::Cause;
+use starriver_infrastructure::model::aggregate_revision::Revision;
 use starriver_infrastructure::util::db::TransactionalConn;
 use time::OffsetDateTime;
 use tracing::info;
@@ -86,9 +86,12 @@ where
         Ok(result)
     }
 
-    async fn update(&self, article: Article) -> Result<Article, ApiError> {
+    async fn update(&self, article: Revision<Article>) -> Result<Article, ApiError> {
+        let (original, modified) = article.dissolve();
+        let (id, title, content, state, attachments, author_id, published_at, create_at, _) =
+            original.dissolve();
         let (
-            id,
+            _,
             new_title,
             new_content,
             new_state,
@@ -97,78 +100,71 @@ where
             new_published_at,
             _,
             _,
-        ) = article.dissolve();
-        match find_by_id(&self.conn, id).await? {
-            Some(found) => {
-                let (_, title, content, state, attachments, author_id, published_at, create_at, _) =
-                    found.dissolve();
+        ) = modified.dissolve();
 
-                let (to_delete, to_insert) = diff_attachments(&attachments, new_attachments);
-                // 删除旧附件
-                let to_delete_count = to_delete.len();
-                info!("需要删除附件个数[{}]", to_delete_count);
-                if to_delete_count > 0 {
-                    article_attachment_do::Entity::delete_many()
-                        .filter(Column::Id.is_in(to_delete))
-                        .exec(&self.conn)
-                        .await?;
-                }
-                // 插入新附件
-                let to_insert_count = to_insert.len();
-                info!("需要新增附件个数[{}]", to_insert_count);
-                if to_insert_count > 0 {
-                    article_attachment_do::Entity::insert_many(to_insert.into_iter())
-                        .exec(&self.conn)
-                        .await?;
-                }
-
-                // 更新博客
-                let mut title = Unchanged(title.to_string());
-                title.set_if_not_equals(new_title.to_string());
-
-                let mut content = Unchanged(content.to_string());
-                content.set_if_not_equals(new_content.to_string());
-
-                let mut state = Unchanged(state.into());
-                state.set_if_not_equals(new_state.into());
-
-                let mut author_id = Unchanged(author_id);
-                author_id.set_if_not_equals(new_author_id);
-
-                let mut published_at = Unchanged(published_at);
-                published_at.set_if_not_equals(new_published_at);
-
-                let model = ActiveModel {
-                    id: Unchanged(id),
-                    title,
-                    content,
-                    state,
-                    author_id,
-                    published_at,
-                    create_at: Unchanged(create_at),
-                    update_at: Set(Some(OffsetDateTime::now_utc())),
-                };
-
-                model
-                    .update(&self.conn)
-                    .await
-                    .map(|e| {
-                        Article::from_repo(
-                            e.id,
-                            Title::new(e.title).expect("never happens"),
-                            Content::new(e.content).expect("never happens"),
-                            e.state.into(),
-                            Vec::new(),
-                            e.author_id,
-                            e.published_at,
-                            e.create_at,
-                            e.update_at,
-                        )
-                    })
-                    .map_err(ApiError::from)
-            }
-            None => Err(ApiError::new(Cause::ClientBadRequest, "article not found")),
+        let (to_delete, to_insert) = diff_attachments(&attachments, new_attachments);
+        // 删除旧附件
+        let to_delete_count = to_delete.len();
+        info!("需要删除附件个数[{}]", to_delete_count);
+        if to_delete_count > 0 {
+            article_attachment_do::Entity::delete_many()
+                .filter(Column::Id.is_in(to_delete))
+                .exec(&self.conn)
+                .await?;
         }
+        // 插入新附件
+        let to_insert_count = to_insert.len();
+        info!("需要新增附件个数[{}]", to_insert_count);
+        if to_insert_count > 0 {
+            article_attachment_do::Entity::insert_many(to_insert)
+                .exec(&self.conn)
+                .await?;
+        }
+
+        // 更新博客
+        let mut title = Unchanged(title.to_string());
+        title.set_if_not_equals(new_title.to_string());
+
+        let mut content = Unchanged(content.to_string());
+        content.set_if_not_equals(new_content.to_string());
+
+        let mut state = Unchanged(state.into());
+        state.set_if_not_equals(new_state.into());
+
+        let mut author_id = Unchanged(author_id);
+        author_id.set_if_not_equals(new_author_id);
+
+        let mut published_at = Unchanged(published_at);
+        published_at.set_if_not_equals(new_published_at);
+
+        let model = ActiveModel {
+            id: Unchanged(id),
+            title,
+            content,
+            state,
+            author_id,
+            published_at,
+            create_at: Unchanged(create_at),
+            update_at: Set(Some(OffsetDateTime::now_utc())),
+        };
+
+        model
+            .update(&self.conn)
+            .await
+            .map(|e| {
+                Article::from_repo(
+                    e.id,
+                    Title::new(e.title).expect("never happens"),
+                    Content::new(e.content).expect("never happens"),
+                    e.state.into(),
+                    Vec::new(),
+                    e.author_id,
+                    e.published_at,
+                    e.create_at,
+                    e.update_at,
+                )
+            })
+            .map_err(ApiError::from)
     }
 }
 

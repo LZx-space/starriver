@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// The article aggregate
-#[derive(Debug, Getters, Dissolve)]
+#[derive(Clone, Debug, Getters, Dissolve)]
 pub struct Article {
     id: Uuid,
     title: Title,
@@ -19,6 +19,7 @@ pub struct Article {
     #[getter(skip)]
     attachments: Vec<Attachment>,
     author_id: Uuid,
+    published_at: Option<OffsetDateTime>,
     create_at: OffsetDateTime,
     update_at: Option<OffsetDateTime>,
 }
@@ -38,6 +39,7 @@ impl Article {
             state,
             attachments,
             author_id,
+            published_at: None,
             create_at: OffsetDateTime::now_utc(),
             update_at: None,
         }
@@ -51,6 +53,7 @@ impl Article {
         state: ArticleState,
         attachments: Vec<Attachment>,
         author_id: Uuid,
+        published_at: Option<OffsetDateTime>,
         create_at: OffsetDateTime,
         update_at: Option<OffsetDateTime>,
     ) -> Self {
@@ -61,6 +64,7 @@ impl Article {
             state,
             attachments,
             author_id,
+            published_at,
             create_at,
             update_at,
         }
@@ -81,6 +85,7 @@ impl Article {
             state: ArticleState::Draft,
             attachments: Vec::new(),
             author_id,
+            published_at: None,
             create_at: OffsetDateTime::now_utc(),
             update_at: None,
         })
@@ -121,6 +126,7 @@ impl Article {
     /// 将博客状态设置为草稿，已发布等状态的也能设为草稿
     pub fn draft(&mut self) {
         self.state = ArticleState::Draft;
+        self.published_at = None;
     }
 
     /// 发布博客，将状态从草稿变为已发布
@@ -132,6 +138,7 @@ impl Article {
             return Err(ApiError::with_bad_request("content can't be empty"));
         }
         self.state = ArticleState::Published;
+        self.published_at = Some(OffsetDateTime::now_utc());
         Ok(())
     }
 
@@ -143,7 +150,7 @@ impl Article {
 
 ////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Getters, Dissolve)]
+#[derive(Clone, Debug, Getters, Dissolve)]
 pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,

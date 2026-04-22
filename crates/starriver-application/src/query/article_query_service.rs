@@ -29,6 +29,7 @@ impl ArticleQueryService for DefaultArticleQueryService {
                 Column::Title,
                 Column::Content,
                 Column::State,
+                Column::PublishedAt,
                 Column::CreateAt,
             ])
             .offset(q.page * q.page_size)

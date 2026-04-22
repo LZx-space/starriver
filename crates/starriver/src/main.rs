@@ -1,10 +1,10 @@
 use axum::Router;
 
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use ferris_says::say;
 use mimalloc::MiMalloc;
-use starriver_adapter::api::article_handler;
 use starriver_adapter::api::user_handler;
+use starriver_adapter::api::{article_handler, category_handler};
 use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
@@ -55,6 +55,14 @@ async fn main() {
         .route(
             "/articles/{id}/attachments",
             post(article_handler::upload_attachment),
+        )
+        .route(
+            "/categories",
+            get(category_handler::list_all).post(category_handler::create),
+        )
+        .route(
+            "/categories/{id}",
+            put(category_handler::update).delete(category_handler::delete),
         )
         .with_state(app_state)
         .layer(middleware_service);

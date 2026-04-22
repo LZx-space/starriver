@@ -6,6 +6,7 @@ use crate::user_dto::req::{EmailVerifyCmd, UserCmd};
 use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use starriver_domain::user::repository::UserRepository;
 use starriver_domain::user::{factory::UserFactory, policy::UserLockPolicy};
+use starriver_infrastructure::model::aggregate_revision::Revision;
 use starriver_infrastructure::security::password_encoder::Argon2PasswordEncoder;
 use starriver_infrastructure::service::cache_service::VerificationCodeCache;
 use starriver_infrastructure::service::config_service::UserPolicy as UserPolicyConfig;
@@ -161,6 +162,7 @@ impl UserApplication {
                 return Err(AuthenticationError::UsernameNotFound);
             }
         };
+        let original = user.clone();
         match user.authenticate_by_password(
             password,
             &self.user_lock_policy,
@@ -174,6 +176,7 @@ impl UserApplication {
             }),
             Err(AuthenticationError::BadPassword) => {
                 // 更新用户
+                let user = Revision::new(original, user);
                 tx_repo.update(user).await.map_err(|e| {
                     error!("update user error: {}", e);
                     AuthenticationError::InnerError

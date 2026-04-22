@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use serde::Serialize;
 use starriver_infrastructure::error::ApiError;
 
-#[derive(Default, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, Serialize)]
 pub enum ArticleState {
     #[default]
     Draft,
@@ -23,7 +23,7 @@ impl Display for ArticleState {
 
 //////////////////////////////////////////////////////////////
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Title(pub(crate) String);
 
 impl Title {
@@ -41,7 +41,7 @@ impl Display for Title {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Content(pub(crate) String);
 
 impl Content {

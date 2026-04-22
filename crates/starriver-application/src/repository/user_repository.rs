@@ -19,6 +19,7 @@ use starriver_domain::user::factory::UserFactory;
 use starriver_domain::user::repository::UserRepository;
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::error::Cause;
+use starriver_infrastructure::model::aggregate_revision::Revision;
 use starriver_infrastructure::util::db::TransactionalConn;
 use time::Duration;
 use time::OffsetDateTime;
@@ -93,60 +94,54 @@ where
         Ok(result)
     }
 
-    async fn update(&self, user: User) -> Result<User, ApiError> {
-        let (id, new_username, new_password, new_email, new_state, _, mut new_security_events) =
-            user.dissolve();
-        let username = new_username.as_str();
-        match find_by_username(&self.conn, username, &self.factory).await? {
-            Some(found) => {
-                let (_, username, password, email, state, create_at, security_events) =
-                    found.dissolve();
-                // 更新事件，一次请求仅可能新增一条记录
-                if security_events != new_security_events
-                    && let Some(event) = new_security_events.pop()
-                {
-                    let (id, user_id, event_type, message, created_at) = event.dissolve();
-                    let event_model = user_security_event_do::ActiveModel {
-                        id: Set(id),
-                        user_id: Set(user_id),
-                        event_type: Set(event_type.into()),
-                        message: Set(message),
-                        create_at: Set(created_at),
-                        update_at: NotSet,
-                    };
-                    event_model.insert(&self.conn).await?;
-                }
-
-                // 更新用户
-                let mut username = Unchanged(username.as_str().to_string());
-                username.set_if_not_equals(new_username.as_str().to_string());
-
-                let mut password = Unchanged(password.as_str().to_string());
-                password.set_if_not_equals(new_password.as_str().to_string());
-
-                let mut email = Unchanged(email.to_string());
-                email.set_if_not_equals(new_email.to_string());
-
-                let mut state = Unchanged(state.into());
-                state.set_if_not_equals(new_state.into());
-
-                let model = ActiveModel {
-                    id: Unchanged(id),
-                    username,
-                    password,
-                    email,
-                    state,
-                    create_at: Unchanged(create_at),
-                    update_at: Set(Some(OffsetDateTime::now_utc())),
-                };
-
-                model
-                    .update(&self.conn)
-                    .await
-                    .map(|e| model_to_entity(e, &self.factory))?
+    async fn update(&self, user: Revision<User>) -> Result<User, ApiError> {
+        let (original, modified) = user.dissolve();
+        let (user_id, username, password, email, state, create_at, security_events) =
+            original.dissolve();
+        let (_, new_username, new_password, new_email, new_state, _, mut new_security_events) =
+            modified.dissolve();
+        // 更新事件，一次请求仅可能新增一条记录
+        if security_events != new_security_events
+            && let Some(event) = new_security_events.pop()
+        {
+            let (event_id, user_id, event_type, message, created_at) = event.dissolve();
+            user_security_event_do::ActiveModel {
+                id: Set(event_id),
+                user_id: Set(user_id),
+                event_type: Set(event_type.into()),
+                message: Set(message),
+                create_at: Set(created_at),
+                update_at: NotSet,
             }
-            None => Err(ApiError::new(Cause::ClientBadRequest, "User not found")),
+            .insert(&self.conn)
+            .await?;
         }
+
+        // 更新用户
+        let mut username = Unchanged(username.as_str().to_string());
+        username.set_if_not_equals(new_username.as_str().to_string());
+
+        let mut password = Unchanged(password.as_str().to_string());
+        password.set_if_not_equals(new_password.as_str().to_string());
+
+        let mut email = Unchanged(email.to_string());
+        email.set_if_not_equals(new_email.to_string());
+
+        let mut state = Unchanged(state.into());
+        state.set_if_not_equals(new_state.into());
+
+        ActiveModel {
+            id: Unchanged(user_id),
+            username,
+            password,
+            email,
+            state,
+            create_at: Unchanged(create_at),
+            update_at: Set(Some(OffsetDateTime::now_utc())),
+        }
+        .update(&self.conn)
+        .await
+        .map(|e| model_to_entity(e, &self.factory))?
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////

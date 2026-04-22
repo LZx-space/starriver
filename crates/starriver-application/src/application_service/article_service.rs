@@ -9,6 +9,7 @@ use starriver_domain::article::entity::{Article, Attachment};
 use starriver_domain::article::params::ArticleUpdate;
 use starriver_domain::article::repository::ArticleRepository;
 use starriver_infrastructure::error::{ApiError, Cause};
+use starriver_infrastructure::model::aggregate_revision::Revision;
 use starriver_infrastructure::model::page::{PageQuery, PageResult};
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use starriver_infrastructure::service::config_service::Assets;
@@ -156,8 +157,12 @@ impl ArticleApplication {
             attachment_ids: cmd.attachment_ids,
             published: cmd.publish,
         };
+        let original = found.clone();
         found.update(cmd)?;
-        tx_repo.update(found).await.map(Into::into)
+        tx_repo
+            .update(Revision::new(original, found))
+            .await
+            .map(Into::into)
     }
 
     /// # return
@@ -169,8 +174,9 @@ impl ArticleApplication {
     ) -> Result<Article, ApiError> {
         // 将附件信息保存到博客中
         let mut found = find_article_by_id(tx_repo, article_id).await?;
+        let original = found.clone();
         found.add_attachment(attachment)?;
-        tx_repo.update(found).await
+        tx_repo.update(Revision::new(original, found)).await
     }
 
     fn upload_dir(cfg: &Assets) -> Result<PathBuf, ApiError> {

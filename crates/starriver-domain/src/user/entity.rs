@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 // -----Aggregate Root User------------------------------------------------------
 /// The user aggregate. User is the aggregate root.
-#[derive(Debug, Getters, Dissolve)]
+#[derive(Clone, Debug, Getters, Dissolve)]
 pub struct User {
     id: Uuid,
     username: Username,

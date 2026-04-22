@@ -1,6 +1,7 @@
 use axum::extract::FromRef;
 use sea_orm::{Database, DatabaseConnection};
 use starriver_application::article_service::ArticleApplication;
+use starriver_application::category_service::CategoryApplication;
 use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::service::cache_service::VerificationCodeCache;
 use starriver_infrastructure::service::config_service::{AppConfig, Assets};
@@ -19,6 +20,7 @@ pub struct AppState {
     //////////////////////////////////////////
     pub user_application: Arc<UserApplication>,
     pub article_application: Arc<ArticleApplication>,
+    pub category_application: Arc<CategoryApplication>,
 }
 
 impl AppState {
@@ -41,6 +43,7 @@ impl AppState {
         )
         .into();
         let article_application = ArticleApplication::new(conn.clone(), cfg.assets.clone()).into();
+        let category_application = CategoryApplication::new(conn.clone()).into();
         Ok(AppState {
             conn,
             assets: cfg.assets,
@@ -49,6 +52,7 @@ impl AppState {
             verification_code_cache,
             user_application,
             article_application,
+            category_application,
         })
     }
 }

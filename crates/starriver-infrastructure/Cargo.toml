@@ -10,6 +10,7 @@ workspace = true
 [dependencies]
 axum = { workspace = true }
 axum-extra = { workspace = true }
+axum-valid = { workspace = true }
 anyhow = { workspace = true }
 argon2 = { workspace = true }
 bytes = { workspace = true }

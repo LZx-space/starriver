@@ -126,25 +126,6 @@ impl<T: Serialize> IntoResponse for ApiErrorResponse<T> {
 }
 
 // ----------------------------------------------------------------------------------------
-#[derive(Serialize)]
-pub struct PageError {
-    cause: Cause,
-    message: String,
-}
-
-impl IntoResponse for PageError {
-    fn into_response(self) -> Response {
-        todo!()
-    }
-}
-
-impl Display for PageError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-// ----------------------------------------------------------------------------------------
 #[derive(Debug, Serialize, EnumIter)]
 pub enum Cause {
     ClientBadRequest,

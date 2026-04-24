@@ -20,6 +20,7 @@ use crate::security::authentication::web::authentication_credentials_extractor::
 use crate::security::authentication::web::authentication_result_handler::{
     AuthenticationFailureHandler, AuthenticationSuccessHandler,
 };
+use crate::security::authentication::web::config::AuthConfig;
 use crate::security::authentication::web::request_matcher::RequestMatcher;
 use crate::security::timing_attack_protection::TimingAttackProtection;
 use crate::security::timing_attack_protection::TokioTimingAttackProtection;
@@ -127,6 +128,7 @@ impl<A>
 {
     pub fn with_authenticator(
         authenticator: A,
+        cfg: AuthConfig,
     ) -> AuthenticationLayer<
         LoginRequestMatcher,
         DefaultCredentialsExtractor,
@@ -145,7 +147,7 @@ impl<A>
             DefaultCredentialsExtractor {},
             authenticator,
             TokioTimingAttackProtection::default(),
-            DefaultAuthenticationSuccessHandler {},
+            DefaultAuthenticationSuccessHandler::new(cfg),
             DefaultAuthenticationFailureHandler {},
         )
     }

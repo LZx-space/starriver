@@ -3,8 +3,10 @@ use std::path::{MAIN_SEPARATOR, PathBuf};
 use config::{Config, ConfigError, File, FileFormat};
 use serde::{Deserialize, Deserializer};
 
+use crate::security::authentication::web::config::AuthConfig;
+
 pub fn load_config() -> Result<AppConfig, ConfigError> {
-    let project_config = find_config("settings.toml")
+    let project_config = find_config("config.toml")
         .ok_or(ConfigError::Message("config file not found".to_string()))?;
     let builder = Config::builder().add_source(
         File::from(project_config)
@@ -28,34 +30,35 @@ fn find_config(filename: &str) -> Option<PathBuf> {
     None
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct AppConfig {
     pub http_server: HttpServer,
     pub database: Database,
     pub assets: Assets,
+    pub auth_cfg: AuthConfig,
     pub email: Email,
     pub regex: Regex,
     pub aggregate: Aggregate,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct HttpServer {
     pub ip: String,
     pub port: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct Database {
     pub url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct Email {
     pub smtp: EmailSmtp,
     pub verification_cache: EmailVerificationCache,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct EmailSmtp {
     pub username: String,
     pub password: String,
@@ -63,13 +66,13 @@ pub struct EmailSmtp {
     pub port: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct EmailVerificationCache {
     pub max_capacity: u64,
     pub ttl_hours: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct Regex {
     pub email: String,
     pub username: String,
@@ -78,17 +81,17 @@ pub struct Regex {
 
 ///////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct Aggregate {
     pub user: User,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct User {
     pub policy: UserPolicy,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct UserPolicy {
     pub bad_password_window_mins: u64,
     pub max_bad_password_attempts: usize,
@@ -97,7 +100,7 @@ pub struct UserPolicy {
 ///////////////////////////////////////////////////////////////////////////////////
 
 /// 静态资源
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct Assets {
     #[serde(deserialize_with = "validate_path_separators")]
     pub static_base_dir: String,
@@ -106,7 +109,7 @@ pub struct Assets {
 }
 
 /// 上传文件配置
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct Uploads {
     #[serde(deserialize_with = "validate_path_separators")]
     pub relative_dir: String,
@@ -142,7 +145,5 @@ mod tests {
     fn test_load_config() {
         let config = load_config();
         assert!(config.is_ok());
-        let config = config.unwrap();
-        println!("{:?}", config);
     }
 }

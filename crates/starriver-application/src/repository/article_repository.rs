@@ -56,8 +56,8 @@ where
             state: Set(state.into()),
             author_id: Set(author_id),
             published_at: NotSet,
-            create_at: Set(OffsetDateTime::now_utc()),
-            update_at: NotSet,
+            created_at: Set(OffsetDateTime::now_utc()),
+            updated_at: NotSet,
         }
         .insert(&self.conn)
         .await
@@ -70,8 +70,8 @@ where
                 Vec::new(),
                 e.author_id,
                 e.published_at,
-                e.create_at,
-                e.update_at,
+                e.created_at,
+                e.updated_at,
             )
         })
         .map_err(ApiError::from)
@@ -88,7 +88,7 @@ where
 
     async fn update(&self, article: Revision<Article>) -> Result<Article, ApiError> {
         let (original, modified) = article.dissolve();
-        let (id, title, content, state, attachments, author_id, published_at, create_at, _) =
+        let (id, title, content, state, attachments, author_id, published_at, created_at, _) =
             original.dissolve();
         let (
             _,
@@ -144,8 +144,8 @@ where
             state,
             author_id,
             published_at,
-            create_at: Unchanged(create_at),
-            update_at: Set(Some(OffsetDateTime::now_utc())),
+            created_at: Unchanged(created_at),
+            updated_at: Set(Some(OffsetDateTime::now_utc())),
         };
 
         model
@@ -160,8 +160,8 @@ where
                     Vec::new(),
                     e.author_id,
                     e.published_at,
-                    e.create_at,
-                    e.update_at,
+                    e.created_at,
+                    e.updated_at,
                 )
             })
             .map_err(ApiError::from)
@@ -185,8 +185,8 @@ async fn find_by_id(
                     Vec::new(),
                     e.author_id,
                     e.published_at,
-                    e.create_at,
-                    e.update_at,
+                    e.created_at,
+                    e.updated_at,
                 )
             })
         })
@@ -198,7 +198,7 @@ async fn find_by_id(
             .await?;
         let mut attachments: Vec<Attachment> = attachments
             .into_iter()
-            .map(|e| Attachment::from_repo(e.id, e.article_id, e.create_at, e.update_at))
+            .map(|e| Attachment::from_repo(e.id, e.article_id, e.created_at, e.updated_at))
             .collect();
         article.attachments().append(&mut attachments);
         return Ok(Some(article));

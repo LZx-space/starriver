@@ -4,6 +4,18 @@ pub mod req {
     use validator::Validate;
 
     #[derive(Debug, Deserialize, Validate)]
+    pub struct PageQuery {
+        #[validate(range(min = 0, max = 10))]
+        pub page: u64,
+
+        #[validate(range(min = 1, max = 20))]
+        pub page_size: u64,
+
+        #[serde(default)]
+        pub published_only: bool,
+    }
+
+    #[derive(Debug, Deserialize, Validate)]
     pub struct ArticleCmd {
         #[validate(length(min = 1, max = 30))]
         pub title: String,
@@ -41,7 +53,7 @@ pub mod res {
 
         pub published_at: Option<OffsetDateTime>,
 
-        pub create_at: OffsetDateTime,
+        pub created_at: OffsetDateTime,
     }
 
     #[derive(Serialize, FromQueryResult)]
@@ -57,20 +69,20 @@ pub mod res {
 
         pub published_at: Option<OffsetDateTime>,
 
-        pub create_at: OffsetDateTime,
+        pub created_at: OffsetDateTime,
     }
 
     //////////////////////////////////////////
     impl From<Article> for ArticleDetail {
         fn from(value: Article) -> Self {
-            let (id, title, content, state, _, _, published_at, create_at, _) = value.dissolve();
+            let (id, title, content, state, _, _, published_at, created_at, _) = value.dissolve();
             Self {
                 id,
                 title: title.to_string(),
                 content: content.to_string(),
                 state: state.to_string(),
                 published_at,
-                create_at,
+                created_at,
             }
         }
     }

@@ -1,10 +1,9 @@
 use crate::config::app_state::AppState;
 use axum::extract::State;
 use axum::response::IntoResponse;
-use starriver_application::article_dto::req::{ArticleAttachmentCmd, ArticleCmd};
+use starriver_application::article_dto::req::{ArticleAttachmentCmd, ArticleCmd, PageQuery};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::extract::{Json, Multipart, Path, Query};
-use starriver_infrastructure::model::page::PageQuery;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use starriver_infrastructure::util::file_utils::get_extension;
 use tracing::info;

@@ -8,7 +8,6 @@ pub enum ArticleState {
     #[default]
     Draft,
     Published,
-    Archived,
 }
 
 impl Display for ArticleState {
@@ -16,7 +15,6 @@ impl Display for ArticleState {
         match self {
             ArticleState::Draft => f.write_str("draft"),
             ArticleState::Published => f.write_str("published"),
-            ArticleState::Archived => f.write_str("archived"),
         }
     }
 }
@@ -46,14 +44,10 @@ pub struct Content(pub(crate) String);
 
 impl Content {
     pub fn new(value: String) -> Result<Self, ApiError> {
-        if value.len() > 10000 {
+        if value.len() > 50000 {
             return Err(ApiError::with_bad_request("content too long"));
         }
         Ok(Self(value))
-    }
-
-    pub fn ant_xxs(&self) -> Self {
-        Self(self.0.replace("<", ""))
     }
 
     pub fn word_count(&self) -> usize {

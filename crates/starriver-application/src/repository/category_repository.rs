@@ -39,7 +39,7 @@ where
         let category = Entity::find_by_id(id)
             .one(&self.conn)
             .await?
-            .map(|e| Category::from_repo(e.id, e.name, e.create_at, e.update_at));
+            .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at));
         Ok(category)
     }
 
@@ -48,7 +48,7 @@ where
             .all(&self.conn)
             .await?
             .into_iter()
-            .map(|e| Category::from_repo(e.id, e.name, e.create_at, e.update_at))
+            .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at))
             .collect();
         Ok(categories)
     }
@@ -58,12 +58,12 @@ where
         ActiveModel {
             id: Set(id),
             name: Set(name),
-            create_at: Set(OffsetDateTime::now_utc()),
-            update_at: NotSet,
+            created_at: Set(OffsetDateTime::now_utc()),
+            updated_at: NotSet,
         }
         .insert(&self.conn)
         .await
-        .map(|e| Category::from_repo(e.id, e.name, e.create_at, e.update_at))
+        .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at))
         .map_err(ApiError::from)
     }
 
@@ -72,12 +72,12 @@ where
         ActiveModel {
             id: Unchanged(id),
             name: Set(name),
-            create_at: NotSet,
-            update_at: Set(Some(OffsetDateTime::now_utc())),
+            created_at: NotSet,
+            updated_at: Set(Some(OffsetDateTime::now_utc())),
         }
         .update(&self.conn)
         .await
-        .map(|e| Category::from_repo(e.id, e.name, e.create_at, e.update_at))
+        .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at))
         .map_err(ApiError::from)
     }
 

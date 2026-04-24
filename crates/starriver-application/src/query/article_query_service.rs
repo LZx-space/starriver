@@ -1,8 +1,14 @@
-use crate::db::article_do::{Column, Entity};
-use sea_orm::{DatabaseConnection, EntityTrait, PaginatorTrait, QuerySelect};
+use crate::{
+    article_dto::req::PageQuery,
+    db::article_do::{Column, Entity},
+};
+use sea_orm::{
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
+    QuerySelect,
+};
 use starriver_infrastructure::{
     error::ApiError,
-    model::page::{PageQuery, PageResult},
+    model::page::PageResult,
     util::html_utils::{DefaultExcerptor, Excerptor},
 };
 
@@ -22,6 +28,10 @@ pub struct DefaultArticleQueryService {
 
 impl ArticleQueryService for DefaultArticleQueryService {
     async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleExcerpt>, ApiError> {
+        let mut cond = Condition::all();
+        if q.published_only {
+            cond = cond.add(Column::State.eq(1));
+        }
         let articles = Entity::find()
             .select_only()
             .columns([
@@ -32,6 +42,7 @@ impl ArticleQueryService for DefaultArticleQueryService {
                 Column::PublishedAt,
                 Column::CreatedAt,
             ])
+            .filter(cond.clone())
             .offset(q.page * q.page_size)
             .limit(q.page_size)
             .into_model::<ArticleExcerpt>()
@@ -47,6 +58,7 @@ impl ArticleQueryService for DefaultArticleQueryService {
         let record_total = Entity::find()
             .select_only()
             .column(Column::Id)
+            .filter(cond)
             .count(&self.conn)
             .await
             .map_err(ApiError::from)?;

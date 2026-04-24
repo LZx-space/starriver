@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::article_dto::req::{ArticleAttachmentCmd, ArticleCmd};
+use crate::article_dto::req::{ArticleAttachmentCmd, ArticleCmd, PageQuery};
 use crate::dto::article_dto::res::{ArticleDetail, ArticleExcerpt};
 use crate::query::article_query_service::{ArticleQueryService, DefaultArticleQueryService};
 use crate::repository::article_repository::DefaultArticleRepository;
@@ -10,7 +10,7 @@ use starriver_domain::article::params::ArticleUpdate;
 use starriver_domain::article::repository::ArticleRepository;
 use starriver_infrastructure::error::{ApiError, Cause};
 use starriver_infrastructure::model::aggregate_revision::Revision;
-use starriver_infrastructure::model::page::{PageQuery, PageResult};
+use starriver_infrastructure::model::page::PageResult;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use starriver_infrastructure::service::config_service::Assets;
 use starriver_infrastructure::service::file_service::{delete_file, write_to_file};

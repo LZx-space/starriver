@@ -8,8 +8,8 @@ use uuid::Uuid;
 pub struct Category {
     id: Uuid,
     name: String,
-    create_at: OffsetDateTime,
-    update_at: Option<OffsetDateTime>,
+    created_at: OffsetDateTime,
+    updated_at: Option<OffsetDateTime>,
 }
 
 impl Category {
@@ -21,22 +21,22 @@ impl Category {
         Ok(Self {
             id: Uuid::now_v7(),
             name,
-            create_at: OffsetDateTime::now_utc(),
-            update_at: None,
+            created_at: OffsetDateTime::now_utc(),
+            updated_at: None,
         })
     }
 
     pub fn from_repo(
         id: Uuid,
         name: String,
-        create_at: OffsetDateTime,
-        update_at: Option<OffsetDateTime>,
+        created_at: OffsetDateTime,
+        updated_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             id,
             name,
-            create_at,
-            update_at,
+            created_at,
+            updated_at,
         }
     }
 
@@ -46,7 +46,7 @@ impl Category {
             return Err(ApiError::with_bad_request("类别名称过长"));
         }
         self.name = name;
-        self.update_at = Some(OffsetDateTime::now_utc());
+        self.updated_at = Some(OffsetDateTime::now_utc());
         Ok(())
     }
 }

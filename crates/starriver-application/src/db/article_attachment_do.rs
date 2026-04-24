@@ -8,8 +8,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub article_id: Uuid,
-    pub create_at: OffsetDateTime,
-    pub update_at: Option<OffsetDateTime>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: Option<OffsetDateTime>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -23,8 +23,8 @@ impl From<Attachment> for ActiveModel {
         Self {
             id: Set(att.0),
             article_id: Set(att.1),
-            create_at: Set(att.2),
-            update_at: Set(att.3),
+            created_at: Set(att.2),
+            updated_at: Set(att.3),
         }
     }
 }

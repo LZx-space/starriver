@@ -28,3 +28,6 @@ max_bad_password_attempts = 5
 static_base_dir = ".."
 [assets.uploads]
 relative_dir = "uploads"
+
+[auth_cfg]
+jws_secret = "LZx"

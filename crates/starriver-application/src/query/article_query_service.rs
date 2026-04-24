@@ -30,7 +30,7 @@ impl ArticleQueryService for DefaultArticleQueryService {
                 Column::Content,
                 Column::State,
                 Column::PublishedAt,
-                Column::CreateAt,
+                Column::CreatedAt,
             ])
             .offset(q.page * q.page_size)
             .limit(q.page_size)

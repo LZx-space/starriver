@@ -12,7 +12,6 @@ workspace = true
 starriver-adapter = { path = "../starriver-adapter" }
 starriver-infrastructure = { path = "../starriver-infrastructure" }
 
-ferris-says = "^0"
 axum = { workspace = true }
 mimalloc = { version = "*", features = ["secure"] }
 tokio = { workspace = true }

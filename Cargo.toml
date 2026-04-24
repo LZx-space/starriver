@@ -30,7 +30,7 @@ time = { version = "^0", features = ["serde-human-readable", "serde-well-known"]
 thiserror = "^2"
 tokio = { version = "^1", features = ["full"] }
 tracing = "^0"
-tracing-subscriber = { version = "^0", features = ["local-time"] }
+tracing-subscriber = { version = "^0", features = ["env-filter", "json", "local-time"] }
 tracing-appender = "^0"
 tower = { version = "^0" }
 tower-http = { version = "^0", features = ["fs", "request-id", "trace"] }

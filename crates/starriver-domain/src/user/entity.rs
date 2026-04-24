@@ -11,7 +11,7 @@ use starriver_infrastructure::{
     },
 };
 use time::OffsetDateTime;
-use tracing::{error, info};
+
 use uuid::Uuid;
 
 // -----Aggregate Root User------------------------------------------------------
@@ -82,12 +82,7 @@ impl User {
         encoder
             .verify(raw_pwd, self.password.as_str())
             .map(|_| Ok(()))
-            .map_err(|e| {
-                error!(
-                    "verify {} hashed password error: {}",
-                    self.username.as_str(),
-                    e
-                );
+            .map_err(|_| {
                 // 密码错误，记录登录事件
                 let event = SecurityEvent::new(
                     self.id,
@@ -97,7 +92,6 @@ impl User {
                 self.security_events.push(event);
                 // 检查是否需要锁定用户
                 if policy.should_lock(&self.security_events) {
-                    info!("user[{}] locked，bad password too many times", self.id);
                     self.state = UserState::Locked;
                 }
                 AuthenticationError::BadPassword

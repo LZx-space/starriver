@@ -19,7 +19,7 @@ use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::model::aggregate_revision::Revision;
 use starriver_infrastructure::util::db::TransactionalConn;
 use time::OffsetDateTime;
-use tracing::info;
+use tracing::debug;
 use uuid::Uuid;
 
 pub struct DefaultArticleRepository<T> {
@@ -105,7 +105,7 @@ where
         let (to_delete, to_insert) = diff_attachments(&attachments, new_attachments);
         // 删除旧附件
         let to_delete_count = to_delete.len();
-        info!("需要删除附件个数[{}]", to_delete_count);
+        debug!("attachments to delete: {}", to_delete_count);
         if to_delete_count > 0 {
             article_attachment_do::Entity::delete_many()
                 .filter(Column::Id.is_in(to_delete))
@@ -114,7 +114,7 @@ where
         }
         // 插入新附件
         let to_insert_count = to_insert.len();
-        info!("需要新增附件个数[{}]", to_insert_count);
+        debug!("attachments to insert: {}", to_insert_count);
         if to_insert_count > 0 {
             article_attachment_do::Entity::insert_many(to_insert)
                 .exec(&self.conn)

@@ -28,7 +28,11 @@ impl CategoryApplication {
         operator: AuthenticatedUser,
         name: String,
     ) -> Result<Category, ApiError> {
-        info!("用户[{}]创建博客类别[{}]", operator.username, name);
+        info!(
+            user_id = %operator.id,
+            category_name = %name,
+            "creating category"
+        );
         let category = Category::new(name)?;
         self.repo.insert(category).await
     }
@@ -39,7 +43,11 @@ impl CategoryApplication {
         id: Uuid,
         name: String,
     ) -> Result<Category, ApiError> {
-        info!("用户[{}]更新博客类别[{}]", operator.username, id);
+        info!(
+            user_id = %operator.id,
+            category_id = %id,
+            "updating category"
+        );
         let category = self.repo.find_by_id(id).await?;
         let mut category = match category {
             Some(category) => category,
@@ -51,7 +59,11 @@ impl CategoryApplication {
     }
 
     pub async fn delete(&self, operator: AuthenticatedUser, id: Uuid) -> Result<(), ApiError> {
-        info!("用户[{}]删除博客类别[{}]", operator.username, id);
+        info!(
+            user_id = %operator.id,
+            category_id = %id,
+            "deleting category"
+        );
         self.repo.delete(id).await.map(|_| ())
     }
 }

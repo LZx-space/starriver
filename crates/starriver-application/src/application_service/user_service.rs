@@ -19,7 +19,7 @@ use starriver_infrastructure::{
         core::authenticator::AuthenticationError,
     },
 };
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 pub struct UserApplication {
     conn: DatabaseConnection,
@@ -78,33 +78,30 @@ impl UserApplication {
         &self,
         credentials: &UsernamePasswordCredentials,
     ) -> Result<AuthenticatedUser, AuthenticationError> {
-        // 开启事务, update方法内部会再次查询获取副本以对比更新字段，当心事务等级
         let tx = self.conn.begin().await.map_err(|e| {
-            error!("begin transaction error: {}", e);
+            error!(error = %e, "begin transaction failed");
             AuthenticationError::InnerError
         })?;
         let tx_repo = DefaultUserRepository::new(tx, self.factory.clone());
         match self.transaction_authenticate(credentials, &tx_repo).await {
             Ok(user) => {
-                // 提交事务
                 tx_repo.conn().commit().await.map_err(|e| {
-                    error!("commit transaction error: {}", e);
+                    error!(error = %e, "commit transaction failed");
                     AuthenticationError::InnerError
                 })?;
+                info!(username = %credentials.username, "user authenticated successfully");
                 Ok(user)
             }
             Err(AuthenticationError::InnerError) => {
-                // 回滚事务
                 tx_repo.conn().rollback().await.map_err(|e| {
-                    error!("rollback transaction error: {}", e);
+                    error!(error = %e, "rollback transaction failed");
                     AuthenticationError::InnerError
                 })?;
                 Err(AuthenticationError::InnerError)
             }
             Err(e) => {
-                // 提交事务
                 tx_repo.conn().commit().await.map_err(|e| {
-                    error!("commit transaction error: {}", e);
+                    error!(error = %e, "commit transaction after auth failure failed");
                     AuthenticationError::InnerError
                 })?;
                 Err(e)
@@ -118,7 +115,7 @@ impl UserApplication {
         match self.query.exists_by_email(email).await {
             Ok(found) => {
                 if found {
-                    warn!("email already registered: {}", email);
+                    warn!(email = %email, "email already registered, skipping verification");
                     return Ok(());
                 }
                 let verification_code = self
@@ -130,12 +127,12 @@ impl UserApplication {
                     .send_email_verification_mail(email, verification_code)
                     .await
                 {
-                    error!("send verification email error: {}", e);
+                    error!(email = %email, error = %e, "send verification email failed");
                 }
                 Ok(())
             }
             Err(e) => {
-                error!("find user by email error: {}", e);
+                error!(email = %email, error = %e, "find user by email failed");
                 Ok(())
             }
         }
@@ -152,7 +149,7 @@ impl UserApplication {
         let opt = match tx_repo.find_by_username(username).await {
             Ok(opt) => opt,
             Err(e) => {
-                error!("find by username error: {}", e);
+                error!(username = %username, error = %e, "find by username failed");
                 return Err(AuthenticationError::InnerError);
             }
         };
@@ -175,10 +172,16 @@ impl UserApplication {
                 authorities: vec![],
             }),
             Err(AuthenticationError::BadPassword) => {
-                // 更新用户
+                if user.state() == &starriver_domain::user::value_object::UserState::Locked {
+                    warn!(
+                        user.id = %user.id(),
+                        username = %username,
+                        "user locked due to too many bad password attempts"
+                    );
+                }
                 let user = Revision::new(original, user);
                 tx_repo.update(user).await.map_err(|e| {
-                    error!("update user error: {}", e);
+                    error!(username = %username, error = %e, "update user after bad password failed");
                     AuthenticationError::InnerError
                 })?;
                 Err(AuthenticationError::BadPassword)

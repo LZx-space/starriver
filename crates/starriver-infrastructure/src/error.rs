@@ -50,7 +50,7 @@ impl ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status_code, code) = self.cause.to_http_status();
-        error!(name: "api error", "code: {}, message：{}", code, self.message);
+        error!(code = %code, message = %self.message, "api error response");
         let json = ApiErrorResponse::<()> {
             code,
             message: self.message,

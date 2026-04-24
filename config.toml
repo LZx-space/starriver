@@ -31,3 +31,9 @@ relative_dir = "uploads"
 
 [auth_cfg]
 jws_secret = "LZx"
+
+[logging]
+level = "info"
+directory = "log"
+file_name_prefix = "starriver"
+max_files = 30

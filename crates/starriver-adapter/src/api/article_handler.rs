@@ -56,7 +56,12 @@ pub async fn upload_attachment(
 ) -> Result<impl IntoResponse, ApiError> {
     while let Ok(Some(field)) = file.0.next_field().await {
         let file_name = field.file_name().unwrap_or("unknown").to_string();
-        info!("user [{}] upload file [{}]", user.id, file_name);
+        info!(
+            user_id = %user.id,
+            file_name = %file_name,
+            article_id = %id.0,
+            "uploading file attachment"
+        );
         // 获取文件格式（从文件名中提取）
         let extension = get_extension(file_name.as_str());
 

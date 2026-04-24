@@ -1,10 +1,10 @@
 CREATE TABLE public."user"
 (
-    id        uuid primary key         NOT NULL,
-    username  character varying(20)    NOT NULL,
-    password  character varying(128)   NOT NULL,
-    email     character varying(254)   NOT NULL,
-    state     smallint                 NOT NULL DEFAULT 0,
+    id         uuid primary key         NOT NULL,
+    username   character varying(20)    NOT NULL,
+    password   character varying(128)   NOT NULL,
+    email      character varying(254)   NOT NULL,
+    state      smallint                 NOT NULL DEFAULT 0,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone,
     CONSTRAINT user_unique UNIQUE (username),

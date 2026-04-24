@@ -6,8 +6,8 @@ CREATE TABLE public.article
     state        smallint                 NOT NULL,
     author_id    uuid                     NOT NULL,
     published_at timestamp with time zone,
-    created_at    timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    timestamp with time zone
+    created_at   timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   timestamp with time zone
 );
 COMMENT ON TABLE public.article IS '文章';
 

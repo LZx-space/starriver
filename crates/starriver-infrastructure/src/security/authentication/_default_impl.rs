@@ -108,7 +108,7 @@ where
         let jws = cookie_jar
             .get(AUTHENTION_TOKEN_COOKIE_NAME)
             .ok_or_else(|| {
-                warn!("authentication cookie not found");
+                warn!("authentication cookie not found in request");
                 StatusCode::UNAUTHORIZED
             })?
             .value();
@@ -130,7 +130,7 @@ where
             }
         })
         .map_err(|e| {
-            error!("decode JWS error, {}", e);
+            error!(error = %e, "JWS token decode failed");
             StatusCode::UNAUTHORIZED
         })
     }
@@ -187,7 +187,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
         let jws = match jws {
             Ok(token) => token,
             Err(err) => {
-                error!("serialize principal error: {}", err);
+                error!(error = %err, "failed to serialize JWS principal claims");
                 return ApiError::new(Cause::InnerError, err.to_string()).into_response();
             }
         };
@@ -204,7 +204,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             .header(header::SET_COOKIE, cookie.to_string())
             .body(Body::empty())
             .unwrap_or_else(|e| {
-                error!("build authentication success response error: {}", e);
+                error!(error = %e, "failed to build authentication success response");
                 ApiError::new(
                     Cause::InnerError,
                     "build authentication success response error".to_string(),
@@ -222,7 +222,7 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
     type Response = Response;
 
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
-        warn!("authentication failed: {}", err);
+        warn!(error = %err, "authentication failed");
         let (cause, message) = match err {
             AuthenticationError::UserLocked => (Cause::Forbidden, "user locked"),
             AuthenticationError::UserDisabled => (Cause::Forbidden, "user disabled"),
@@ -253,7 +253,7 @@ impl CredentialsExtractor for DefaultCredentialsExtractor {
         let form = Form::<FormLoginCmd>::from_request(req, &())
             .await
             .map_err(|_| AuthenticationError::InnerError)?;
-        info!(name: "login", "form login cmd: {:?}", form.0);
+        info!(username = %form.0.username, "login credentials received");
         // 创建凭证
         let credentials = UsernamePasswordCredentials {
             username: form.0.username,

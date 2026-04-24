@@ -15,7 +15,7 @@ use starriver_infrastructure::security::authentication::_default_impl::Authentic
 use starriver_infrastructure::service::config_service::Assets;
 use starriver_infrastructure::service::file_service::{delete_file, write_to_file};
 use starriver_infrastructure::util::db::TransactionalConn;
-use tracing::{error, info};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 pub struct ArticleApplication {
@@ -61,21 +61,21 @@ impl ArticleApplication {
         id: Uuid,
         cmd: ArticleCmd,
     ) -> Result<ArticleDetail, ApiError> {
-        info!("用户[{}]更新博客[{}]", operator.username, id);
-        // 开启事务, update方法内部会再次查询获取副本以对比更新字段，这依赖于事务等级
+        info!(
+            user_id = %operator.id,
+            article_id = %id,
+            "updating article"
+        );
         let tx = self.conn.begin().await.map_err(ApiError::from)?;
         let tx_repo = DefaultArticleRepository::new(tx);
         match Self::tx_update_article(id, cmd, &tx_repo).await {
             Ok(article) => {
-                info!("博客[{}]更新成功", id);
-                // 提交事务
+                info!(article_id = %id, "article updated successfully");
                 tx_repo.conn().commit().await?;
-                // todo 离线删除不用的附件
                 Ok(article)
             }
             Err(err) => {
-                info!("博客[{}]更新失败: {}", id, err);
-                // 回滚事务
+                warn!(article_id = %id, error = %err, "article update failed, rolling back");
                 tx_repo.conn().rollback().await?;
                 Err(err)
             }
@@ -89,7 +89,11 @@ impl ArticleApplication {
         article_id: Uuid,
         file: ArticleAttachmentCmd,
     ) -> Result<String, ApiError> {
-        info!("用户[{}]为博客[{}]添加附件", operator.username, article_id);
+        info!(
+            user_id = %operator.id,
+            article_id = %article_id,
+            "uploading attachment"
+        );
         // 检查文件格式
         let extension = match infer::get(&file.data).map(|t| t.extension()) {
             Some(e) => e,
@@ -97,7 +101,11 @@ impl ArticleApplication {
                 return Err(ApiError::with_bad_request("错误的文件格式"));
             }
         };
-        info!("user upload file actual extension: {}", extension);
+        debug!(
+            declared_extension = %file.extension,
+            actual_extension = %extension,
+            "file extension detected"
+        );
         if extension != file.extension {
             return Err(ApiError::with_bad_request("文件格式与文件名不匹配"));
         }
@@ -109,26 +117,43 @@ impl ArticleApplication {
         let target_dir = Self::upload_dir(&self.static_cfg)?;
         // 写入数据
         write_to_file(target_dir.as_path(), file_name, file.data).await?;
-        info!("博客[{}]保存附件[{}]成功", article_id, file_name);
+        info!(
+            article_id = %article_id,
+            file_name = %file_name,
+            "attachment saved to disk"
+        );
 
         // 开启事务, update方法内部会再次查询获取副本以对比更新字段，这依赖于事务等级
         let tx = self.conn.begin().await.map_err(ApiError::from)?;
         let tx_repo = DefaultArticleRepository::new(tx);
         match Self::tx_upload_attachement(article_id, attachment, &tx_repo).await {
             Ok(_) => {
-                info!("博客[{}]附件[{}]添加成功", article_id, file_name);
+                info!(
+                    article_id = %article_id,
+                    file_name = %file_name,
+                    "attachment added to article successfully"
+                );
                 // 提交事务
                 tx_repo.conn().commit().await?;
                 let url = format!("{}/{}", &self.static_cfg.uploads.relative_dir, file_name);
                 Ok(url)
             }
             Err(e) => {
-                error!("博客[{}]添加附件[{}]失败: {}", article_id, file_name, e);
+                error!(
+                    article_id = %article_id,
+                    file_name = %file_name,
+                    error = %e,
+                    "attachment transaction failed, rolling back and deleting file"
+                );
                 // 回滚事务
                 tx_repo.conn().rollback().await?;
                 // 删除附件
                 delete_file(target_dir.as_path(), file_name).await?;
-                info!("事务回滚，博客[{}]删除附件[{}]成功", article_id, file_name);
+                info!(
+                    article_id = %article_id,
+                    file_name = %file_name,
+                    "rolled back and deleted orphaned attachment file"
+                );
                 Err(e)
             }
         }
@@ -139,7 +164,11 @@ impl ArticleApplication {
         operator: AuthenticatedUser,
         id: Uuid,
     ) -> Result<bool, ApiError> {
-        info!("用户[{}]删除博客[{}]", operator.username, id);
+        info!(
+            user_id = %operator.id,
+            article_id = %id,
+            "deleting article"
+        );
         self.repo.delete_by_id(id).await
     }
 

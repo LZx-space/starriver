@@ -2,8 +2,8 @@ CREATE TABLE public.article_attachment
 (
     id         uuid                     NOT NULL,
     article_id uuid                     NOT NULL,
-    created_at  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  timestamp with time zone,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone,
     CONSTRAINT article_attachment_pkey PRIMARY KEY (id),
     CONSTRAINT article_attachment_fkey FOREIGN KEY (article_id)
         REFERENCES public.article (id) MATCH SIMPLE

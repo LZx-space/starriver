@@ -8,13 +8,11 @@ use starriver_adapter::config::app_state::AppState;
 use starriver_adapter::config::username_password_authenticator::UsernamePasswordAuthenticator;
 use starriver_infrastructure::security::authentication::web::middleware::AuthenticationLayer;
 use starriver_infrastructure::service::config_service::{Logging, load_config};
+use tokio::net::TcpListener;
+use tower::ServiceBuilder;
 use tower_http::classify::ServerErrorsFailureClass;
 use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
-
-use tower::ServiceBuilder;
-
-use tokio::net::TcpListener;
 use tracing::{info, warn};
 
 #[global_allocator]

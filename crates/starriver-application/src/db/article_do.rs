@@ -18,8 +18,8 @@ pub struct Model {
     pub author_id: Uuid,
     #[sea_orm(indexed)]
     pub published_at: Option<OffsetDateTime>,
-    pub create_at: OffsetDateTime,
-    pub update_at: Option<OffsetDateTime>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: Option<OffsetDateTime>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

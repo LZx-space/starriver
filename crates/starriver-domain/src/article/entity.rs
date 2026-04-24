@@ -20,8 +20,8 @@ pub struct Article {
     attachments: Vec<Attachment>,
     author_id: Uuid,
     published_at: Option<OffsetDateTime>,
-    create_at: OffsetDateTime,
-    update_at: Option<OffsetDateTime>,
+    created_at: OffsetDateTime,
+    updated_at: Option<OffsetDateTime>,
 }
 
 impl Article {
@@ -40,8 +40,8 @@ impl Article {
             attachments,
             author_id,
             published_at: None,
-            create_at: OffsetDateTime::now_utc(),
-            update_at: None,
+            created_at: OffsetDateTime::now_utc(),
+            updated_at: None,
         }
     }
 
@@ -54,8 +54,8 @@ impl Article {
         attachments: Vec<Attachment>,
         author_id: Uuid,
         published_at: Option<OffsetDateTime>,
-        create_at: OffsetDateTime,
-        update_at: Option<OffsetDateTime>,
+        created_at: OffsetDateTime,
+        updated_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             id,
@@ -65,8 +65,8 @@ impl Article {
             attachments,
             author_id,
             published_at,
-            create_at,
-            update_at,
+            created_at,
+            updated_at,
         }
     }
 
@@ -86,8 +86,8 @@ impl Article {
             attachments: Vec::new(),
             author_id,
             published_at: None,
-            create_at: OffsetDateTime::now_utc(),
-            update_at: None,
+            created_at: OffsetDateTime::now_utc(),
+            updated_at: None,
         })
     }
 
@@ -101,7 +101,7 @@ impl Article {
     pub fn update(&mut self, update: ArticleUpdate) -> Result<(), ApiError> {
         self.title = Title::new(update.title)?;
         self.content = Content::new(update.content)?;
-        self.update_at = Some(OffsetDateTime::now_utc());
+        self.updated_at = Some(OffsetDateTime::now_utc());
         // 1. 提取新 ID 集合，用于快速判断
         let new_id_set: HashSet<_> = update.attachment_ids.iter().cloned().collect();
         // 2. 删除不在新 ID 集合中的附件
@@ -112,8 +112,8 @@ impl Article {
                 self.attachments.push(Attachment {
                     id,
                     article_id: self.id,
-                    create_at: OffsetDateTime::now_utc(),
-                    update_at: None,
+                    created_at: OffsetDateTime::now_utc(),
+                    updated_at: None,
                 });
             }
         }
@@ -141,11 +141,6 @@ impl Article {
         self.published_at = Some(OffsetDateTime::now_utc());
         Ok(())
     }
-
-    /// 归档
-    pub fn archive(&mut self) {
-        self.state = ArticleState::Archived;
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -155,8 +150,8 @@ pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,
     article_id: Uuid,
-    create_at: OffsetDateTime,
-    update_at: Option<OffsetDateTime>,
+    created_at: OffsetDateTime,
+    updated_at: Option<OffsetDateTime>,
 }
 
 impl Attachment {
@@ -164,22 +159,22 @@ impl Attachment {
         Self {
             id: Uuid::now_v7(),
             article_id,
-            create_at: OffsetDateTime::now_utc(),
-            update_at: None,
+            created_at: OffsetDateTime::now_utc(),
+            updated_at: None,
         }
     }
 
     pub fn from_repo(
         id: Uuid,
         article_id: Uuid,
-        create_at: OffsetDateTime,
-        update_at: Option<OffsetDateTime>,
+        created_at: OffsetDateTime,
+        updated_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             id,
             article_id,
-            create_at,
-            update_at,
+            created_at,
+            updated_at,
         }
     }
 

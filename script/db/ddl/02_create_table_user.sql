@@ -5,8 +5,8 @@ CREATE TABLE public."user"
     password  character varying(128)   NOT NULL,
     email     character varying(254)   NOT NULL,
     state     smallint                 NOT NULL DEFAULT 0,
-    create_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_at timestamp with time zone,
+    created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone,
     CONSTRAINT user_unique UNIQUE (username),
     CONSTRAINT email_unique UNIQUE (email)
 );

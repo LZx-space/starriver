@@ -11,6 +11,7 @@ use crate::{
             authentication_result_handler::{
                 AuthenticationFailureHandler, AuthenticationSuccessHandler,
             },
+            config::AuthConfig,
             request_matcher::RequestMatcher,
         },
     },
@@ -18,7 +19,7 @@ use crate::{
 use axum::{
     Form,
     body::Body,
-    extract::{FromRequest, FromRequestParts},
+    extract::{FromRef, FromRequest, FromRequestParts},
     http::{Method, Request, StatusCode, header, request::Parts},
     response::{IntoResponse, Response},
 };
@@ -69,8 +70,6 @@ impl Credentials for UsernamePasswordCredentials {}
 
 const AUTHENTION_TOKEN_COOKIE_NAME: &str = "token";
 
-const AUTHENTICATION_JWS_SECRET: &str = "LZx";
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuthenticatedUser {
     pub id: Uuid,
@@ -95,11 +94,13 @@ impl Principal for AuthenticatedUser {
 
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
+    AuthConfig: FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = StatusCode;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        // FromRef
         let cookie_jar = CookieJar::from_request_parts(parts, state)
             .await
             .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
@@ -112,9 +113,11 @@ where
             })?
             .value();
 
+        let authentication = AuthConfig::from_ref(state);
+
         decode::<PrincipalClaims>(
             jws,
-            &DecodingKey::from_secret(AUTHENTICATION_JWS_SECRET.as_ref()),
+            &DecodingKey::from_secret(authentication.jws_secret_as_ref()),
             &Validation::default(),
         )
         .map(|data| {
@@ -146,7 +149,15 @@ pub struct PrincipalClaims {
     authorities: Vec<SimpleAuthority>,
 }
 
-pub struct DefaultAuthenticationSuccessHandler {}
+pub struct DefaultAuthenticationSuccessHandler {
+    cfg: AuthConfig,
+}
+
+impl DefaultAuthenticationSuccessHandler {
+    pub fn new(cfg: AuthConfig) -> Self {
+        Self { cfg }
+    }
+}
 
 impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
     type Response = Response;
@@ -166,11 +177,12 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             email: principal.email,
             authorities: principal.authorities,
         };
+
         // 编码为JWS
         let jws = encode(
             &Header::default(),
             &principal_claims,
-            &EncodingKey::from_secret(AUTHENTICATION_JWS_SECRET.as_ref()),
+            &EncodingKey::from_secret(self.cfg.jws_secret_as_ref()),
         );
         let jws = match jws {
             Ok(token) => token,

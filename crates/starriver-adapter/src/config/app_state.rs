@@ -3,6 +3,7 @@ use sea_orm::{Database, DatabaseConnection};
 use starriver_application::article_service::ArticleApplication;
 use starriver_application::category_service::CategoryApplication;
 use starriver_application::user_service::UserApplication;
+use starriver_infrastructure::security::authentication::web::config::AuthConfig;
 use starriver_infrastructure::service::cache_service::VerificationCodeCache;
 use starriver_infrastructure::service::config_service::{AppConfig, Assets};
 use starriver_infrastructure::service::email_service::EmailClient;
@@ -14,6 +15,7 @@ use std::sync::Arc;
 pub struct AppState {
     pub conn: DatabaseConnection,
     pub assets: Assets,
+    pub auth_cfg: AuthConfig,
     pub patterns: Patterns,
     pub email_client: EmailClient,
     pub verification_code_cache: VerificationCodeCache,
@@ -47,6 +49,7 @@ impl AppState {
         Ok(AppState {
             conn,
             assets: cfg.assets,
+            auth_cfg: cfg.auth_cfg,
             patterns,
             email_client,
             verification_code_cache,
@@ -60,5 +63,11 @@ impl AppState {
 impl FromRef<AppState> for Patterns {
     fn from_ref(state: &AppState) -> Patterns {
         state.patterns.clone()
+    }
+}
+
+impl FromRef<AppState> for AuthConfig {
+    fn from_ref(state: &AppState) -> AuthConfig {
+        state.auth_cfg.clone()
     }
 }

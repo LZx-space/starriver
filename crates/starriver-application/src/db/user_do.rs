@@ -17,8 +17,8 @@ pub struct Model {
     #[sea_orm(unique)]
     pub email: String,
     pub state: UserStateDo,
-    pub create_at: OffsetDateTime,
-    pub update_at: Option<OffsetDateTime>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: Option<OffsetDateTime>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

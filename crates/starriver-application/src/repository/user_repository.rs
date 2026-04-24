@@ -77,8 +77,8 @@ where
             password: Set(password.as_str().to_string()),
             email: Set(email.to_string()),
             state: Set(UserStateDo::Active),
-            create_at: Set(OffsetDateTime::now_utc()),
-            update_at: NotSet,
+            created_at: Set(OffsetDateTime::now_utc()),
+            updated_at: NotSet,
         }
         .insert(&self.conn)
         .await
@@ -96,7 +96,7 @@ where
 
     async fn update(&self, user: Revision<User>) -> Result<User, ApiError> {
         let (original, modified) = user.dissolve();
-        let (user_id, username, password, email, state, create_at, security_events) =
+        let (user_id, username, password, email, state, created_at, security_events) =
             original.dissolve();
         let (_, new_username, new_password, new_email, new_state, _, mut new_security_events) =
             modified.dissolve();
@@ -110,8 +110,8 @@ where
                 user_id: Set(user_id),
                 event_type: Set(event_type.into()),
                 message: Set(message),
-                create_at: Set(created_at),
-                update_at: NotSet,
+                created_at: Set(created_at),
+                updated_at: NotSet,
             }
             .insert(&self.conn)
             .await?;
@@ -136,8 +136,8 @@ where
             password,
             email,
             state,
-            create_at: Unchanged(create_at),
-            update_at: Set(Some(OffsetDateTime::now_utc())),
+            created_at: Unchanged(created_at),
+            updated_at: Set(Some(OffsetDateTime::now_utc())),
         }
         .update(&self.conn)
         .await
@@ -166,11 +166,11 @@ async fn find_by_username(
                 Cond::all()
                     .add(user_security_event_do::Column::UserId.eq(user.id().to_owned()))
                     .add(
-                        user_security_event_do::Column::CreateAt
+                        user_security_event_do::Column::CreatedAt
                             .gt(OffsetDateTime::now_utc().saturating_sub(Duration::minutes(30))),
                     )
             })
-            .order_by_desc(user_security_event_do::Column::CreateAt) // 按时间倒序取最新
+            .order_by_desc(user_security_event_do::Column::CreatedAt) // 按时间倒序取最新
             .all(conn)
             .await?
             .iter()
@@ -180,7 +180,7 @@ async fn find_by_username(
                     e.user_id,
                     e.event_type.to_owned().into(),
                     e.message.to_owned(),
-                    e.create_at,
+                    e.created_at,
                 )
             })
             .collect();
@@ -200,7 +200,7 @@ fn model_to_entity(m: Model, factory: &UserFactory) -> Result<User, ApiError> {
         m.password.as_str(),
         m.email.as_str(),
         m.state.into(),
-        m.create_at,
+        m.created_at,
         vec![],
     )
 }

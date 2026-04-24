@@ -3,6 +3,7 @@ pub trait Excerptor {
     /// 从内容中摘录指定数量的字符（不是单词）
     fn excerpt(content: &str, max_len: usize) -> String;
 }
+
 pub struct DefaultExcerptor {}
 impl Excerptor for DefaultExcerptor {
     fn excerpt(content: &str, max_len: usize) -> String {

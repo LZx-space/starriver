@@ -76,7 +76,7 @@ impl Article {
 
     /// 创建一个空的草稿，关联作者ID，并且其自身ID需被用于附件等资源关联
     pub fn new_empty_draft(author_id: Uuid) -> Result<Self, ApiError> {
-        let title = Title::new(String::new())?;
+        let title = Title::draft();
         let content = Content::new(String::new())?;
         Ok(Self {
             id: Uuid::now_v7(),

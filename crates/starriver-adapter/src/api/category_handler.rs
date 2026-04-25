@@ -20,7 +20,7 @@ pub async fn create(
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .category_application
-        .insert(user, cmd.0.name)
+        .create(user, cmd.0.name)
         .await
         .map(Json)
 }

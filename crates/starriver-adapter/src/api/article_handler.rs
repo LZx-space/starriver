@@ -10,29 +10,22 @@ use tracing::info;
 use uuid::Uuid;
 
 #[axum::debug_handler]
-pub async fn page(
+pub async fn paginate(
     state: State<AppState>,
     query: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state.article_application.page(query.0).await.map(Json)
+    state.article_application.paginate(query.0).await.map(Json)
 }
 
-pub async fn find_one(
-    state: State<AppState>,
-    id: Path<Uuid>,
-) -> Result<impl IntoResponse, ApiError> {
-    state.article_application.find_by_id(id.0).await.map(Json)
+pub async fn show(state: State<AppState>, id: Path<Uuid>) -> Result<impl IntoResponse, ApiError> {
+    state.article_application.find(id.0).await.map(Json)
 }
 
-pub async fn insert_empty_draft(
+pub async fn create_draft(
     state: State<AppState>,
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
-        .article_application
-        .add_empty_draft(user)
-        .await
-        .map(Json)
+    state.article_application.create_draft(user).await.map(Json)
 }
 
 pub async fn update(

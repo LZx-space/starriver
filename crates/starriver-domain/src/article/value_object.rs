@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+use chrono::Local;
 use serde::Serialize;
 use starriver_infrastructure::error::ApiError;
 
@@ -30,6 +31,12 @@ impl Title {
             return Err(ApiError::with_bad_request("title too long"));
         }
         Ok(Self(value))
+    }
+
+    pub fn draft() -> Self {
+        let time = Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
+        let draft_title = format!("{} {}", "draft", time);
+        Self(draft_title)
     }
 }
 

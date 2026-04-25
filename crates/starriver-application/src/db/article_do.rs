@@ -36,7 +36,7 @@ pub enum ArticleStateDo {
     #[default]
     Draft,
     #[sea_orm(num_value = 1)]
-    Released,
+    Published,
 }
 
 impl From<ArticleStateDo> for ArticleState {
@@ -54,7 +54,7 @@ impl From<ArticleState> for ArticleStateDo {
         if value.eq(&ArticleState::Draft) {
             ArticleStateDo::Draft
         } else {
-            ArticleStateDo::Released
+            ArticleStateDo::Published
         }
     }
 }

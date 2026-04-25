@@ -1,6 +1,6 @@
 use crate::{
     article_dto::req::PageQuery,
-    db::article_do::{Column, Entity},
+    db::article_do::{ArticleStateDo, Column, Entity},
 };
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
@@ -16,7 +16,7 @@ use crate::article_dto::res::ArticleExcerpt;
 
 pub trait ArticleQueryService {
     /// 查询一页数据
-    fn find_page(
+    fn paginate(
         &self,
         query: PageQuery,
     ) -> impl Future<Output = Result<PageResult<ArticleExcerpt>, ApiError>> + Send;
@@ -27,10 +27,10 @@ pub struct DefaultArticleQueryService {
 }
 
 impl ArticleQueryService for DefaultArticleQueryService {
-    async fn find_page(&self, q: PageQuery) -> Result<PageResult<ArticleExcerpt>, ApiError> {
+    async fn paginate(&self, q: PageQuery) -> Result<PageResult<ArticleExcerpt>, ApiError> {
         let mut cond = Condition::all();
         if q.published_only {
-            cond = cond.add(Column::State.eq(1));
+            cond = cond.add(Column::State.eq(ArticleStateDo::Published));
         }
         let articles = Entity::find()
             .select_only()

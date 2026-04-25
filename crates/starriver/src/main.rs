@@ -57,11 +57,11 @@ async fn main() {
         .route("/email-verifications", post(user_handler::verify_email))
         .route(
             "/articles",
-            get(article_handler::page).post(article_handler::insert_empty_draft),
+            get(article_handler::paginate).post(article_handler::create_draft),
         )
         .route(
             "/articles/{id}",
-            get(article_handler::find_one)
+            get(article_handler::show)
                 .put(article_handler::update)
                 .delete(article_handler::delete),
         )

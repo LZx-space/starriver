@@ -23,7 +23,7 @@ impl CategoryApplication {
         self.repo.list().await
     }
 
-    pub async fn insert(
+    pub async fn create(
         &self,
         operator: AuthenticatedUser,
         name: String,

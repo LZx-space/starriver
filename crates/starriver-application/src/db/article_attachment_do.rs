@@ -7,6 +7,7 @@ use time::OffsetDateTime;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
+    pub extension: String,
     pub article_id: Uuid,
     pub created_at: OffsetDateTime,
     pub updated_at: Option<OffsetDateTime>,
@@ -22,9 +23,10 @@ impl From<Attachment> for ActiveModel {
         let att = att.dissolve();
         Self {
             id: Set(att.0),
-            article_id: Set(att.1),
-            created_at: Set(att.2),
-            updated_at: Set(att.3),
+            extension: Set(att.1),
+            article_id: Set(att.2),
+            created_at: Set(att.3),
+            updated_at: Set(att.4),
         }
     }
 }

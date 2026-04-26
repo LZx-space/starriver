@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
-use crate::article_dto::req::{ArticleAttachmentCmd, ArticleCmd, PageQuery};
+use crate::article_dto::req::{ArticleAttachmentCmd, PageQuery, UpdateArticleCmd};
+use crate::article_dto::res::ArticleAttachment;
 use crate::dto::article_dto::res::{ArticleDetail, ArticleExcerpt};
 use crate::query::article_query_service::{ArticleQueryService, DefaultArticleQueryService};
 use crate::repository::article_repository::DefaultArticleRepository;
 use sea_orm::{DatabaseConnection, TransactionTrait};
+use starriver_domain::article::domain_service::AttachmentService;
 use starriver_domain::article::entity::{Article, Attachment};
 use starriver_domain::article::params::ArticleUpdate;
 use starriver_domain::article::repository::ArticleRepository;
@@ -14,7 +16,6 @@ use starriver_infrastructure::model::page::PageResult;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use starriver_infrastructure::service::config_service::Assets;
 use starriver_infrastructure::service::file_service::{delete_file, write_to_file};
-use starriver_infrastructure::util::db::TransactionalConn;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -43,21 +44,39 @@ impl ArticleApplication {
     }
 
     pub async fn find(&self, id: Uuid) -> Result<ArticleDetail, ApiError> {
-        find_article_by_id(&self.repo, id).await.map(Into::into)
+        let mut article = self.query.find_detail(id).await?.ok_or_else(|| {
+            ApiError::new(Cause::ClientBadRequest, format!("article[{}]not exist", id))
+        })?;
+        article.attachment_rows.iter().for_each(|e| {
+            let file_name = AttachmentService::file_name(&e.id, &e.extension);
+            let url = AttachmentService::access_url(
+                &self.static_cfg.uploads.relative_dir,
+                file_name.as_str(),
+            );
+            let attachment = ArticleAttachment {
+                id: e.id,
+                file_name,
+                url,
+            };
+            article.attachments.push(attachment);
+        });
+        Ok(article)
     }
 
     pub async fn create_draft(&self, author: AuthenticatedUser) -> Result<ArticleDetail, ApiError> {
         let author_id = author.id;
         let draft_article = Article::new_empty_draft(author_id)?;
-        self.repo.add(draft_article).await.map(Into::into)
+        let created = self.repo.add(draft_article).await?;
+        let article_id = created.id().to_owned();
+        self.find(article_id).await
     }
 
     pub async fn update(
         &self,
         operator: AuthenticatedUser,
         id: Uuid,
-        cmd: ArticleCmd,
-    ) -> Result<ArticleDetail, ApiError> {
+        cmd: UpdateArticleCmd,
+    ) -> Result<(), ApiError> {
         info!(
             user_id = %operator.id,
             article_id = %id,
@@ -66,10 +85,10 @@ impl ArticleApplication {
         let tx = self.conn.begin().await.map_err(ApiError::from)?;
         let tx_repo = DefaultArticleRepository::new(tx);
         match tx_update_article(id, cmd, &tx_repo).await {
-            Ok(article) => {
+            Ok(_) => {
                 info!(article_id = %id, "article updated successfully");
                 tx_repo.conn().commit().await?;
-                Ok(article)
+                Ok(())
             }
             Err(err) => {
                 warn!(article_id = %id, error = %err, "article update failed, rolling back");
@@ -85,7 +104,7 @@ impl ArticleApplication {
         operator: AuthenticatedUser,
         article_id: Uuid,
         file: ArticleAttachmentCmd,
-    ) -> Result<String, ApiError> {
+    ) -> Result<ArticleAttachment, ApiError> {
         info!(
             user_id = %operator.id,
             article_id = %article_id,
@@ -106,9 +125,10 @@ impl ArticleApplication {
         if extension != file.extension {
             return Err(ApiError::with_bad_request("文件格式与文件名不匹配"));
         }
-        let attachment = Attachment::new(article_id);
+        let attachment = Attachment::new(article_id, extension);
         // 使用附件ID作为文件名，以便后续定位做其他操作
-        let file_name = attachment.filename(&file.extension);
+        let attachment_id = attachment.id().to_owned();
+        let file_name = AttachmentService::file_name(&attachment_id, extension);
         let file_name = file_name.as_str();
         // 从配置文件获取上传目录
         let target_dir = upload_dir(&self.static_cfg)?;
@@ -132,8 +152,13 @@ impl ArticleApplication {
                 );
                 // 提交事务
                 tx_repo.conn().commit().await?;
-                let url = format!("{}/{}", &self.static_cfg.uploads.relative_dir, file_name);
-                Ok(url)
+                let url =
+                    AttachmentService::access_url(&self.static_cfg.uploads.relative_dir, file_name);
+                Ok(ArticleAttachment {
+                    id: attachment_id,
+                    file_name: file_name.to_owned(),
+                    url,
+                })
             }
             Err(e) => {
                 error!(
@@ -171,34 +196,24 @@ impl ArticleApplication {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-
-async fn find_article_by_id(
-    repo: &DefaultArticleRepository<impl TransactionalConn>,
-    id: Uuid,
-) -> Result<Article, ApiError> {
-    repo.find_by_id(id)
-        .await?
-        .ok_or_else(|| ApiError::new(Cause::ClientBadRequest, format!("博客{}不存在", id)))
-}
-
 async fn tx_update_article(
     id: Uuid,
-    cmd: ArticleCmd,
+    cmd: UpdateArticleCmd,
     tx_repo: &DefaultArticleRepository<sea_orm::DatabaseTransaction>,
-) -> Result<ArticleDetail, ApiError> {
-    let mut found = find_article_by_id(tx_repo, id).await?;
+) -> Result<Article, ApiError> {
+    let mut found = tx_repo.find_by_id(id).await?.ok_or_else(|| {
+        ApiError::new(Cause::ClientBadRequest, format!("article[{}]not exist", id))
+    })?;
     let cmd = ArticleUpdate {
         title: cmd.title,
         content: cmd.content,
+        category_id: cmd.category_id,
         attachment_ids: cmd.attachment_ids,
         published: cmd.publish,
     };
     let original = found.clone();
     found.update(cmd)?;
-    tx_repo
-        .update(Revision::new(original, found))
-        .await
-        .map(Into::into)
+    tx_repo.update(Revision::new(original, found)).await
 }
 
 /// # return
@@ -209,7 +224,12 @@ async fn tx_upload_attachement(
     tx_repo: &DefaultArticleRepository<sea_orm::DatabaseTransaction>,
 ) -> Result<Article, ApiError> {
     // 将附件信息保存到博客中
-    let mut found = find_article_by_id(tx_repo, article_id).await?;
+    let mut found = tx_repo.find_by_id(article_id).await?.ok_or_else(|| {
+        ApiError::new(
+            Cause::ClientBadRequest,
+            format!("article[{}]not exist", article_id),
+        )
+    })?;
     let original = found.clone();
     found.add_attachment(attachment)?;
     tx_repo.update(Revision::new(original, found)).await

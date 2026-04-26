@@ -19,6 +19,7 @@ pub struct Article {
     #[getter(skip)]
     attachments: Vec<Attachment>,
     author_id: Uuid,
+    category_id: Option<Uuid>, //  none only when state is draft
     published_at: Option<OffsetDateTime>,
     created_at: OffsetDateTime,
     updated_at: Option<OffsetDateTime>,
@@ -31,6 +32,7 @@ impl Article {
         state: ArticleState,
         attachments: Vec<Attachment>,
         author_id: Uuid,
+        category_id: Option<Uuid>,
     ) -> Self {
         Self {
             id: Uuid::now_v7(),
@@ -39,6 +41,7 @@ impl Article {
             state,
             attachments,
             author_id,
+            category_id,
             published_at: None,
             created_at: OffsetDateTime::now_utc(),
             updated_at: None,
@@ -53,6 +56,7 @@ impl Article {
         state: ArticleState,
         attachments: Vec<Attachment>,
         author_id: Uuid,
+        category_id: Option<Uuid>,
         published_at: Option<OffsetDateTime>,
         created_at: OffsetDateTime,
         updated_at: Option<OffsetDateTime>,
@@ -64,6 +68,7 @@ impl Article {
             state,
             attachments,
             author_id,
+            category_id,
             published_at,
             created_at,
             updated_at,
@@ -85,6 +90,7 @@ impl Article {
             state: ArticleState::Draft,
             attachments: Vec::new(),
             author_id,
+            category_id: None,
             published_at: None,
             created_at: OffsetDateTime::now_utc(),
             updated_at: None,
@@ -101,22 +107,12 @@ impl Article {
     pub fn update(&mut self, update: ArticleUpdate) -> Result<(), ApiError> {
         self.title = Title::new(update.title)?;
         self.content = Content::new(update.content)?;
+        self.category_id = Some(update.category_id);
         self.updated_at = Some(OffsetDateTime::now_utc());
-        // 1. 提取新 ID 集合，用于快速判断
+        // 1. 提取新ID集合，用于快速判断
         let new_id_set: HashSet<_> = update.attachment_ids.iter().cloned().collect();
-        // 2. 删除不在新 ID 集合中的附件
+        // 2. 删除不在新ID集合中的附件
         self.attachments.retain(|att| new_id_set.contains(&att.id));
-        // 3. 添加新 ID 对应的附件（如果尚未存在）
-        for id in update.attachment_ids {
-            if !self.attachments.iter().any(|att| att.id == id) {
-                self.attachments.push(Attachment {
-                    id,
-                    article_id: self.id,
-                    created_at: OffsetDateTime::now_utc(),
-                    updated_at: None,
-                });
-            }
-        }
         if update.published {
             self.publish()?;
         }
@@ -126,6 +122,7 @@ impl Article {
     /// 将博客状态设置为草稿，已发布等状态的也能设为草稿
     pub fn draft(&mut self) {
         self.state = ArticleState::Draft;
+        self.category_id = None;
         self.published_at = None;
     }
 
@@ -136,6 +133,9 @@ impl Article {
         }
         if self.content.0.is_empty() {
             return Err(ApiError::with_bad_request("content can't be empty"));
+        }
+        if self.category_id().is_none() {
+            return Err(ApiError::with_bad_request("category can't be empty"));
         }
         self.state = ArticleState::Published;
         self.published_at = Some(OffsetDateTime::now_utc());
@@ -149,15 +149,17 @@ impl Article {
 pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,
+    extension: String,
     article_id: Uuid,
     created_at: OffsetDateTime,
     updated_at: Option<OffsetDateTime>,
 }
 
 impl Attachment {
-    pub fn new(article_id: Uuid) -> Self {
+    pub fn new(article_id: Uuid, extension: &str) -> Self {
         Self {
             id: Uuid::now_v7(),
+            extension: extension.to_string(),
             article_id,
             created_at: OffsetDateTime::now_utc(),
             updated_at: None,
@@ -166,19 +168,21 @@ impl Attachment {
 
     pub fn from_repo(
         id: Uuid,
+        extension: String,
         article_id: Uuid,
         created_at: OffsetDateTime,
         updated_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             id,
+            extension,
             article_id,
             created_at,
             updated_at,
         }
     }
 
-    pub fn filename(&self, extension: &str) -> String {
-        format!("{}.{}", self.id, extension)
+    pub fn filename(&self) -> String {
+        format!("{}.{}", self.id, self.extension)
     }
 }

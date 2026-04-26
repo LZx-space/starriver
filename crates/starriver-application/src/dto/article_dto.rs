@@ -1,6 +1,7 @@
 pub mod req {
     use bytes::Bytes;
     use serde::Deserialize;
+    use uuid::Uuid;
     use validator::Validate;
 
     #[derive(Debug, Deserialize, Validate)]
@@ -11,16 +12,21 @@ pub mod req {
         #[validate(range(min = 1, max = 20))]
         pub page_size: u64,
 
+        /// some when need to filter by category
+        pub category_id: Option<Uuid>,
+
         #[serde(default)]
         pub published_only: bool,
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    pub struct ArticleCmd {
+    pub struct UpdateArticleCmd {
         #[validate(length(min = 1, max = 30))]
         pub title: String,
         #[validate(length(min = 1, max = 50000))]
         pub content: String,
+
+        pub category_id: Uuid,
         #[validate(length(min = 0, max = 10))]
         pub attachment_ids: Vec<uuid::Uuid>,
         /// 是否发布
@@ -37,19 +43,32 @@ pub mod res {
 
     use sea_orm::FromQueryResult;
     use serde::Serialize;
-    use starriver_domain::article::entity::Article;
+    use starriver_infrastructure::model::dto::IdName;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
-    #[derive(Serialize)]
+    #[derive(Serialize, FromQueryResult)]
     pub struct ArticleDetail {
+        #[sea_orm(from_alias = "article_id")]
         pub id: Uuid,
 
         pub title: String,
 
         pub content: String,
 
-        pub state: String,
+        pub state: i16,
+
+        /// none when state is draft
+        #[sea_orm(nested)]
+        pub category: Option<IdName<Uuid>>,
+
+        #[sea_orm(skip)]
+        pub attachments: Vec<ArticleAttachment>,
+
+        /// 暂存附件数据行，由于转换为attachments时需要使用
+        #[serde(skip)]
+        #[sea_orm(skip)]
+        pub attachment_rows: Vec<ArticleAttachmentRow>,
 
         pub published_at: Option<OffsetDateTime>,
 
@@ -67,23 +86,24 @@ pub mod res {
 
         pub state: i16,
 
+        /// none when state is draft
+        pub category: Option<String>,
+
         pub published_at: Option<OffsetDateTime>,
 
         pub created_at: OffsetDateTime,
     }
 
-    //////////////////////////////////////////
-    impl From<Article> for ArticleDetail {
-        fn from(value: Article) -> Self {
-            let (id, title, content, state, _, _, published_at, created_at, _) = value.dissolve();
-            Self {
-                id,
-                title: title.to_string(),
-                content: content.to_string(),
-                state: state.to_string(),
-                published_at,
-                created_at,
-            }
-        }
+    #[derive(Serialize, FromQueryResult)]
+    pub struct ArticleAttachmentRow {
+        pub id: Uuid,
+        pub extension: String,
+    }
+
+    #[derive(Serialize)]
+    pub struct ArticleAttachment {
+        pub id: Uuid,
+        pub file_name: String,
+        pub url: String,
     }
 }

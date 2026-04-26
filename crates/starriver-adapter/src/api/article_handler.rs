@@ -1,7 +1,7 @@
 use crate::config::app_state::AppState;
 use axum::extract::State;
 use axum::response::IntoResponse;
-use starriver_application::article_dto::req::{ArticleAttachmentCmd, ArticleCmd, PageQuery};
+use starriver_application::article_dto::req::{ArticleAttachmentCmd, PageQuery, UpdateArticleCmd};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::extract::{Json, Multipart, Path, Query};
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
@@ -32,7 +32,7 @@ pub async fn update(
     state: State<AppState>,
     id: Path<Uuid>,
     user: AuthenticatedUser,
-    cmd: Json<ArticleCmd>,
+    cmd: Json<UpdateArticleCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .article_application
@@ -68,11 +68,11 @@ pub async fn upload_attachment(
             extension: extension.to_string(),
             data,
         };
-        let url = state
+        let attachment = state
             .article_application
             .upload_attachment(user, id.0, file)
             .await?;
-        return Ok(Json::from(url));
+        return Ok(Json::from(attachment));
     }
     Err(ApiError::with_bad_request("no file uploaded"))
 }

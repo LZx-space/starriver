@@ -31,6 +31,13 @@ impl CategoryApplication {
         self.query.list().await
     }
 
+    pub async fn find(&self, id: Uuid) -> Result<CategoryDetail, ApiError> {
+        self.query
+            .find(id)
+            .await?
+            .ok_or_else(|| ApiError::with_bad_request(format!("category[{}]not exist", id)))
+    }
+
     pub async fn create(
         &self,
         operator: AuthenticatedUser,

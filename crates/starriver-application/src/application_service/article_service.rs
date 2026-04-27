@@ -44,9 +44,11 @@ impl ArticleApplication {
     }
 
     pub async fn find(&self, id: Uuid) -> Result<ArticleDetail, ApiError> {
-        let mut article = self.query.find_detail(id).await?.ok_or_else(|| {
-            ApiError::new(Cause::ClientBadRequest, format!("article[{}]not exist", id))
-        })?;
+        let mut article = self
+            .query
+            .find_detail(id)
+            .await?
+            .ok_or_else(|| ApiError::with_bad_request(format!("article[{}]not exist", id)))?;
         article.attachment_rows.iter().for_each(|e| {
             let file_name = AttachmentService::file_name(&e.id, &e.extension);
             let url = AttachmentService::access_url(

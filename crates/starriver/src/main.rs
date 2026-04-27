@@ -1,6 +1,6 @@
 use axum::Router;
 
-use axum::routing::{get, post, put};
+use axum::routing::{get, post};
 use mimalloc::MiMalloc;
 use starriver_adapter::api::user_handler;
 use starriver_adapter::api::{article_handler, category_handler};
@@ -75,7 +75,9 @@ async fn main() {
         )
         .route(
             "/categories/{id}",
-            put(category_handler::update).delete(category_handler::delete),
+            get(category_handler::show)
+                .put(category_handler::update)
+                .delete(category_handler::delete),
         )
         .with_state(app_state)
         .layer(middleware_service);

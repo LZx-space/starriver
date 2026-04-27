@@ -9,4 +9,17 @@ pub mod req {
     }
 }
 
-pub mod res {}
+pub mod res {
+    use sea_orm::FromQueryResult;
+    use serde::Serialize;
+    use time::OffsetDateTime;
+    use uuid::Uuid;
+
+    #[derive(Serialize, FromQueryResult)]
+    pub struct CategoryDetail {
+        pub id: Uuid,
+        pub name: String,
+        pub created_at: OffsetDateTime,
+        pub updated_at: Option<OffsetDateTime>,
+    }
+}

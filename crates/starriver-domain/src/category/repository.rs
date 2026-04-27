@@ -9,8 +9,6 @@ pub trait CategoryRepository {
         id: Uuid,
     ) -> impl Future<Output = Result<Option<Category>, ApiError>> + Send;
 
-    fn list(&self) -> impl Future<Output = Result<Vec<Category>, ApiError>> + Send;
-
     fn insert(&self, category: Category)
     -> impl Future<Output = Result<Category, ApiError>> + Send;
 

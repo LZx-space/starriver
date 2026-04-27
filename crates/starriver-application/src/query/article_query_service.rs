@@ -45,6 +45,9 @@ impl ArticleQueryService for DefaultArticleQueryService {
         if q.published_only {
             cond = cond.add(Column::State.eq(ArticleStateDo::Published));
         }
+        if let Some(category_id) = q.category_id {
+            cond = cond.add(Column::CategoryId.eq(category_id));
+        }
         let articles = Entity::find()
             .select_only()
             .columns([

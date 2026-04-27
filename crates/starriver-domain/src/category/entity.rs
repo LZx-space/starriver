@@ -1,15 +1,12 @@
 use derive_getters::{Dissolve, Getters};
 use serde::Serialize;
 use starriver_infrastructure::error::ApiError;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Getters, Dissolve, Serialize)]
 pub struct Category {
     id: Uuid,
     name: String,
-    created_at: OffsetDateTime,
-    updated_at: Option<OffsetDateTime>,
 }
 
 impl Category {
@@ -21,23 +18,11 @@ impl Category {
         Ok(Self {
             id: Uuid::now_v7(),
             name,
-            created_at: OffsetDateTime::now_utc(),
-            updated_at: None,
         })
     }
 
-    pub fn from_repo(
-        id: Uuid,
-        name: String,
-        created_at: OffsetDateTime,
-        updated_at: Option<OffsetDateTime>,
-    ) -> Self {
-        Self {
-            id,
-            name,
-            created_at,
-            updated_at,
-        }
+    pub fn from_repo(id: Uuid, name: String) -> Self {
+        Self { id, name }
     }
 
     pub fn update(&mut self, name: String) -> Result<(), ApiError> {
@@ -46,7 +31,6 @@ impl Category {
             return Err(ApiError::with_bad_request("类别名称过长"));
         }
         self.name = name;
-        self.updated_at = Some(OffsetDateTime::now_utc());
         Ok(())
     }
 }

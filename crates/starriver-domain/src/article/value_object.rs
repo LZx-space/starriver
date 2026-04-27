@@ -27,7 +27,7 @@ pub struct Title(pub(crate) String);
 
 impl Title {
     pub fn new(value: String) -> Result<Self, ApiError> {
-        if value.len() > 30 {
+        if value.chars().count() > 50 {
             return Err(ApiError::with_bad_request("title too long"));
         }
         Ok(Self(value))
@@ -51,7 +51,7 @@ pub struct Content(pub(crate) String);
 
 impl Content {
     pub fn new(value: String) -> Result<Self, ApiError> {
-        if value.len() > 50000 {
+        if value.chars().count() > 50000 {
             return Err(ApiError::with_bad_request("content too long"));
         }
         Ok(Self(value))

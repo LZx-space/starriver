@@ -21,7 +21,7 @@ pub mod req {
 
     #[derive(Debug, Deserialize, Validate)]
     pub struct UpdateArticleCmd {
-        #[validate(length(min = 1, max = 30))]
+        #[validate(length(min = 1, max = 50))]
         pub title: String,
         #[validate(length(min = 1, max = 50000))]
         pub content: String,

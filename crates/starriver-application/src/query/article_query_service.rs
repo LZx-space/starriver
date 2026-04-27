@@ -54,6 +54,7 @@ impl ArticleQueryService for DefaultArticleQueryService {
                 Column::State,
                 Column::PublishedAt,
                 Column::CreatedAt,
+                Column::UpdatedAt,
             ])
             .join(JoinType::LeftJoin, Relation::Category.def())
             .column_as(category_do::Column::Name, "category")
@@ -90,6 +91,7 @@ impl ArticleQueryService for DefaultArticleQueryService {
                 Column::State,
                 Column::PublishedAt,
                 Column::CreatedAt,
+                Column::UpdatedAt,
             ])
             .column_as(Column::Id, "article_id")
             .join(JoinType::LeftJoin, Relation::Category.def())

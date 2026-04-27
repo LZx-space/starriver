@@ -73,6 +73,8 @@ pub mod res {
         pub published_at: Option<OffsetDateTime>,
 
         pub created_at: OffsetDateTime,
+
+        pub updated_at: Option<OffsetDateTime>,
     }
 
     #[derive(Serialize, FromQueryResult)]
@@ -92,6 +94,8 @@ pub mod res {
         pub published_at: Option<OffsetDateTime>,
 
         pub created_at: OffsetDateTime,
+
+        pub updated_at: Option<OffsetDateTime>,
     }
 
     #[derive(Serialize, FromQueryResult)]

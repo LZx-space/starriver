@@ -21,8 +21,6 @@ pub struct Article {
     author_id: Uuid,
     category_id: Option<Uuid>, //  none only when state is draft
     published_at: Option<OffsetDateTime>,
-    created_at: OffsetDateTime,
-    updated_at: Option<OffsetDateTime>,
 }
 
 impl Article {
@@ -43,8 +41,6 @@ impl Article {
             author_id,
             category_id,
             published_at: None,
-            created_at: OffsetDateTime::now_utc(),
-            updated_at: None,
         }
     }
 
@@ -58,8 +54,6 @@ impl Article {
         author_id: Uuid,
         category_id: Option<Uuid>,
         published_at: Option<OffsetDateTime>,
-        created_at: OffsetDateTime,
-        updated_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             id,
@@ -70,8 +64,6 @@ impl Article {
             author_id,
             category_id,
             published_at,
-            created_at,
-            updated_at,
         }
     }
 
@@ -92,8 +84,6 @@ impl Article {
             author_id,
             category_id: None,
             published_at: None,
-            created_at: OffsetDateTime::now_utc(),
-            updated_at: None,
         })
     }
 
@@ -108,7 +98,7 @@ impl Article {
         self.title = Title::new(update.title)?;
         self.content = Content::new(update.content)?;
         self.category_id = Some(update.category_id);
-        self.updated_at = Some(OffsetDateTime::now_utc());
+        // self.updated_at = Some(OffsetDateTime::now_utc());
         // 1. 提取新ID集合，用于快速判断
         let new_id_set: HashSet<_> = update.attachment_ids.iter().cloned().collect();
         // 2. 删除不在新ID集合中的附件
@@ -151,8 +141,6 @@ pub struct Attachment {
     id: Uuid,
     extension: String,
     article_id: Uuid,
-    created_at: OffsetDateTime,
-    updated_at: Option<OffsetDateTime>,
 }
 
 impl Attachment {
@@ -161,28 +149,14 @@ impl Attachment {
             id: Uuid::now_v7(),
             extension: extension.to_string(),
             article_id,
-            created_at: OffsetDateTime::now_utc(),
-            updated_at: None,
         }
     }
 
-    pub fn from_repo(
-        id: Uuid,
-        extension: String,
-        article_id: Uuid,
-        created_at: OffsetDateTime,
-        updated_at: Option<OffsetDateTime>,
-    ) -> Self {
+    pub fn from_repo(id: Uuid, extension: String, article_id: Uuid) -> Self {
         Self {
             id,
             extension,
             article_id,
-            created_at,
-            updated_at,
         }
-    }
-
-    pub fn filename(&self) -> String {
-        format!("{}.{}", self.id, self.extension)
     }
 }

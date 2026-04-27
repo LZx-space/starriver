@@ -1,5 +1,4 @@
-use sea_orm::{ActiveValue::Set, entity::prelude::*};
-use starriver_domain::article::entity::Attachment;
+use sea_orm::entity::prelude::*;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -17,16 +16,3 @@ impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-impl From<Attachment> for ActiveModel {
-    fn from(att: Attachment) -> Self {
-        let att = att.dissolve();
-        Self {
-            id: Set(att.0),
-            extension: Set(att.1),
-            article_id: Set(att.2),
-            created_at: Set(att.3),
-            updated_at: Set(att.4),
-        }
-    }
-}

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::db::article_attachment_do;
 use crate::db::article_attachment_do::Column;
 use crate::db::article_do::ActiveModel;
@@ -58,8 +56,6 @@ where
                         e.author_id,
                         e.category_id,
                         e.published_at,
-                        e.created_at,
-                        e.updated_at,
                     )
                 })
             })
@@ -71,15 +67,7 @@ where
                 .await?;
             let mut attachments: Vec<Attachment> = attachments
                 .into_iter()
-                .map(|e| {
-                    Attachment::from_repo(
-                        e.id,
-                        e.extension,
-                        e.article_id,
-                        e.created_at,
-                        e.updated_at,
-                    )
-                })
+                .map(|e| Attachment::from_repo(e.id, e.extension, e.article_id))
                 .collect();
             article.attachments().append(&mut attachments);
             return Ok(Some(article));
@@ -88,7 +76,7 @@ where
     }
 
     async fn add(&self, article: Article) -> Result<Article, ApiError> {
-        let (id, title, content, state, _, author_id, category_id, _, _, _) = article.dissolve();
+        let (id, title, content, state, _, author_id, category_id, _) = article.dissolve();
         ActiveModel {
             id: Set(id),
             title: Set(title.to_string()),
@@ -112,8 +100,6 @@ where
                 e.author_id,
                 e.category_id,
                 e.published_at,
-                e.created_at,
-                e.updated_at,
             )
         })
         .map_err(ApiError::from)
@@ -130,18 +116,8 @@ where
 
     async fn update(&self, article: Revision<Article>) -> Result<Article, ApiError> {
         let (original, modified) = article.dissolve();
-        let (
-            id,
-            title,
-            content,
-            state,
-            attachments,
-            author_id,
-            category_id,
-            published_at,
-            created_at,
-            _,
-        ) = original.dissolve();
+        let (id, title, content, state, attachments, author_id, category_id, published_at) =
+            original.dissolve();
         let (
             _,
             new_title,
@@ -151,25 +127,15 @@ where
             new_author_id,
             new_category_id,
             new_published_at,
-            _,
-            _,
         ) = modified.dissolve();
 
-        let (to_delete, to_insert) = diff_attachments(&attachments, new_attachments);
-        // 删除旧附件
-        let to_delete_count = to_delete.len();
+        let to_delete_ids = to_delete_attachment_ids(&attachments, new_attachments);
+        // 删除不用的附件
+        let to_delete_count = to_delete_ids.len();
         debug!("attachments to delete: {}", to_delete_count);
         if to_delete_count > 0 {
             article_attachment_do::Entity::delete_many()
-                .filter(Column::Id.is_in(to_delete))
-                .exec(&self.conn)
-                .await?;
-        }
-        // 插入新附件
-        let to_insert_count = to_insert.len();
-        debug!("attachments to insert: {}", to_insert_count);
-        if to_insert_count > 0 {
-            article_attachment_do::Entity::insert_many(to_insert)
+                .filter(Column::Id.is_in(to_delete_ids))
                 .exec(&self.conn)
                 .await?;
         }
@@ -201,7 +167,7 @@ where
             author_id,
             category_id,
             published_at,
-            created_at: Unchanged(created_at),
+            created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         };
 
@@ -218,8 +184,6 @@ where
                     e.author_id,
                     e.category_id,
                     e.published_at,
-                    e.created_at,
-                    e.updated_at,
                 )
             })
             .map_err(ApiError::from)
@@ -228,25 +192,12 @@ where
 
 //////////////////////////////////////////////
 
-/// # return
-/// * (to_delete, to_insert)
-pub fn diff_attachments(
+pub fn to_delete_attachment_ids(
     old: &[Attachment],
     new: Vec<Attachment>, // 接收所有权，或使用 &[Attachment] 后内部克隆
-) -> (Vec<Uuid>, Vec<article_attachment_do::ActiveModel>) {
-    let old_ids: HashSet<Uuid> = old.iter().map(|att| *att.id()).collect();
-
-    let to_delete: Vec<Uuid> = old
-        .iter()
+) -> Vec<Uuid> {
+    old.iter()
         .filter(|att| !new.iter().any(|a| a.id() == att.id()))
         .map(|att| *att.id())
-        .collect();
-
-    let to_insert: Vec<article_attachment_do::ActiveModel> = new
-        .into_iter()
-        .filter(|att| !old_ids.contains(att.id()))
-        .map(|e| e.into())
-        .collect();
-
-    (to_delete, to_insert)
+        .collect()
 }

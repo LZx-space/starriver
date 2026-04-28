@@ -12,6 +12,7 @@ use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
 use tower_http::trace::{DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer};
+use tracing::level_filters::LevelFilter;
 use tracing::{Level, error, info};
 use tracing_subscriber::Layer;
 
@@ -98,11 +99,14 @@ fn init_tracing(cfg: &FileLogging) {
     use std::io::IsTerminal;
     use tracing_appender::rolling::{RollingFileAppender, Rotation};
     use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
-    let filter = EnvFilter::from_default_env();
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
     let level = filter
         .max_level_hint()
-        .map(|e| e.into_level().unwrap_or(Level::ERROR))
-        .unwrap_or(Level::ERROR);
+        .unwrap_or(LevelFilter::INFO)
+        .into_level()
+        .unwrap_or(Level::INFO);
     if cfg.file_enabled {
         // ---------- 仅文件日志 ----------
         let file_appender = RollingFileAppender::builder()

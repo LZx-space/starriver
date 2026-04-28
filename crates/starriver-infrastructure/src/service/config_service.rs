@@ -39,7 +39,7 @@ pub struct AppConfig {
     pub email: Email,
     pub regex: Regex,
     pub aggregate: Aggregate,
-    pub logging: Logging,
+    pub file_logging: FileLogging,
 }
 
 #[derive(Deserialize)]
@@ -83,9 +83,9 @@ pub struct Regex {
 ///////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Deserialize)]
-pub struct Logging {
-    pub level: String,
-    pub directory: String,
+pub struct FileLogging {
+    pub file_enabled: bool,
+    pub file_directory: String,
     pub file_name_prefix: String,
     pub max_files: usize,
 }

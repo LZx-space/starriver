@@ -29,7 +29,7 @@ impl AppState {
     pub async fn new(cfg: AppConfig) -> Result<Self, String> {
         let conn = Database::connect(cfg.database.url)
             .await
-            .expect("create a DatabaseConnection failed");
+            .map_err(|e| e.to_string())?;
         let patterns = Patterns::new(cfg.regex);
 
         let email_client = EmailClient::new(cfg.email.smtp).map_err(|e| e.to_string())?;

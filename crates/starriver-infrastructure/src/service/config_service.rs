@@ -34,8 +34,8 @@ fn find_config(filename: &str) -> Option<PathBuf> {
 pub struct AppConfig {
     pub http_server: HttpServer,
     pub database: Database,
-    pub assets: Assets,
-    pub auth_cfg: AuthConfig,
+    pub uploads: Uploads,
+    pub auth: AuthConfig,
     pub email: Email,
     pub regex: Regex,
     pub aggregate: Aggregate,
@@ -110,38 +110,47 @@ pub struct UserPolicy {
 
 ///////////////////////////////////////////////////////////////////////////////////
 
-/// 静态资源
-#[derive(Clone, Deserialize)]
-pub struct Assets {
-    #[serde(deserialize_with = "validate_path_separators")]
-    pub static_base_dir: String,
-    /// 上传专用目录
-    pub uploads: Uploads,
-}
-
 /// 上传文件配置
 #[derive(Clone, Deserialize)]
 pub struct Uploads {
-    #[serde(deserialize_with = "validate_path_separators")]
-    pub relative_dir: String,
+    /// 上传文件在磁盘上的存储根目录（绝对路径或相对工程根目录的路径）
+    #[serde(deserialize_with = "not_end_with_separator")]
+    pub storage_dir: String,
+    /// Nginx 或其他前端服务访问上传文件时使用的 URL 路径前缀（例如 "/uploads"）
+    #[serde(deserialize_with = "start_and_not_end_with_separator")]
+    pub proxy_prefix: String,
 }
 
-/// 验证字符串不以路径分隔符开头或结尾
-fn validate_path_separators<'de, D>(deserializer: D) -> Result<String, D::Error>
+fn not_end_with_separator<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
     let separators = ['/', '\\', MAIN_SEPARATOR]; // 覆盖 Unix 和 Windows
-    if s.starts_with(separators) {
+    if s.ends_with(separators) {
         return Err(serde::de::Error::custom(format!(
-            "dir must not start with a path separator, got: {}",
+            "must not end with a path separator, got: {}",
+            s
+        )));
+    }
+    Ok(s)
+}
+
+fn start_and_not_end_with_separator<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let separators = ['/', '\\', MAIN_SEPARATOR]; // 覆盖 Unix 和 Windows
+    if !s.starts_with(separators) {
+        return Err(serde::de::Error::custom(format!(
+            "must start with a path separator, got: {}",
             s
         )));
     }
     if s.ends_with(separators) {
         return Err(serde::de::Error::custom(format!(
-            "dir must not end with a path separator, got: {}",
+            "must not end with a path separator, got: {}",
             s
         )));
     }

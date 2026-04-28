@@ -24,12 +24,11 @@ password = "^[A-Za-z0-9@$!%*?&]{8,12}$"
 bad_password_window_mins = 10
 max_bad_password_attempts = 5
 
-[assets]
-static_base_dir = ".."
-[assets.uploads]
-relative_dir = "uploads"
+[uploads]
+storage_dir = "../../portable software/nginx-1.29.8/html/uploads"
+proxy_prefix = "/uploads"
 
-[auth_cfg]
+[auth]
 jws_secret = "LZx"
 
 [file_logging]

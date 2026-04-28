@@ -1,7 +1,7 @@
 use crate::config::app_state::AppState;
 use axum::extract::State;
 use axum::response::IntoResponse;
-use starriver_application::article_dto::req::{ArticleAttachmentCmd, ArticleCmd, PageQuery};
+use starriver_application::article_dto::req::{ArticleAttachmentCmd, PageQuery, UpdateArticleCmd};
 use starriver_infrastructure::error::ApiError;
 use starriver_infrastructure::extract::{Json, Multipart, Path, Query};
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
@@ -10,36 +10,29 @@ use tracing::info;
 use uuid::Uuid;
 
 #[axum::debug_handler]
-pub async fn page(
+pub async fn paginate(
     state: State<AppState>,
     query: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state.article_application.page(query.0).await.map(Json)
+    state.article_application.paginate(query.0).await.map(Json)
 }
 
-pub async fn find_one(
-    state: State<AppState>,
-    id: Path<Uuid>,
-) -> Result<impl IntoResponse, ApiError> {
-    state.article_application.find_by_id(id.0).await.map(Json)
+pub async fn show(state: State<AppState>, id: Path<Uuid>) -> Result<impl IntoResponse, ApiError> {
+    state.article_application.find(id.0).await.map(Json)
 }
 
-pub async fn insert_empty_draft(
+pub async fn create_draft(
     state: State<AppState>,
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
-        .article_application
-        .add_empty_draft(user)
-        .await
-        .map(Json)
+    state.article_application.create_draft(user).await.map(Json)
 }
 
 pub async fn update(
     state: State<AppState>,
     id: Path<Uuid>,
     user: AuthenticatedUser,
-    cmd: Json<ArticleCmd>,
+    cmd: Json<UpdateArticleCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .article_application
@@ -75,11 +68,11 @@ pub async fn upload_attachment(
             extension: extension.to_string(),
             data,
         };
-        let url = state
+        let attachment = state
             .article_application
             .upload_attachment(user, id.0, file)
             .await?;
-        return Ok(Json::from(url));
+        return Ok(Json::from(attachment));
     }
     Err(ApiError::with_bad_request("no file uploaded"))
 }

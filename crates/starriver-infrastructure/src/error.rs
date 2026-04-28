@@ -8,7 +8,7 @@ use axum::{
 use sea_orm::{DbErr, TransactionError};
 use serde::Serialize;
 use strum::EnumIter;
-use tracing::error;
+use tracing::{error, warn};
 use validator::ValidationError;
 
 #[derive(Debug, Serialize)]
@@ -50,7 +50,12 @@ impl ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status_code, code) = self.cause.to_http_status();
-        error!(code = %code, message = %self.message, "api error response");
+        if status_code.is_client_error() {
+            warn!(code = %code, message = %self.message, "api error response");
+        } else {
+            error!(code = %code, message = %self.message, "api error response");
+        }
+
         let json = ApiErrorResponse::<()> {
             code,
             message: self.message,

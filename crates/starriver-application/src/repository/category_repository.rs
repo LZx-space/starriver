@@ -39,22 +39,12 @@ where
         let category = Entity::find_by_id(id)
             .one(&self.conn)
             .await?
-            .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at));
+            .map(|e| Category::from_repo(e.id, e.name));
         Ok(category)
     }
 
-    async fn list(&self) -> Result<Vec<Category>, ApiError> {
-        let categories = Entity::find()
-            .all(&self.conn)
-            .await?
-            .into_iter()
-            .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at))
-            .collect();
-        Ok(categories)
-    }
-
     async fn insert(&self, category: Category) -> Result<Category, ApiError> {
-        let (id, name, _, _) = category.dissolve();
+        let (id, name) = category.dissolve();
         ActiveModel {
             id: Set(id),
             name: Set(name),
@@ -63,12 +53,12 @@ where
         }
         .insert(&self.conn)
         .await
-        .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at))
+        .map(|e| Category::from_repo(e.id, e.name))
         .map_err(ApiError::from)
     }
 
     async fn update(&self, category: Revision<Category>) -> Result<Category, ApiError> {
-        let (id, name, _, _) = category.dissolve().1.dissolve();
+        let (id, name) = category.dissolve().1.dissolve();
         ActiveModel {
             id: Unchanged(id),
             name: Set(name),
@@ -77,7 +67,7 @@ where
         }
         .update(&self.conn)
         .await
-        .map(|e| Category::from_repo(e.id, e.name, e.created_at, e.updated_at))
+        .map(|e| Category::from_repo(e.id, e.name))
         .map_err(ApiError::from)
     }
 

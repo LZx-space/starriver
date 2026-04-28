@@ -13,6 +13,10 @@ pub async fn list_all(state: State<AppState>) -> Result<impl IntoResponse, ApiEr
     state.category_application.list().await.map(Json)
 }
 
+pub async fn show(state: State<AppState>, id: Path<Uuid>) -> Result<impl IntoResponse, ApiError> {
+    state.category_application.find(id.0).await.map(Json)
+}
+
 pub async fn create(
     state: State<AppState>,
     user: AuthenticatedUser,
@@ -20,7 +24,7 @@ pub async fn create(
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .category_application
-        .insert(user, cmd.0.name)
+        .create(user, cmd.0.name)
         .await
         .map(Json)
 }

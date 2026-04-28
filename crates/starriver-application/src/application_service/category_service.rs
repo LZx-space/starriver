@@ -7,23 +7,38 @@ use starriver_infrastructure::{
 use tracing::info;
 use uuid::Uuid;
 
-use crate::repository::category_repository::DefaultCategoryRepository;
+use crate::{
+    category_dto::res::CategoryDetail,
+    query::category_query_service::{CategoryQueryService, DefaultCategoryQueryService},
+    repository::category_repository::DefaultCategoryRepository,
+};
 
 pub struct CategoryApplication {
     repo: DefaultCategoryRepository<DatabaseConnection>,
+    query: DefaultCategoryQueryService,
 }
 
 impl CategoryApplication {
     pub fn new(conn: DatabaseConnection) -> Self {
         let repo = DefaultCategoryRepository::new(conn.clone());
-        Self { repo }
+        Self {
+            repo,
+            query: DefaultCategoryQueryService { conn },
+        }
     }
 
-    pub async fn list(&self) -> Result<Vec<Category>, ApiError> {
-        self.repo.list().await
+    pub async fn list(&self) -> Result<Vec<CategoryDetail>, ApiError> {
+        self.query.list().await
     }
 
-    pub async fn insert(
+    pub async fn find(&self, id: Uuid) -> Result<CategoryDetail, ApiError> {
+        self.query
+            .find(id)
+            .await?
+            .ok_or_else(|| ApiError::with_bad_request(format!("category[{}]not exist", id)))
+    }
+
+    pub async fn create(
         &self,
         operator: AuthenticatedUser,
         name: String,

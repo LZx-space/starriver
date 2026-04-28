@@ -1,6 +1,6 @@
 use axum::Router;
 
-use axum::routing::{get, post, put};
+use axum::routing::{get, post};
 use mimalloc::MiMalloc;
 use starriver_adapter::api::user_handler;
 use starriver_adapter::api::{article_handler, category_handler};
@@ -57,11 +57,11 @@ async fn main() {
         .route("/email-verifications", post(user_handler::verify_email))
         .route(
             "/articles",
-            get(article_handler::page).post(article_handler::insert_empty_draft),
+            get(article_handler::paginate).post(article_handler::create_draft),
         )
         .route(
             "/articles/{id}",
-            get(article_handler::find_one)
+            get(article_handler::show)
                 .put(article_handler::update)
                 .delete(article_handler::delete),
         )
@@ -75,7 +75,9 @@ async fn main() {
         )
         .route(
             "/categories/{id}",
-            put(category_handler::update).delete(category_handler::delete),
+            get(category_handler::show)
+                .put(category_handler::update)
+                .delete(category_handler::delete),
         )
         .with_state(app_state)
         .layer(middleware_service);

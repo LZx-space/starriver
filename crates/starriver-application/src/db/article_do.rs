@@ -16,6 +16,7 @@ pub struct Model {
     pub content: String,
     pub state: ArticleStateDo,
     pub author_id: Uuid,
+    pub category_id: Option<Uuid>, // none only when state is draft
     #[sea_orm(indexed)]
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
@@ -25,7 +26,21 @@ pub struct Model {
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::user_do::Entity",
+        from = "Column::AuthorId",
+        to = "super::user_do::Column::Id"
+    )]
+    User,
+
+    #[sea_orm(
+        belongs_to = "super::category_do::Entity",
+        from = "Column::CategoryId",
+        to = "super::category_do::Column::Id"
+    )]
+    Category,
+}
 
 // ---------------------------------------------------------
 
@@ -36,7 +51,7 @@ pub enum ArticleStateDo {
     #[default]
     Draft,
     #[sea_orm(num_value = 1)]
-    Released,
+    Published,
 }
 
 impl From<ArticleStateDo> for ArticleState {
@@ -54,7 +69,7 @@ impl From<ArticleState> for ArticleStateDo {
         if value.eq(&ArticleState::Draft) {
             ArticleStateDo::Draft
         } else {
-            ArticleStateDo::Released
+            ArticleStateDo::Published
         }
     }
 }

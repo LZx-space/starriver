@@ -94,7 +94,8 @@ async fn main() {
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-/// Initializes the tracing subsystem using the provided logging configuration.
+/// * Initializes the tracing subsystem using the provided logging configuration and env variable `RUST_LOG`.
+/// * default is INFO.
 fn init_tracing(cfg: &FileLogging) {
     use std::io::IsTerminal;
     use tracing_appender::rolling::{RollingFileAppender, Rotation};
@@ -108,7 +109,7 @@ fn init_tracing(cfg: &FileLogging) {
         .into_level()
         .unwrap_or(Level::INFO);
     if cfg.file_enabled {
-        // ---------- 仅文件日志 ----------
+        // ---------- only file logging ----------
         let file_appender = RollingFileAppender::builder()
             .rotation(Rotation::DAILY)
             .filename_prefix(&cfg.file_name_prefix)
@@ -132,7 +133,7 @@ fn init_tracing(cfg: &FileLogging) {
             level, cfg.file_directory
         );
     } else {
-        // ---------- 仅控制台日志 ----------
+        // ---------- only console logging ----------
         let console_layer = tracing_subscriber::fmt::layer()
             .with_ansi(std::io::stdout().is_terminal())
             .with_file(true)

@@ -28,3 +28,25 @@ This project follows DDD principles:
 - **Infrastructure Layer**: Common model and services, Security implementations, Shared models and error types, etc.
 
 This structure promotes separation of concerns and testability.
+
+## Run
+
+Start the server:
+
+```sh
+cargo run
+```
+
+The logging level is controlled via `RUST_LOG` (defaults to `info` if unset):
+
+```sh
+# Console output (default)
+cargo run
+
+# Debug-level console output
+RUST_LOG=debug cargo run
+```
+
+Output destination is configured in `config.toml` under `[file_logging]`:
+- **`file_enabled = true`** — JSON lines written to daily-rotated files in `file_directory`
+- **`file_enabled = false`** (default) — colored text printed to stdout

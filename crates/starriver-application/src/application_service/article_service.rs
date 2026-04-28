@@ -14,26 +14,26 @@ use starriver_infrastructure::error::{ApiError, Cause};
 use starriver_infrastructure::model::aggregate_revision::Revision;
 use starriver_infrastructure::model::page::PageResult;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
-use starriver_infrastructure::service::config_service::Assets;
+use starriver_infrastructure::service::config_service::Uploads;
 use starriver_infrastructure::service::file_service::{delete_file, write_to_file};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 pub struct ArticleApplication {
     conn: DatabaseConnection,
-    static_cfg: Assets,
+    upload_cfg: Uploads,
     query: DefaultArticleQueryService,
     repo: DefaultArticleRepository<DatabaseConnection>,
 }
 
 impl ArticleApplication {
     /// 新建
-    pub fn new(conn: DatabaseConnection, static_cfg: Assets) -> Self {
+    pub fn new(conn: DatabaseConnection, upload_cfg: Uploads) -> Self {
         let query = DefaultArticleQueryService { conn: conn.clone() };
         let repo = DefaultArticleRepository::new(conn.clone());
         Self {
             conn,
-            static_cfg,
+            upload_cfg,
             query,
             repo,
         }
@@ -51,10 +51,8 @@ impl ArticleApplication {
             .ok_or_else(|| ApiError::with_bad_request(format!("article[{}]not exist", id)))?;
         article.attachment_rows.iter().for_each(|e| {
             let file_name = AttachmentService::file_name(&e.id, &e.extension);
-            let url = AttachmentService::access_url(
-                &self.static_cfg.uploads.relative_dir,
-                file_name.as_str(),
-            );
+            let url =
+                AttachmentService::access_url(&self.upload_cfg.proxy_prefix, file_name.as_str());
             let attachment = ArticleAttachment {
                 id: e.id,
                 file_name,
@@ -133,7 +131,7 @@ impl ArticleApplication {
         let file_name = AttachmentService::file_name(&attachment_id, extension);
         let file_name = file_name.as_str();
         // 从配置文件获取上传目录
-        let target_dir = upload_dir(&self.static_cfg)?;
+        let target_dir = storage_dir(&self.upload_cfg)?;
         // 写入数据
         write_to_file(target_dir.as_path(), file_name, file.data).await?;
         info!(
@@ -154,8 +152,7 @@ impl ArticleApplication {
                 );
                 // 提交事务
                 tx_repo.conn().commit().await?;
-                let url =
-                    AttachmentService::access_url(&self.static_cfg.uploads.relative_dir, file_name);
+                let url = AttachmentService::access_url(&self.upload_cfg.proxy_prefix, file_name);
                 Ok(ArticleAttachment {
                     id: attachment_id,
                     file_name: file_name.to_owned(),
@@ -237,12 +234,10 @@ async fn tx_upload_attachement(
     tx_repo.update(Revision::new(original, found)).await
 }
 
-fn upload_dir(cfg: &Assets) -> Result<PathBuf, ApiError> {
-    let static_base_dir = &cfg.static_base_dir.as_str();
-    let upload_dir = &cfg.uploads.relative_dir.as_str();
-    let target_dir = format!("{}/{}", static_base_dir, upload_dir);
-    let target_dir = target_dir
+fn storage_dir(cfg: &Uploads) -> Result<PathBuf, ApiError> {
+    let storage_dir = &cfg.storage_dir.as_str();
+    let storage_dir = storage_dir
         .parse::<PathBuf>()
         .map_err(|e| ApiError::with_inner_error(e.to_string()))?;
-    Ok(target_dir)
+    Ok(storage_dir)
 }

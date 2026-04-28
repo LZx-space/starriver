@@ -7,7 +7,10 @@ impl AttachmentService {
         format!("{}.{}", id, extension)
     }
 
-    pub fn access_url(base_url: &str, file_name: &str) -> String {
-        format!("/{}/{}", base_url, file_name)
+    /// # Params
+    /// - `proxy_prefix`: Web server proxy url prefix (e.g., "/uploads")
+    /// - `file_name`: File name including extension
+    pub fn access_url(proxy_prefix: &str, file_name: &str) -> String {
+        format!("{}/{}", proxy_prefix, file_name)
     }
 }

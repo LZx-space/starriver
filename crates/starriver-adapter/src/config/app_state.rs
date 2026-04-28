@@ -5,7 +5,7 @@ use starriver_application::category_service::CategoryApplication;
 use starriver_application::user_service::UserApplication;
 use starriver_infrastructure::security::authentication::web::config::AuthConfig;
 use starriver_infrastructure::service::cache_service::VerificationCodeCache;
-use starriver_infrastructure::service::config_service::{AppConfig, Assets};
+use starriver_infrastructure::service::config_service::{AppConfig, Uploads};
 use starriver_infrastructure::service::email_service::EmailClient;
 use starriver_infrastructure::util::regex_patterns::Patterns;
 use std::sync::Arc;
@@ -14,8 +14,8 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct AppState {
     pub conn: DatabaseConnection,
-    pub assets: Assets,
     pub auth_cfg: AuthConfig,
+    pub upload_cfg: Uploads,
     pub patterns: Patterns,
     pub email_client: EmailClient,
     pub verification_code_cache: VerificationCodeCache,
@@ -44,12 +44,12 @@ impl AppState {
             cfg.aggregate.user.policy,
         )
         .into();
-        let article_application = ArticleApplication::new(conn.clone(), cfg.assets.clone()).into();
+        let article_application = ArticleApplication::new(conn.clone(), cfg.uploads.clone()).into();
         let category_application = CategoryApplication::new(conn.clone()).into();
         Ok(AppState {
             conn,
-            assets: cfg.assets,
-            auth_cfg: cfg.auth_cfg,
+            auth_cfg: cfg.auth,
+            upload_cfg: cfg.uploads,
             patterns,
             email_client,
             verification_code_cache,

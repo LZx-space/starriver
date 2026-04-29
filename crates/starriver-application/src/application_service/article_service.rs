@@ -145,13 +145,13 @@ impl ArticleApplication {
         let tx_repo = DefaultArticleRepository::new(tx);
         match tx_upload_attachement(article_id, attachment, &tx_repo).await {
             Ok(_) => {
+                // 提交事务
+                tx_repo.conn().commit().await?;
                 info!(
                     article_id = %article_id,
                     file_name = %file_name,
-                    "attachment added to article successfully"
+                    "upload attachment transaction successfully"
                 );
-                // 提交事务
-                tx_repo.conn().commit().await?;
                 let url = AttachmentService::access_url(&self.upload_cfg.proxy_prefix, file_name);
                 Ok(ArticleAttachment {
                     id: attachment_id,
@@ -164,7 +164,7 @@ impl ArticleApplication {
                     article_id = %article_id,
                     file_name = %file_name,
                     error = %e,
-                    "attachment transaction failed, rolling back and deleting file"
+                    "upload attachment transaction failed, rolling back and deleting file"
                 );
                 // 回滚事务
                 tx_repo.conn().rollback().await?;

@@ -2,6 +2,7 @@ use crate::db::article_attachment_do;
 use crate::db::article_attachment_do::Column;
 use crate::db::article_do::ActiveModel;
 use crate::db::article_do::Entity;
+use sea_orm::ActiveValue;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
 use sea_orm::ActiveValue::Unchanged;
@@ -129,13 +130,33 @@ where
             new_published_at,
         ) = modified.dissolve();
 
-        let to_delete_ids = to_delete_attachment_ids(&attachments, new_attachments);
+        let (to_delete_ids, to_add_attachments) = diff_attachment(&attachments, new_attachments);
+
         // 删除不用的附件
         let to_delete_count = to_delete_ids.len();
         debug!("attachments to delete: {}", to_delete_count);
         if to_delete_count > 0 {
             article_attachment_do::Entity::delete_many()
                 .filter(Column::Id.is_in(to_delete_ids))
+                .exec(&self.conn)
+                .await?;
+        }
+
+        // 新增附件
+        let to_add_count = to_add_attachments.len();
+        debug!("attachments to add: {}", to_add_count);
+        if to_add_count > 0 {
+            let models: Vec<article_attachment_do::ActiveModel> = to_add_attachments
+                .into_iter()
+                .map(|att| article_attachment_do::ActiveModel {
+                    id: ActiveValue::Set(*att.id()),
+                    extension: ActiveValue::Set(att.extension().clone()),
+                    article_id: ActiveValue::Set(*att.article_id()),
+                    created_at: ActiveValue::Set(OffsetDateTime::now_utc()),
+                    updated_at: ActiveValue::Set(None),
+                })
+                .collect();
+            article_attachment_do::Entity::insert_many(models)
                 .exec(&self.conn)
                 .await?;
         }
@@ -192,12 +213,17 @@ where
 
 //////////////////////////////////////////////
 
-pub fn to_delete_attachment_ids(
-    old: &[Attachment],
-    new: Vec<Attachment>, // 接收所有权，或使用 &[Attachment] 后内部克隆
-) -> Vec<Uuid> {
-    old.iter()
+/// # return
+/// (to_delete_ids, to_add_attachments)
+pub fn diff_attachment(old: &[Attachment], new: Vec<Attachment>) -> (Vec<Uuid>, Vec<Attachment>) {
+    let to_delete_ids: Vec<Uuid> = old
+        .iter()
         .filter(|att| !new.iter().any(|a| a.id() == att.id()))
         .map(|att| *att.id())
-        .collect()
+        .collect();
+    let to_add: Vec<Attachment> = new
+        .into_iter()
+        .filter(|att| !old.iter().any(|a| a.id() == att.id()))
+        .collect();
+    (to_delete_ids, to_add)
 }

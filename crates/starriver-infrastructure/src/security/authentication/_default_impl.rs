@@ -179,22 +179,21 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
         };
 
         // 编码为JWS
-        let jws = encode(
+        let jws = match encode(
             &Header::default(),
             &principal_claims,
             &EncodingKey::from_secret(self.cfg.jws_secret_as_ref()),
-        );
-        let jws = match jws {
-            Ok(token) => token,
+        ) {
+            Ok(jws) => jws,
             Err(err) => {
-                error!(error = %err, "failed to serialize JWS principal claims");
+                error!(%err, "failed to serialize JWS principal claims");
                 return ApiError::new(Cause::InnerError, err.to_string()).into_response();
             }
         };
         // 创建cookie
         let cookie = Cookie::build((AUTHENTION_TOKEN_COOKIE_NAME, jws))
             .http_only(true)
-            .secure(false)
+            .secure(true)
             .path("/")
             .build();
 

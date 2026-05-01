@@ -1,7 +1,7 @@
 CREATE TABLE public.article_attachment
 (
     id         uuid                     NOT NULL,
-    extension  character varying(10)    NOT NULL,
+    file_name  character varying(50)    NOT NULL,
     article_id uuid                     NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone,

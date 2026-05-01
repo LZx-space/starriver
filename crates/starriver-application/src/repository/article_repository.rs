@@ -43,42 +43,44 @@ where
     T: TransactionalConn,
 {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, ApiError> {
-        let article = Entity::find_by_id(id)
+        let model = Entity::find_by_id(id)
             .one(&self.conn)
             .await
-            .map(|op| {
-                op.map(|e| {
-                    Article::from_repo(
-                        id,
-                        Title::new(e.title).expect("never happens"),
-                        Content::new(e.content).expect("never happens"),
-                        e.state.into(),
-                        Vec::new(),
-                        e.author_id,
-                        e.category_id,
-                        e.published_at,
-                    )
-                })
-            })
             .map_err(ApiError::from)?;
-        if let Some(mut article) = article {
-            let attachments = article_attachment_do::Entity::find()
-                .filter(article_attachment_do::Column::ArticleId.eq(id))
-                .all(&self.conn)
-                .await?;
-            let mut attachments: Vec<Attachment> = attachments
-                .into_iter()
-                .map(|e| Attachment::from_repo(e.id, e.extension, e.article_id))
-                .collect();
-            article.attachments().append(&mut attachments);
-            return Ok(Some(article));
-        }
-        Ok(article)
+        let Some(model) = model else {
+            return Ok(None);
+        };
+        let title = Title::new(model.title).map_err(|e| {
+            ApiError::with_inner_error(format!("invalid title in DB for article[{id}]: {e}"))
+        })?;
+        let content = Content::new(model.content).map_err(|e| {
+            ApiError::with_inner_error(format!("invalid content in DB for article[{id}]: {e}"))
+        })?;
+        let mut article = Article::from_repo(
+            id,
+            title,
+            content,
+            model.state.into(),
+            Vec::new(),
+            model.author_id,
+            model.category_id,
+            model.published_at,
+        );
+        let attachments = article_attachment_do::Entity::find()
+            .filter(article_attachment_do::Column::ArticleId.eq(id))
+            .all(&self.conn)
+            .await?;
+        let mut attachments: Vec<Attachment> = attachments
+            .into_iter()
+            .map(|e| Attachment::from_repo(e.id, e.file_name, e.article_id))
+            .collect();
+        article.attachments().append(&mut attachments);
+        Ok(Some(article))
     }
 
     async fn add(&self, article: Article) -> Result<Article, ApiError> {
         let (id, title, content, state, _, author_id, category_id, _) = article.dissolve();
-        ActiveModel {
+        let model = ActiveModel {
             id: Set(id),
             title: Set(title.to_string()),
             content: Set(content.to_string()),
@@ -91,19 +93,23 @@ where
         }
         .insert(&self.conn)
         .await
-        .map(|e| {
-            Article::from_repo(
-                e.id,
-                Title::new(e.title).expect("never happens"),
-                Content::new(e.content).expect("never happens"),
-                e.state.into(),
-                Vec::new(),
-                e.author_id,
-                e.category_id,
-                e.published_at,
-            )
-        })
-        .map_err(ApiError::from)
+        .map_err(ApiError::from)?;
+        let title = Title::new(model.title).map_err(|e| {
+            ApiError::with_inner_error(format!("invalid title in DB after insert: {e}"))
+        })?;
+        let content = Content::new(model.content).map_err(|e| {
+            ApiError::with_inner_error(format!("invalid content in DB after insert: {e}"))
+        })?;
+        Ok(Article::from_repo(
+            model.id,
+            title,
+            content,
+            model.state.into(),
+            Vec::new(),
+            model.author_id,
+            model.category_id,
+            model.published_at,
+        ))
     }
 
     async fn delete_by_id(&self, id: Uuid) -> Result<bool, ApiError> {
@@ -150,7 +156,7 @@ where
                 .into_iter()
                 .map(|att| article_attachment_do::ActiveModel {
                     id: ActiveValue::Set(*att.id()),
-                    extension: ActiveValue::Set(att.extension().clone()),
+                    file_name: ActiveValue::Set(att.file_name().clone()),
                     article_id: ActiveValue::Set(*att.article_id()),
                     created_at: ActiveValue::Set(OffsetDateTime::now_utc()),
                     updated_at: ActiveValue::Set(None),
@@ -192,22 +198,27 @@ where
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         };
 
-        model
-            .update(&self.conn)
-            .await
-            .map(|e| {
-                Article::from_repo(
-                    e.id,
-                    Title::new(e.title).expect("never happens"),
-                    Content::new(e.content).expect("never happens"),
-                    e.state.into(),
-                    Vec::new(),
-                    e.author_id,
-                    e.category_id,
-                    e.published_at,
-                )
-            })
-            .map_err(ApiError::from)
+        let updated = model.update(&self.conn).await.map_err(ApiError::from)?;
+        let title = Title::new(updated.title).map_err(|e| {
+            ApiError::with_inner_error(format!(
+                "invalid title in DB after update for article[{id}]: {e}"
+            ))
+        })?;
+        let content = Content::new(updated.content).map_err(|e| {
+            ApiError::with_inner_error(format!(
+                "invalid content in DB after update for article[{id}]: {e}"
+            ))
+        })?;
+        Ok(Article::from_repo(
+            updated.id,
+            title,
+            content,
+            updated.state.into(),
+            Vec::new(),
+            updated.author_id,
+            updated.category_id,
+            updated.published_at,
+        ))
     }
 }
 

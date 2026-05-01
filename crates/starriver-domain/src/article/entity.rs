@@ -137,25 +137,24 @@ impl Article {
 
 #[derive(Clone, Debug, Getters, Dissolve)]
 pub struct Attachment {
-    /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,
-    extension: String,
+    file_name: String,
     article_id: Uuid,
 }
 
 impl Attachment {
-    pub fn new(article_id: Uuid, extension: &str) -> Self {
+    pub fn new(article_id: Uuid, file_name: &str) -> Self {
         Self {
             id: Uuid::now_v7(),
-            extension: extension.to_string(),
+            file_name: file_name.to_string(),
             article_id,
         }
     }
 
-    pub fn from_repo(id: Uuid, extension: String, article_id: Uuid) -> Self {
+    pub fn from_repo(id: Uuid, file_name: String, article_id: Uuid) -> Self {
         Self {
             id,
-            extension,
+            file_name,
             article_id,
         }
     }

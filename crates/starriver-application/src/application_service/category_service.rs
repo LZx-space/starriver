@@ -64,9 +64,8 @@ impl CategoryApplication {
             "updating category"
         );
         let category = self.repo.find_by_id(id).await?;
-        let mut category = match category {
-            Some(category) => category,
-            None => return Err(ApiError::with_bad_request("")),
+        let Some(mut category) = category else {
+            return Err(ApiError::with_bad_request(""));
         };
         let original = category.clone();
         category.update(name)?;

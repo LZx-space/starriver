@@ -107,7 +107,7 @@ impl ArticleQueryService for DefaultArticleQueryService {
             let attachments = article_attachment_do::Entity::find()
                 .columns([
                     article_attachment_do::Column::Id,
-                    article_attachment_do::Column::Extension,
+                    article_attachment_do::Column::FileName,
                 ])
                 .filter(article_attachment_do::Column::ArticleId.eq(id))
                 .into_model::<ArticleAttachmentRow>()

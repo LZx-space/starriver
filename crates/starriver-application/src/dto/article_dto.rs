@@ -1,5 +1,4 @@
 pub mod req {
-    use bytes::Bytes;
     use serde::Deserialize;
     use uuid::Uuid;
     use validator::Validate;
@@ -31,11 +30,6 @@ pub mod req {
         pub attachment_ids: Vec<uuid::Uuid>,
         /// 是否发布
         pub publish: bool,
-    }
-
-    pub struct ArticleAttachmentCmd {
-        pub extension: String,
-        pub data: Bytes,
     }
 }
 
@@ -101,7 +95,7 @@ pub mod res {
     #[derive(Serialize, FromQueryResult)]
     pub struct ArticleAttachmentRow {
         pub id: Uuid,
-        pub extension: String,
+        pub file_name: String,
     }
 
     #[derive(Serialize)]

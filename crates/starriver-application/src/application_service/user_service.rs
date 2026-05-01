@@ -146,19 +146,14 @@ impl UserApplication {
     ) -> Result<AuthenticatedUser, AuthenticationError> {
         let username = credentials.username.as_str();
         let password = credentials.password.as_str();
-        let opt = match tx_repo.find_by_username(username).await {
-            Ok(opt) => opt,
-            Err(e) => {
+        let mut user = tx_repo
+            .find_by_username(username)
+            .await
+            .map_err(|e| {
                 error!(username = %username, error = %e, "find by username failed");
-                return Err(AuthenticationError::InnerError);
-            }
-        };
-        let mut user = match opt {
-            Some(user) => user,
-            None => {
-                return Err(AuthenticationError::UsernameNotFound);
-            }
-        };
+                AuthenticationError::InnerError
+            })?
+            .ok_or(AuthenticationError::UsernameNotFound)?;
         let original = user.clone();
         match user.authenticate_by_password(
             password,

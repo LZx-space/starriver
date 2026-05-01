@@ -18,6 +18,7 @@ config = { workspace = true }
 lettre = { version = "^0", features = ["smtp-transport", "tokio1-native-tls", "builder"] }
 futures-util = { workspace = true }
 hmac = "^0"
+infer = { workspace = true }
 jsonwebtoken = { version = "^10", features = ["rust_crypto"] }
 moka = { version = "^0", features = ["future"] }
 rand = "^0"

@@ -112,20 +112,15 @@ pub struct ApiErrorResponse<T: Serialize> {
 
 impl<T: Serialize> IntoResponse for ApiErrorResponse<T> {
     fn into_response(self) -> Response {
-        let json_response = serde_json::to_string(&self).unwrap_or_else(|_| {
-            serde_json::json!({
-                "code": 500,
-                "message": "Failed to serialize response",
-                "data": null
+        serde_json::to_string(&self)
+            .unwrap_or_else(|_| {
+                serde_json::json!({
+                    "code": 500,
+                    "message": "Failed to serialize response",
+                    "data": null
+                })
+                .to_string()
             })
-            .to_string()
-        });
-
-        (
-            StatusCode::from_u16(self.code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-            [(axum::http::header::CONTENT_TYPE, "application/json")],
-            json_response,
-        )
             .into_response()
     }
 }

@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub extension: String,
+    pub file_name: String,
     pub article_id: Uuid,
     pub created_at: OffsetDateTime,
     pub updated_at: Option<OffsetDateTime>,

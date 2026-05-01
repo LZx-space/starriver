@@ -1,22 +1,24 @@
-use std::path::PathBuf;
-
-use crate::article_dto::req::{ArticleAttachmentCmd, PageQuery, UpdateArticleCmd};
+use crate::article_dto::req::{PageQuery, UpdateArticleCmd};
 use crate::article_dto::res::ArticleAttachment;
 use crate::dto::article_dto::res::{ArticleDetail, ArticleExcerpt};
 use crate::query::article_query_service::{ArticleQueryService, DefaultArticleQueryService};
 use crate::repository::article_repository::DefaultArticleRepository;
+use infer::MatcherType;
 use sea_orm::{DatabaseConnection, TransactionTrait};
 use starriver_domain::article::domain_service::AttachmentService;
 use starriver_domain::article::entity::{Article, Attachment};
 use starriver_domain::article::params::ArticleUpdate;
 use starriver_domain::article::repository::ArticleRepository;
 use starriver_infrastructure::error::{ApiError, Cause};
+use starriver_infrastructure::extract::Multipart;
 use starriver_infrastructure::model::aggregate_revision::Revision;
 use starriver_infrastructure::model::page::PageResult;
 use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
 use starriver_infrastructure::service::config_service::Uploads;
-use starriver_infrastructure::service::file_service::{delete_file, write_to_file};
-use tracing::{debug, error, info, warn};
+use starriver_infrastructure::service::file_service::{delete_file, storage};
+
+use std::path::PathBuf;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 pub struct ArticleApplication {
@@ -48,18 +50,21 @@ impl ArticleApplication {
             .query
             .find_detail(id)
             .await?
-            .ok_or_else(|| ApiError::with_bad_request(format!("article[{}]not exist", id)))?;
-        article.attachment_rows.iter().for_each(|e| {
-            let file_name = AttachmentService::file_name(&e.id, &e.extension);
-            let url =
-                AttachmentService::access_url(&self.upload_cfg.proxy_prefix, file_name.as_str());
-            let attachment = ArticleAttachment {
-                id: e.id,
-                file_name,
-                url,
-            };
-            article.attachments.push(attachment);
-        });
+            .ok_or_else(|| ApiError::with_bad_request(format!("article[{id}] not exist")))?;
+        // take 取出所有权，into_iter 避免 clone
+        let rows = std::mem::take(&mut article.attachment_rows);
+        article.attachments = rows
+            .into_iter()
+            .map(|e| {
+                let file_name = e.file_name;
+                let url = AttachmentService::access_url(&self.upload_cfg.proxy_prefix, &file_name);
+                ArticleAttachment {
+                    id: e.id,
+                    file_name,
+                    url,
+                }
+            })
+            .collect();
         Ok(article)
     }
 
@@ -103,49 +108,29 @@ impl ArticleApplication {
         &self,
         operator: AuthenticatedUser,
         article_id: Uuid,
-        file: ArticleAttachmentCmd,
+        multipart: Multipart,
     ) -> Result<ArticleAttachment, ApiError> {
         info!(
             user_id = %operator.id,
             article_id = %article_id,
             "uploading attachment"
         );
-        // 检查文件格式
-        let extension = match infer::get(&file.data).map(|t| t.extension()) {
-            Some(e) => e,
-            None => {
-                return Err(ApiError::with_bad_request("错误的文件格式"));
-            }
-        };
-        debug!(
-            declared_extension = %file.extension,
-            actual_extension = %extension,
-            "file extension detected"
-        );
-        if extension != file.extension {
-            return Err(ApiError::with_bad_request("文件格式与文件名不匹配"));
-        }
-        let attachment = Attachment::new(article_id, extension);
-        // 使用附件ID作为文件名，以便后续定位做其他操作
-        let attachment_id = attachment.id().to_owned();
-        let file_name = AttachmentService::file_name(&attachment_id, extension);
-        let file_name = file_name.as_str();
-        // 从配置文件获取上传目录
-        let target_dir = storage_dir(&self.upload_cfg)?;
-        // 写入数据
-        write_to_file(target_dir.as_path(), file_name, file.data).await?;
-        info!(
-            article_id = %article_id,
-            file_name = %file_name,
-            "attachment saved to disk"
-        );
+        let paths = storage(multipart.0, &self.upload_cfg, vec![MatcherType::Image]).await?;
+        // 解构为单元素数组，0 个或多个文件均报错
+        let [file_path] = <[PathBuf; 1]>::try_from(paths)
+            .map_err(|v| ApiError::with_bad_request(format!("expected 1 file, got {}", v.len())))?;
+        let file_name = file_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| ApiError::with_inner_error("failed to extract filename from path"))?;
 
+        let attachment = Attachment::new(article_id, file_name);
+        let attachment_id = *attachment.id();
         // 开启事务, update方法内部会再次查询获取副本以对比更新字段，这依赖于事务等级
         let tx = self.conn.begin().await.map_err(ApiError::from)?;
         let tx_repo = DefaultArticleRepository::new(tx);
         match tx_upload_attachement(article_id, attachment, &tx_repo).await {
             Ok(_) => {
-                // 提交事务
                 tx_repo.conn().commit().await?;
                 info!(
                     article_id = %article_id,
@@ -166,10 +151,8 @@ impl ArticleApplication {
                     error = %e,
                     "upload attachment transaction failed, rolling back and deleting file"
                 );
-                // 回滚事务
                 tx_repo.conn().rollback().await?;
-                // 删除附件
-                delete_file(target_dir.as_path(), file_name).await?;
+                delete_file(&file_path).await?;
                 info!(
                     article_id = %article_id,
                     file_name = %file_name,
@@ -232,12 +215,4 @@ async fn tx_upload_attachement(
     let original = found.clone();
     found.add_attachment(attachment)?;
     tx_repo.update(Revision::new(original, found)).await
-}
-
-fn storage_dir(cfg: &Uploads) -> Result<PathBuf, ApiError> {
-    let storage_dir = &cfg.storage_dir.as_str();
-    let storage_dir = storage_dir
-        .parse::<PathBuf>()
-        .map_err(|e| ApiError::with_inner_error(e.to_string()))?;
-    Ok(storage_dir)
 }

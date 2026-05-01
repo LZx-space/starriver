@@ -113,7 +113,7 @@ pub struct UserPolicy {
 /// 上传文件配置
 #[derive(Clone, Deserialize)]
 pub struct Uploads {
-    /// 上传文件在磁盘上的存储根目录（绝对路径或相对工程根目录的路径）
+    /// 上传文件在磁盘上的存储根目录（不以分隔符结束，相对或绝对路径）
     #[serde(deserialize_with = "not_end_with_separator")]
     pub storage_dir: String,
     /// Nginx 或其他前端服务访问上传文件时使用的 URL 路径前缀（例如 "/uploads"）

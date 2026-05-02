@@ -1,13 +1,12 @@
 use sea_orm::{DatabaseConnection, EntityOrSelect, EntityTrait};
-use starriver_infrastructure::error::ApiError;
 use uuid::Uuid;
 
-use crate::{category_dto::res::CategoryDetail, db::category_do::Entity};
+use crate::{db::category_do::Entity, dto::category_dto::res::CategoryDetail, error::ApiError};
 
 pub trait CategoryQueryService {
-    async fn list(&self) -> Result<Vec<CategoryDetail>, ApiError>;
+    fn list(&self) -> impl Future<Output = Result<Vec<CategoryDetail>, ApiError>>;
 
-    async fn find(&self, id: Uuid) -> Result<Option<CategoryDetail>, ApiError>;
+    fn find(&self, id: Uuid) -> impl Future<Output = Result<Option<CategoryDetail>, ApiError>>;
 }
 
 pub struct DefaultCategoryQueryService {

@@ -10,7 +10,7 @@ workspace = true
 
 [dependencies]
 starriver-adapter = { path = "../starriver-adapter" }
-starriver-infrastructure = { path = "../starriver-infrastructure" }
+starriver-base = { path = "../starriver-base" }
 
 axum = { workspace = true }
 mimalloc = { version = "*", features = ["secure"] }

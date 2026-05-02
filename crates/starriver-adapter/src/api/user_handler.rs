@@ -1,10 +1,10 @@
 use crate::config::app_state::AppState;
 use axum::extract::State;
 use axum::response::IntoResponse;
-use starriver_application::user_dto::req::{EmailVerifyCmd, UserCmd};
 
-use starriver_infrastructure::extract::{Json, JsonEx};
-use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
+use starriver_base::dto::user_dto::req::{EmailVerifyCmd, UserCmd};
+use starriver_base::extract::{Json, JsonEx};
+use starriver_base::security::authentication::_default_impl::AuthenticatedUser;
 
 pub async fn me(user: AuthenticatedUser) -> impl IntoResponse {
     Json(user)

@@ -1,26 +1,26 @@
 use crate::{
-    article_dto::{
-        req::PageQuery,
-        res::{ArticleAttachmentRow, ArticleDetail},
-    },
     db::{
         article_attachment_do,
         article_do::{ArticleStateDo, Column, Entity, Relation},
         category_do,
     },
+    dto::article_dto::{
+        req::PageQuery,
+        res::{ArticleAttachmentRow, ArticleDetail},
+    },
+};
+use crate::{
+    error::ApiError,
+    model::page::PageResult,
+    util::html_utils::{DefaultExcerptor, Excerptor},
 };
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
     QuerySelect, RelationTrait,
 };
-use starriver_infrastructure::{
-    error::ApiError,
-    model::page::PageResult,
-    util::html_utils::{DefaultExcerptor, Excerptor},
-};
 use uuid::Uuid;
 
-use crate::article_dto::res::ArticleExcerpt;
+use crate::dto::article_dto::res::ArticleExcerpt;
 
 pub trait ArticleQueryService {
     /// 查询一页数据

@@ -35,9 +35,9 @@ pub mod req {
 
 pub mod res {
 
+    use crate::model::dto::IdName;
     use sea_orm::FromQueryResult;
     use serde::Serialize;
-    use starriver_infrastructure::model::dto::IdName;
     use time::OffsetDateTime;
     use uuid::Uuid;
 

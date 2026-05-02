@@ -1,6 +1,6 @@
 use axum::{extract::State, response::IntoResponse};
-use starriver_application::category_dto::req::CreateOrUpdateCategoryCmd;
-use starriver_infrastructure::{
+use starriver_base::{
+    dto::category_dto::req::CreateOrUpdateCategoryCmd,
     error::ApiError,
     extract::{Json, Path},
     security::authentication::_default_impl::AuthenticatedUser,

@@ -2,11 +2,16 @@ use crate::db::article_attachment_do;
 use crate::db::article_attachment_do::Column;
 use crate::db::article_do::ActiveModel;
 use crate::db::article_do::Entity;
+use crate::error_mapping::map_db_error;
+use crate::util::db::TransactionalConn;
+use crate::util::db::TransactionalRepository;
 use sea_orm::ActiveValue;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
 use sea_orm::ActiveValue::Unchanged;
 use sea_orm::ColumnTrait;
+use sea_orm::DatabaseTransaction;
+use sea_orm::DbErr;
 use sea_orm::QueryFilter;
 use sea_orm::{ActiveModelTrait, EntityTrait};
 use starriver_domain::article::entity::Article;
@@ -14,14 +19,14 @@ use starriver_domain::article::entity::Attachment;
 use starriver_domain::article::repository::ArticleRepository;
 use starriver_domain::article::value_object::Content;
 use starriver_domain::article::value_object::Title;
-use starriver_infrastructure::error::ApiError;
-use starriver_infrastructure::model::aggregate_revision::Revision;
-use starriver_infrastructure::util::db::TransactionalConn;
+use starriver_domain::common_error::RepositoryError;
+use starriver_domain::common_model::Revision;
 use time::OffsetDateTime;
 use tracing::debug;
 use uuid::Uuid;
 
-pub struct DefaultArticleRepository<T> {
+#[derive(Clone)]
+pub struct DefaultArticleRepository<T: TransactionalConn> {
     conn: T,
 }
 
@@ -38,24 +43,31 @@ where
     }
 }
 
+impl TransactionalRepository for DefaultArticleRepository<DatabaseTransaction> {
+    fn with_transaction_connection(&self, conn: DatabaseTransaction) -> Self {
+        Self { conn }
+    }
+
+    fn transaction_connection(self) -> DatabaseTransaction {
+        self.conn
+    }
+}
+
 impl<T> ArticleRepository for DefaultArticleRepository<T>
 where
     T: TransactionalConn,
 {
-    async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, ApiError> {
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Article>, DbErr> {
         let model = Entity::find_by_id(id)
             .one(&self.conn)
             .await
-            .map_err(ApiError::from)?;
+            .map_err(map_db_error)?;
         let Some(model) = model else {
             return Ok(None);
         };
-        let title = Title::new(model.title).map_err(|e| {
-            ApiError::with_inner_error(format!("invalid title in DB for article[{id}]: {e}"))
-        })?;
-        let content = Content::new(model.content).map_err(|e| {
-            ApiError::with_inner_error(format!("invalid content in DB for article[{id}]: {e}"))
-        })?;
+        let title = Title::new(model.title).map_err(|e| RepositoryError::BadData(e.to_string()))?;
+        let content =
+            Content::new(model.content).map_err(|e| RepositoryError::BadData(e.to_string()))?;
         let mut article = Article::from_repo(
             id,
             title,
@@ -69,7 +81,8 @@ where
         let attachments = article_attachment_do::Entity::find()
             .filter(article_attachment_do::Column::ArticleId.eq(id))
             .all(&self.conn)
-            .await?;
+            .await
+            .map_err(map_db_error)?;
         let mut attachments: Vec<Attachment> = attachments
             .into_iter()
             .map(|e| Attachment::from_repo(e.id, e.file_name, e.article_id))
@@ -78,7 +91,7 @@ where
         Ok(Some(article))
     }
 
-    async fn add(&self, article: Article) -> Result<Article, ApiError> {
+    async fn add(&self, article: Article) -> Result<Article, DbErr> {
         let (id, title, content, state, _, author_id, category_id, _) = article.dissolve();
         let model = ActiveModel {
             id: Set(id),
@@ -93,13 +106,10 @@ where
         }
         .insert(&self.conn)
         .await
-        .map_err(ApiError::from)?;
-        let title = Title::new(model.title).map_err(|e| {
-            ApiError::with_inner_error(format!("invalid title in DB after insert: {e}"))
-        })?;
-        let content = Content::new(model.content).map_err(|e| {
-            ApiError::with_inner_error(format!("invalid content in DB after insert: {e}"))
-        })?;
+        .map_err(map_db_error)?;
+        let title = Title::new(model.title).map_err(|e| RepositoryError::BadData(e.to_string()))?;
+        let content =
+            Content::new(model.content).map_err(|e| RepositoryError::BadData(e.to_string()))?;
         Ok(Article::from_repo(
             model.id,
             title,
@@ -112,16 +122,17 @@ where
         ))
     }
 
-    async fn delete_by_id(&self, id: Uuid) -> Result<bool, ApiError> {
+    async fn delete_by_id(&self, id: Uuid) -> Result<bool, DbErr> {
         let result = Entity::delete_by_id(id)
             .exec(&self.conn)
-            .await?
+            .await
+            .map_err(map_db_error)?
             .rows_affected
             > 0;
         Ok(result)
     }
 
-    async fn update(&self, article: Revision<Article>) -> Result<Article, ApiError> {
+    async fn update(&self, article: Revision<Article>) -> Result<Article, DbErr> {
         let (original, modified) = article.dissolve();
         let (id, title, content, state, attachments, author_id, category_id, published_at) =
             original.dissolve();
@@ -145,7 +156,8 @@ where
             article_attachment_do::Entity::delete_many()
                 .filter(Column::Id.is_in(to_delete_ids))
                 .exec(&self.conn)
-                .await?;
+                .await
+                .map_err(map_db_error)?;
         }
 
         // 新增附件
@@ -164,7 +176,8 @@ where
                 .collect();
             article_attachment_do::Entity::insert_many(models)
                 .exec(&self.conn)
-                .await?;
+                .await
+                .map_err(map_db_error)?;
         }
 
         // 更新博客
@@ -198,17 +211,11 @@ where
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         };
 
-        let updated = model.update(&self.conn).await.map_err(ApiError::from)?;
-        let title = Title::new(updated.title).map_err(|e| {
-            ApiError::with_inner_error(format!(
-                "invalid title in DB after update for article[{id}]: {e}"
-            ))
-        })?;
-        let content = Content::new(updated.content).map_err(|e| {
-            ApiError::with_inner_error(format!(
-                "invalid content in DB after update for article[{id}]: {e}"
-            ))
-        })?;
+        let updated = model.update(&self.conn).await.map_err(map_db_error)?;
+        let title =
+            Title::new(updated.title).map_err(|e| RepositoryError::BadData(e.to_string()))?;
+        let content =
+            Content::new(updated.content).map_err(|e| RepositoryError::BadData(e.to_string()))?;
         Ok(Article::from_repo(
             updated.id,
             title,

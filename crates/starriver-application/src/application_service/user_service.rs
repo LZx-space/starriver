@@ -1,24 +1,26 @@
 use std::convert::Infallible;
 
-use crate::query::user_query_service::{DefaultUserQueryService, UserQueryService};
-use crate::repository::user_repository::DefaultUserRepository;
-use crate::user_dto::req::{EmailVerifyCmd, UserCmd};
 use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
-use starriver_domain::user::repository::UserRepository;
-use starriver_domain::user::{factory::UserFactory, policy::UserLockPolicy};
-use starriver_infrastructure::model::aggregate_revision::Revision;
-use starriver_infrastructure::security::password_encoder::Argon2PasswordEncoder;
-use starriver_infrastructure::service::cache_service::VerificationCodeCache;
-use starriver_infrastructure::service::config_service::UserPolicy as UserPolicyConfig;
-use starriver_infrastructure::service::email_service::EmailClient;
-use starriver_infrastructure::util::regex_patterns::Patterns;
-use starriver_infrastructure::{
+use starriver_base::dto::user_dto::req::{EmailVerifyCmd, UserCmd};
+use starriver_base::query::user_query_service::DefaultUserQueryService;
+use starriver_base::query::user_query_service::UserQueryService;
+use starriver_base::repository::user_repository::DefaultUserRepository;
+use starriver_base::security::password_encoder::Argon2PasswordEncoder;
+use starriver_base::service::cache_service::VerificationCodeCache;
+use starriver_base::service::config_service::UserPolicy as UserPolicyConfig;
+use starriver_base::service::email_service::EmailClient;
+use starriver_base::util::regex_patterns::Patterns;
+use starriver_base::{
     error::ApiError,
     security::authentication::{
         _default_impl::{AuthenticatedUser, UsernamePasswordCredentials},
         core::authenticator::AuthenticationError,
     },
 };
+use starriver_domain::common_error::DomainError;
+use starriver_domain::common_model::Revision;
+use starriver_domain::user::repository::UserRepository;
+use starriver_domain::user::{factory::UserFactory, policy::UserLockPolicy};
 use tracing::{error, info, warn};
 
 pub struct UserApplication {
@@ -41,8 +43,11 @@ impl UserApplication {
         patterns: Patterns,
         user_policy_cfg: UserPolicyConfig,
     ) -> Self {
-        let factory = UserFactory::new(patterns);
-        let user_lock_policy = UserLockPolicy::new(&user_policy_cfg);
+        let factory = UserFactory::new(patterns.email, patterns.username, patterns.password);
+        let user_lock_policy = UserLockPolicy::new(
+            user_policy_cfg.bad_password_window_mins,
+            user_policy_cfg.max_bad_password_attempts,
+        );
 
         let query = DefaultUserQueryService { conn: conn.clone() };
         let repo = DefaultUserRepository::new(conn.clone(), factory.clone());
@@ -65,13 +70,20 @@ impl UserApplication {
         self.verification_code_cache
             .verify_email_by_verification_code(email, email_code.as_str())
             .await?;
-        let user = self.factory.create_user(
-            cmd.username.as_str(),
-            cmd.password.as_str(),
-            email,
-            &self.password_encoder,
-        )?;
-        self.repo.insert(user).await.map(|_| ())
+        let user = self
+            .factory
+            .create_user(
+                cmd.username.as_str(),
+                cmd.password.as_str(),
+                email,
+                &self.password_encoder,
+            )
+            .map_err(|e| ApiError::with_bad_request(e.to_string()))?;
+        self.repo
+            .insert(user)
+            .await
+            .map_err(|e| ApiError::with_bad_request(e.to_string()))
+            .map(|_| ())
     }
 
     pub async fn authenticate(
@@ -166,7 +178,7 @@ impl UserApplication {
                 email: user.email().to_string(),
                 authorities: vec![],
             }),
-            Err(AuthenticationError::BadPassword) => {
+            Err(DomainError::BadPassword) => {
                 if user.state() == &starriver_domain::user::value_object::UserState::Locked {
                     warn!(
                         user.id = %user.id(),
@@ -181,7 +193,10 @@ impl UserApplication {
                 })?;
                 Err(AuthenticationError::BadPassword)
             }
-            Err(e) => Err(e),
+            Err(e) => {
+                error!(username = %username, error = %e, "authenticate by password failed");
+                Err(AuthenticationError::InnerError)
+            }
         }
     }
 }

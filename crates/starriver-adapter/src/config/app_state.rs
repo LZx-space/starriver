@@ -3,11 +3,11 @@ use sea_orm::{Database, DatabaseConnection};
 use starriver_application::article_service::ArticleApplication;
 use starriver_application::category_service::CategoryApplication;
 use starriver_application::user_service::UserApplication;
-use starriver_infrastructure::security::authentication::web::config::AuthConfig;
-use starriver_infrastructure::service::cache_service::VerificationCodeCache;
-use starriver_infrastructure::service::config_service::{AppConfig, Uploads};
-use starriver_infrastructure::service::email_service::EmailClient;
-use starriver_infrastructure::util::regex_patterns::Patterns;
+use starriver_base::security::authentication::web::config::AuthConfig;
+use starriver_base::service::cache_service::VerificationCodeCache;
+use starriver_base::service::config_service::{AppConfig, Uploads};
+use starriver_base::service::email_service::EmailClient;
+use starriver_base::util::regex_patterns::Patterns;
 use std::sync::Arc;
 
 /// 应用的各个状态

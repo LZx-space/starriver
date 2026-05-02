@@ -3,14 +3,19 @@ use sea_orm::{
     ActiveValue::{NotSet, Set, Unchanged},
     EntityTrait,
 };
-use starriver_domain::category::{entity::Category, repository::CategoryRepository};
-use starriver_infrastructure::{
-    error::ApiError, model::aggregate_revision::Revision, util::db::TransactionalConn,
+use starriver_domain::{
+    category::{entity::Category, repository::CategoryRepository},
+    common_error::RepositoryError,
+    common_model::Revision,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::db::category_do::{ActiveModel, Entity};
+use crate::{
+    db::category_do::{ActiveModel, Entity},
+    error_mapping::map_db_error,
+    util::db::TransactionalConn,
+};
 
 pub struct DefaultCategoryRepository<T> {
     conn: T,
@@ -35,15 +40,16 @@ impl<T> CategoryRepository for DefaultCategoryRepository<T>
 where
     T: TransactionalConn,
 {
-    async fn find_by_id(&self, id: Uuid) -> Result<Option<Category>, ApiError> {
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<Category>, RepositoryError> {
         let category = Entity::find_by_id(id)
             .one(&self.conn)
-            .await?
+            .await
+            .map_err(map_db_error)?
             .map(|e| Category::from_repo(e.id, e.name));
         Ok(category)
     }
 
-    async fn insert(&self, category: Category) -> Result<Category, ApiError> {
+    async fn insert(&self, category: Category) -> Result<Category, RepositoryError> {
         let (id, name) = category.dissolve();
         ActiveModel {
             id: Set(id),
@@ -54,10 +60,10 @@ where
         .insert(&self.conn)
         .await
         .map(|e| Category::from_repo(e.id, e.name))
-        .map_err(ApiError::from)
+        .map_err(map_db_error)
     }
 
-    async fn update(&self, category: Revision<Category>) -> Result<Category, ApiError> {
+    async fn update(&self, category: Revision<Category>) -> Result<Category, RepositoryError> {
         let (id, name) = category.dissolve().1.dissolve();
         ActiveModel {
             id: Unchanged(id),
@@ -68,13 +74,14 @@ where
         .update(&self.conn)
         .await
         .map(|e| Category::from_repo(e.id, e.name))
-        .map_err(ApiError::from)
+        .map_err(map_db_error)
     }
 
-    async fn delete(&self, id: Uuid) -> Result<bool, ApiError> {
+    async fn delete(&self, id: Uuid) -> Result<bool, RepositoryError> {
         let result = Entity::delete_by_id(id)
             .exec(&self.conn)
-            .await?
+            .await
+            .map_err(map_db_error)?
             .rows_affected
             > 0;
         Ok(result)

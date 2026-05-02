@@ -1,22 +1,36 @@
-use starriver_infrastructure::{
-    error::ApiError, security::password_encoder::PasswordEncoder, util::regex_patterns::Patterns,
-};
+use std::sync::Arc;
+
+use regex::Regex;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::user::{
-    entity::{SecurityEvent, User},
-    value_object::{Email, Password, UserState, Username},
+use crate::{
+    common_error::DomainError,
+    common_traits::PasswordEncoder,
+    user::{
+        entity::{SecurityEvent, User},
+        value_object::{Email, Password, UserState, Username},
+    },
 };
 
 #[derive(Clone)]
 pub struct UserFactory {
-    patterns: Patterns,
+    email_regex: Arc<Regex>,
+    username_regex: Arc<Regex>,
+    password_regex: Arc<Regex>,
 }
 
 impl UserFactory {
-    pub fn new(patterns: Patterns) -> Self {
-        Self { patterns }
+    pub fn new(
+        email_regex: Arc<Regex>,
+        username_regex: Arc<Regex>,
+        password_regex: Arc<Regex>,
+    ) -> Self {
+        Self {
+            email_regex,
+            username_regex,
+            password_regex,
+        }
     }
 
     pub fn create_user(
@@ -25,10 +39,10 @@ impl UserFactory {
         password: &str,
         email: &str,
         password_encoder: &impl PasswordEncoder,
-    ) -> Result<User, ApiError> {
-        let username = Username::new(username, &self.patterns.username)?;
-        let password = Password::new(password, &self.patterns.password, password_encoder)?;
-        let email = Email::new(email, &self.patterns.email)?;
+    ) -> Result<User, DomainError> {
+        let username = Username::new(username, &self.username_regex)?;
+        let password = Password::from_raw(password, &self.password_regex, password_encoder)?;
+        let email = Email::new(email, &self.email_regex)?;
         Ok(User::new(
             Uuid::now_v7(),
             username,
@@ -50,7 +64,7 @@ impl UserFactory {
         state: UserState,
         created_at: OffsetDateTime,
         security_events: Vec<SecurityEvent>,
-    ) -> Result<User, ApiError> {
+    ) -> Result<User, DomainError> {
         let username = Username(username.to_string());
         let password = Password(password.to_string());
         let email = Email(email.to_string());

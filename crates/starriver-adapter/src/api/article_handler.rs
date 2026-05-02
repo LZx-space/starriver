@@ -1,10 +1,10 @@
 use crate::config::app_state::AppState;
 use axum::extract::State;
 use axum::response::IntoResponse;
-use starriver_application::article_dto::req::{PageQuery, UpdateArticleCmd};
-use starriver_infrastructure::error::ApiError;
-use starriver_infrastructure::extract::{Json, Multipart, Path, Query};
-use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
+use starriver_base::dto::article_dto::req::{PageQuery, UpdateArticleCmd};
+use starriver_base::error::ApiError;
+use starriver_base::extract::{Json, Multipart, Path, Query};
+use starriver_base::security::authentication::_default_impl::AuthenticatedUser;
 use uuid::Uuid;
 
 #[axum::debug_handler]

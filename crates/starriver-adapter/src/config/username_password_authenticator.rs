@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use starriver_application::user_service::UserApplication;
-use starriver_infrastructure::security::authentication::_default_impl::{
+use starriver_base::security::authentication::_default_impl::{
     AuthenticatedUser, UsernamePasswordCredentials,
 };
-use starriver_infrastructure::security::authentication::core::authenticator::{
+use starriver_base::security::authentication::core::authenticator::{
     AuthenticationError, Authenticator,
 };
 

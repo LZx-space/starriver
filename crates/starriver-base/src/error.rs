@@ -7,6 +7,7 @@ use axum::{
 };
 use sea_orm::{DbErr, TransactionError};
 use serde::Serialize;
+use starriver_domain::common_error::{DomainError, RepositoryError};
 use strum::EnumIter;
 use tracing::{error, warn};
 use validator::ValidationError;
@@ -148,6 +149,25 @@ impl Cause {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////
+
+// pub enum TransactionError {
+//     Repository(RepositoryError),
+//     Domain(DomainError),
+// }
+
+// impl From<RepositoryError> for TransactionError {
+//     fn from(error: RepositoryError) -> Self {
+//         TransactionError::Repository(error)
+//     }
+// }
+
+// impl From<DomainError> for TransactionError {
+//     fn from(error: DomainError) -> Self {
+//         TransactionError::Domain(error)
+//     }
+// }
 
 #[cfg(test)]
 mod test {

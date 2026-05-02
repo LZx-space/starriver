@@ -1,6 +1,6 @@
 pub mod req {
+    use crate::util::regex_patterns::Patterns;
     use serde::Deserialize;
-    use starriver_infrastructure::util::regex_patterns::Patterns;
     use validator::{Validate, ValidationError};
 
     #[derive(Debug, Deserialize, Validate)]

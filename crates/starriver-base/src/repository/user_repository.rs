@@ -4,6 +4,8 @@ use crate::db::user_do::Entity;
 use crate::db::user_do::Model;
 use crate::db::user_do::UserStateDo;
 use crate::db::user_security_event_do;
+use crate::error_mapping::map_db_error;
+use crate::util::db::TransactionalConn;
 use sea_orm::ActiveModelTrait;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
@@ -13,14 +15,12 @@ use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
 use sea_orm::QueryOrder;
 use sea_orm::sea_query::Cond;
+use starriver_domain::common_error::RepositoryError;
+use starriver_domain::common_model::Revision;
 use starriver_domain::user::entity::SecurityEvent;
 use starriver_domain::user::entity::User;
 use starriver_domain::user::factory::UserFactory;
 use starriver_domain::user::repository::UserRepository;
-use starriver_infrastructure::error::ApiError;
-use starriver_infrastructure::error::Cause;
-use starriver_infrastructure::model::aggregate_revision::Revision;
-use starriver_infrastructure::util::db::TransactionalConn;
 use time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -48,28 +48,29 @@ impl<T> UserRepository for DefaultUserRepository<T>
 where
     T: TransactionalConn,
 {
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, ApiError> {
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, RepositoryError> {
         find_by_username(&self.conn, username, &self.factory).await
     }
 
-    async fn find_by_id(&self, user_id: Uuid) -> Result<Option<User>, ApiError> {
+    async fn find_by_id(&self, user_id: Uuid) -> Result<Option<User>, RepositoryError> {
         let user = Entity::find_by_id(user_id)
             .one(&self.conn)
-            .await?
+            .await
+            .map_err(map_db_error)?
             .map(|e| model_to_entity(e, &self.factory))
             .transpose()?;
         Ok(user)
     }
 
-    async fn insert(&self, user: User) -> Result<User, ApiError> {
+    async fn insert(&self, user: User) -> Result<User, RepositoryError> {
         let (id, username, password, email, _, _, _) = user.dissolve();
         let username = username.as_str();
         let found = self.find_by_username(username).await?;
         if found.is_some() {
-            return Err(ApiError::new(
-                Cause::ClientBadRequest,
-                format!("username[{}] already exists", username),
-            ));
+            return Err(RepositoryError::UniqueViolation {
+                constraint: "username",
+                value: username.to_string(),
+            });
         }
         ActiveModel {
             id: Set(id),
@@ -82,19 +83,21 @@ where
         }
         .insert(&self.conn)
         .await
+        .map_err(map_db_error)
         .map(|e| model_to_entity(e, &self.factory))?
     }
 
-    async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, ApiError> {
+    async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, RepositoryError> {
         let result = Entity::delete_by_id(user_id)
             .exec(&self.conn)
-            .await?
+            .await
+            .map_err(map_db_error)?
             .rows_affected
             > 0;
         Ok(result)
     }
 
-    async fn update(&self, user: Revision<User>) -> Result<User, ApiError> {
+    async fn update(&self, user: Revision<User>) -> Result<User, RepositoryError> {
         let (original, modified) = user.dissolve();
         let (user_id, username, password, email, state, created_at, security_events) =
             original.dissolve();
@@ -114,7 +117,8 @@ where
                 updated_at: NotSet,
             }
             .insert(&self.conn)
-            .await?;
+            .await
+            .map_err(map_db_error)?;
         }
 
         // 更新用户
@@ -141,7 +145,8 @@ where
         }
         .update(&self.conn)
         .await
-        .map(|e| model_to_entity(e, &self.factory))?
+        .map(|e| model_to_entity(e, &self.factory))
+        .map_err(map_db_error)?
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -152,11 +157,12 @@ async fn find_by_username(
     conn: &impl sea_orm::ConnectionTrait,
     username: &str,
     factory: &UserFactory,
-) -> Result<Option<User>, ApiError> {
+) -> Result<Option<User>, RepositoryError> {
     let user = Entity::find()
         .filter(Column::Username.eq(username))
         .one(conn)
-        .await?
+        .await
+        .map_err(map_db_error)?
         .map(|e| model_to_entity(e, factory))
         .transpose()?;
     if let Some(mut user) = user {
@@ -172,7 +178,8 @@ async fn find_by_username(
             })
             .order_by_desc(user_security_event_do::Column::CreatedAt) // 按时间倒序取最新
             .all(conn)
-            .await?
+            .await
+            .map_err(map_db_error)?
             .iter()
             .map(|e| {
                 SecurityEvent::from_repo(
@@ -193,14 +200,16 @@ async fn find_by_username(
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[inline]
-fn model_to_entity(m: Model, factory: &UserFactory) -> Result<User, ApiError> {
-    factory.from_repo(
-        m.id,
-        m.username.as_str(),
-        m.password.as_str(),
-        m.email.as_str(),
-        m.state.into(),
-        m.created_at,
-        vec![],
-    )
+fn model_to_entity(m: Model, factory: &UserFactory) -> Result<User, RepositoryError> {
+    factory
+        .from_repo(
+            m.id,
+            m.username.as_str(),
+            m.password.as_str(),
+            m.email.as_str(),
+            m.state.into(),
+            m.created_at,
+            vec![],
+        )
+        .map_err(|e| RepositoryError::BadData(e.to_string()))
 }

@@ -2,7 +2,8 @@ use std::fmt::{Display, Formatter};
 
 use chrono::Local;
 use serde::Serialize;
-use starriver_infrastructure::error::ApiError;
+
+use crate::common_error::DomainError;
 
 #[derive(Clone, Default, Debug, Eq, PartialEq, Serialize)]
 pub enum ArticleState {
@@ -26,9 +27,9 @@ impl Display for ArticleState {
 pub struct Title(pub(crate) String);
 
 impl Title {
-    pub fn new(value: String) -> Result<Self, ApiError> {
+    pub fn new(value: String) -> Result<Self, DomainError> {
         if value.chars().count() > 50 {
-            return Err(ApiError::with_bad_request("title too long"));
+            return Err(DomainError::ArticleTitleTooLong(value));
         }
         Ok(Self(value))
     }
@@ -50,9 +51,9 @@ impl Display for Title {
 pub struct Content(pub(crate) String);
 
 impl Content {
-    pub fn new(value: String) -> Result<Self, ApiError> {
+    pub fn new(value: String) -> Result<Self, DomainError> {
         if value.chars().count() > 50000 {
-            return Err(ApiError::with_bad_request("content too long"));
+            return Err(DomainError::ArticleContentTooLong(value));
         }
         Ok(Self(value))
     }

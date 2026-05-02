@@ -1,7 +1,8 @@
 use derive_getters::{Dissolve, Getters};
 use serde::Serialize;
-use starriver_infrastructure::error::ApiError;
 use uuid::Uuid;
+
+use crate::common_error::DomainError;
 
 #[derive(Clone, Debug, Getters, Dissolve, Serialize)]
 pub struct Category {
@@ -10,9 +11,9 @@ pub struct Category {
 }
 
 impl Category {
-    pub fn new(name: String) -> Result<Self, ApiError> {
+    pub fn new(name: String) -> Result<Self, DomainError> {
         if name.chars().count() > 10 {
-            return Err(ApiError::with_bad_request("类别名称过长"));
+            return Err(DomainError::ArticleCategoryTooLong(name));
         }
         Ok(Self {
             id: Uuid::now_v7(),
@@ -24,9 +25,9 @@ impl Category {
         Self { id, name }
     }
 
-    pub fn update(&mut self, name: String) -> Result<(), ApiError> {
+    pub fn update(&mut self, name: String) -> Result<(), DomainError> {
         if name.chars().count() > 10 {
-            return Err(ApiError::with_bad_request("类别名称过长"));
+            return Err(DomainError::ArticleCategoryTooLong(name));
         }
         self.name = name;
         Ok(())

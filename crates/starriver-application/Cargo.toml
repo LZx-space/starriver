@@ -8,8 +8,8 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+starriver-base = { path = "../starriver-base" }
 starriver-domain = { path = "../starriver-domain" }
-starriver-infrastructure = { path = "../starriver-infrastructure" }
 
 axum-extra = { workspace = true }
 axum-valid = { workspace = true }

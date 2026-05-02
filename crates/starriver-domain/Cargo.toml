@@ -8,14 +8,13 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-starriver-infrastructure = { path = "../starriver-infrastructure" }
-
 anyhow = { workspace = true }
 argon2 = { workspace = true }
 chrono = { workspace = true }
 bytes = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
+thiserror = { workspace = true }
 time = { workspace = true }
 
 uuid = { workspace = true }

@@ -1,40 +1,49 @@
-use crate::article_dto::req::{PageQuery, UpdateArticleCmd};
-use crate::article_dto::res::ArticleAttachment;
-use crate::dto::article_dto::res::{ArticleDetail, ArticleExcerpt};
-use crate::query::article_query_service::{ArticleQueryService, DefaultArticleQueryService};
-use crate::repository::article_repository::DefaultArticleRepository;
 use infer::MatcherType;
 use sea_orm::{DatabaseConnection, TransactionTrait};
+use starriver_base::dto::article_dto::req::{PageQuery, UpdateArticleCmd};
+use starriver_base::dto::article_dto::res::{ArticleAttachment, ArticleDetail, ArticleExcerpt};
+use starriver_base::error::{ApiError, Cause};
+use starriver_base::error_mapping::map_db_error;
+use starriver_base::extract::Multipart;
+use starriver_base::model::page::PageResult;
+use starriver_base::query::article_query_service::ArticleQueryService;
+use starriver_base::repository::article_repository::DefaultArticleRepository;
+use starriver_base::security::authentication::_default_impl::AuthenticatedUser;
+use starriver_base::service::config_service::Uploads;
+use starriver_base::service::file_service::{delete_file, storage};
+use starriver_base::util::db::{TransactionManager, TransactionalRepository};
 use starriver_domain::article::domain_service::AttachmentService;
 use starriver_domain::article::entity::{Article, Attachment};
 use starriver_domain::article::params::ArticleUpdate;
 use starriver_domain::article::repository::ArticleRepository;
-use starriver_infrastructure::error::{ApiError, Cause};
-use starriver_infrastructure::extract::Multipart;
-use starriver_infrastructure::model::aggregate_revision::Revision;
-use starriver_infrastructure::model::page::PageResult;
-use starriver_infrastructure::security::authentication::_default_impl::AuthenticatedUser;
-use starriver_infrastructure::service::config_service::Uploads;
-use starriver_infrastructure::service::file_service::{delete_file, storage};
+use starriver_domain::common_error::RepositoryError;
+use starriver_domain::common_model::Revision;
 
 use std::path::PathBuf;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
-pub struct ArticleApplication {
-    conn: DatabaseConnection,
+pub struct ArticleApplication<Q, R> {
+    // conn: DatabaseConnection,
     upload_cfg: Uploads,
-    query: DefaultArticleQueryService,
-    repo: DefaultArticleRepository<DatabaseConnection>,
+    query: Q,
+    repo: TransactionManager<R>,
 }
 
-impl ArticleApplication {
+impl<Q, R> ArticleApplication<Q, R>
+where
+    Q: ArticleQueryService,
+    R: ArticleRepository + TransactionalRepository,
+{
     /// 新建
-    pub fn new(conn: DatabaseConnection, upload_cfg: Uploads) -> Self {
-        let query = DefaultArticleQueryService { conn: conn.clone() };
-        let repo = DefaultArticleRepository::new(conn.clone());
+    pub fn new(
+        conn: DatabaseConnection,
+        upload_cfg: Uploads,
+        query: Q,
+        repo: TransactionManager<R>,
+    ) -> Self {
         Self {
-            conn,
+            // conn,
             upload_cfg,
             query,
             repo,
@@ -70,8 +79,14 @@ impl ArticleApplication {
 
     pub async fn create_draft(&self, author: AuthenticatedUser) -> Result<ArticleDetail, ApiError> {
         let author_id = author.id;
-        let draft_article = Article::new_empty_draft(author_id)?;
-        let created = self.repo.add(draft_article).await?;
+        let draft_article =
+            Article::new_empty_draft(author_id).map_err(ApiError::with_bad_request)?;
+        let created = self
+            .repo
+            .inner()
+            .add(draft_article)
+            .await
+            .map_err(ApiError::with_bad_request)?;
         let article_id = created.id().to_owned();
         self.find(article_id).await
     }
@@ -87,20 +102,40 @@ impl ArticleApplication {
             article_id = %id,
             "updating article"
         );
-        let tx = self.conn.begin().await.map_err(ApiError::from)?;
-        let tx_repo = DefaultArticleRepository::new(tx);
-        match tx_update_article(id, cmd, &tx_repo).await {
-            Ok(_) => {
-                info!(article_id = %id, "article updated successfully");
-                tx_repo.conn().commit().await?;
-                Ok(())
-            }
-            Err(err) => {
-                warn!(article_id = %id, error = %err, "article update failed, rolling back");
-                tx_repo.conn().rollback().await?;
-                Err(err)
-            }
-        }
+        self.repo.execute(|r| async {
+            let found = r
+                .find_by_id(id)
+                .await?
+                .ok_or(RepositoryError::NotFound("".to_string()))?;
+            let cmd = ArticleUpdate {
+                title: cmd.title,
+                content: cmd.content,
+                category_id: cmd.category_id,
+                attachment_ids: cmd.attachment_ids,
+                published: cmd.publish,
+            };
+            let original = found.clone();
+            found.update(cmd).map_err(ApiError::with_bad_request)?;
+            let x = r.update(Revision::new(original, found)).await?;
+            Ok(x)
+        });
+
+        todo!()
+        // let tx = self.repo.begin().await.map_err(ApiError::from)?;
+        // let tx_repo = DefaultArticleRepository::new(tx);
+
+        // match tx_update_article(id, cmd, &tx_repo).await {
+        //     Ok(_) => {
+        //         info!(article_id = %id, "article updated successfully");
+        //         tx_repo.conn().commit().await?;
+        //         Ok(())
+        //     }
+        //     Err(err) => {
+        //         warn!(article_id = %id, error = %err, "article update failed, rolling back");
+        //         tx_repo.conn().rollback().await?;
+        //         Err(err)
+        //     }
+        // }
     }
 
     /// 通常富文本编辑器展示一个附件需要上传
@@ -173,7 +208,10 @@ impl ArticleApplication {
             article_id = %id,
             "deleting article"
         );
-        self.repo.delete_by_id(id).await
+        self.repo
+            .delete_by_id(id)
+            .await
+            .map_err(ApiError::with_bad_request)
     }
 }
 
@@ -183,9 +221,13 @@ async fn tx_update_article(
     cmd: UpdateArticleCmd,
     tx_repo: &DefaultArticleRepository<sea_orm::DatabaseTransaction>,
 ) -> Result<Article, ApiError> {
-    let mut found = tx_repo.find_by_id(id).await?.ok_or_else(|| {
-        ApiError::new(Cause::ClientBadRequest, format!("article[{}]not exist", id))
-    })?;
+    let mut found = tx_repo
+        .find_by_id(id)
+        .await
+        .map_err(ApiError::with_bad_request)?
+        .ok_or_else(|| {
+            ApiError::new(Cause::ClientBadRequest, format!("article[{}]not exist", id))
+        })?;
     let cmd = ArticleUpdate {
         title: cmd.title,
         content: cmd.content,
@@ -194,8 +236,11 @@ async fn tx_update_article(
         published: cmd.publish,
     };
     let original = found.clone();
-    found.update(cmd)?;
-    tx_repo.update(Revision::new(original, found)).await
+    found.update(cmd).map_err(ApiError::with_bad_request)?;
+    tx_repo
+        .update(Revision::new(original, found))
+        .await
+        .map_err(ApiError::with_bad_request)
 }
 
 /// # return
@@ -206,13 +251,22 @@ async fn tx_upload_attachement(
     tx_repo: &DefaultArticleRepository<sea_orm::DatabaseTransaction>,
 ) -> Result<Article, ApiError> {
     // 将附件信息保存到博客中
-    let mut found = tx_repo.find_by_id(article_id).await?.ok_or_else(|| {
-        ApiError::new(
-            Cause::ClientBadRequest,
-            format!("article[{}]not exist", article_id),
-        )
-    })?;
+    let mut found = tx_repo
+        .find_by_id(article_id)
+        .await
+        .map_err(ApiError::with_bad_request)?
+        .ok_or_else(|| {
+            ApiError::new(
+                Cause::ClientBadRequest,
+                format!("article[{}]not exist", article_id),
+            )
+        })?;
     let original = found.clone();
-    found.add_attachment(attachment)?;
-    tx_repo.update(Revision::new(original, found)).await
+    found
+        .add_attachment(attachment)
+        .map_err(ApiError::with_bad_request)?;
+    tx_repo
+        .update(Revision::new(original, found))
+        .await
+        .map_err(ApiError::with_bad_request)
 }

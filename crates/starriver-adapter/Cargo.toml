@@ -9,7 +9,7 @@ workspace = true
 
 [dependencies]
 starriver-application = { path = "../starriver-application" }
-starriver-infrastructure = { path = "../starriver-infrastructure" }
+starriver-base = { path = "../starriver-base" }
 
 axum = { workspace = true }
 axum-extra = { workspace = true }

@@ -1,15 +1,13 @@
-use crate::user::{
-    policy::UserLockPolicy,
-    value_object::{Email, Password, SecurityEventType, UserState, Username},
+use crate::{
+    common_error::DomainError,
+    common_traits::PasswordEncoder,
+    user::{
+        policy::UserLockPolicy,
+        value_object::{Email, Password, SecurityEventType, UserState, Username},
+    },
 };
 use derive_getters::{Dissolve, Getters};
 use regex::Regex;
-use starriver_infrastructure::{
-    error::ApiError,
-    security::{
-        authentication::core::authenticator::AuthenticationError, password_encoder::PasswordEncoder,
-    },
-};
 use time::OffsetDateTime;
 
 use uuid::Uuid;
@@ -54,8 +52,8 @@ impl User {
         raw_password: &str,
         regex: &Regex,
         encoder: &impl PasswordEncoder,
-    ) -> Result<Password, ApiError> {
-        let pwd = Password::new(raw_password, regex, encoder)?;
+    ) -> Result<Password, DomainError> {
+        let pwd = Password::from_raw(raw_password, regex, encoder)?;
         Ok(pwd)
     }
 
@@ -71,12 +69,12 @@ impl User {
         raw_pwd: &str,
         policy: &UserLockPolicy,
         encoder: &impl PasswordEncoder,
-    ) -> Result<(), AuthenticationError> {
+    ) -> Result<(), DomainError> {
         // 先检查用户状态
         match self.state {
             UserState::Active => {}
-            UserState::Locked => return Err(AuthenticationError::UserLocked),
-            UserState::Disabled => return Err(AuthenticationError::UserDisabled),
+            UserState::Locked => return Err(DomainError::UserLocked),
+            UserState::Disabled => return Err(DomainError::UserDisabled),
         };
 
         encoder
@@ -94,7 +92,7 @@ impl User {
                 if policy.should_lock(&self.security_events) {
                     self.state = UserState::Locked;
                 }
-                AuthenticationError::BadPassword
+                DomainError::BadPassword
             })?
     }
 

@@ -1,11 +1,13 @@
 use std::collections::HashSet;
 
-use crate::article::{
-    params::ArticleUpdate,
-    value_object::{ArticleState, Content, Title},
+use crate::{
+    article::{
+        params::ArticleUpdate,
+        value_object::{ArticleState, Content, Title},
+    },
+    common_error::DomainError,
 };
 use derive_getters::{Dissolve, Getters};
-use starriver_infrastructure::error::ApiError;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -72,7 +74,7 @@ impl Article {
     }
 
     /// 创建一个空的草稿，关联作者ID，并且其自身ID需被用于附件等资源关联
-    pub fn new_empty_draft(author_id: Uuid) -> Result<Self, ApiError> {
+    pub fn new_empty_draft(author_id: Uuid) -> Result<Self, DomainError> {
         let title = Title::draft();
         let content = Content::new(String::new())?;
         Ok(Self {
@@ -88,13 +90,13 @@ impl Article {
     }
 
     /// 添加附件
-    pub fn add_attachment(&mut self, attachment: Attachment) -> Result<(), ApiError> {
+    pub fn add_attachment(&mut self, attachment: Attachment) -> Result<(), DomainError> {
         self.attachments.push(attachment);
         Ok(())
     }
 
     /// 非附件属性更新
-    pub fn update(&mut self, update: ArticleUpdate) -> Result<(), ApiError> {
+    pub fn update(&mut self, update: ArticleUpdate) -> Result<(), DomainError> {
         self.title = Title::new(update.title)?;
         self.content = Content::new(update.content)?;
         self.category_id = Some(update.category_id);
@@ -117,15 +119,15 @@ impl Article {
     }
 
     /// 发布博客，将状态从草稿变为已发布
-    pub fn publish(&mut self) -> Result<(), ApiError> {
+    pub fn publish(&mut self) -> Result<(), DomainError> {
         if self.title.0.is_empty() {
-            return Err(ApiError::with_bad_request("title can't be empty"));
+            return Err(DomainError::ArticleTitleIsEmpty);
         }
         if self.content.0.is_empty() {
-            return Err(ApiError::with_bad_request("content can't be empty"));
+            return Err(DomainError::ArticleContentIsEmpty);
         }
         if self.category_id().is_none() {
-            return Err(ApiError::with_bad_request("category can't be empty"));
+            return Err(DomainError::ArticleCategoryIsNone);
         }
         self.state = ArticleState::Published;
         self.published_at = Some(OffsetDateTime::now_utc());

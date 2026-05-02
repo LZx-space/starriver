@@ -1,5 +1,4 @@
 use crate::user::{entity::SecurityEvent, value_object::SecurityEventType};
-use starriver_infrastructure::service::config_service::UserPolicy;
 use std::ops::Add;
 use std::time::Duration;
 use time::OffsetDateTime;
@@ -11,10 +10,10 @@ pub struct UserLockPolicy {
 }
 
 impl UserLockPolicy {
-    pub fn new(cfg: &UserPolicy) -> Self {
+    pub fn new(bad_password_window_mins: u64, max_bad_password_attempts: usize) -> Self {
         Self {
-            bad_password_window_mins: cfg.bad_password_window_mins,
-            max_bad_password_attempts: cfg.max_bad_password_attempts,
+            bad_password_window_mins,
+            max_bad_password_attempts,
         }
     }
 

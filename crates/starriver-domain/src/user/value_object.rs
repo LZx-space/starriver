@@ -2,10 +2,8 @@ use std::fmt::Display;
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use starriver_infrastructure::{
-    error::{ApiError, Cause},
-    security::password_encoder::PasswordEncoder,
-};
+
+use crate::{common_error::DomainError, common_traits::PasswordEncoder};
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub enum UserState {
@@ -24,12 +22,9 @@ pub enum UserState {
 pub struct Username(pub(crate) String);
 
 impl Username {
-    pub fn new(username: &str, regex: &Regex) -> Result<Self, ApiError> {
+    pub fn new(username: &str, regex: &Regex) -> Result<Self, DomainError> {
         if !regex.is_match(username) {
-            return Err(ApiError::new(
-                Cause::ClientBadRequest,
-                "Invalid username format".to_string(),
-            ));
+            return Err(DomainError::InvalidUsernameFormat);
         }
         Ok(Self(username.to_string()))
     }
@@ -45,21 +40,18 @@ impl Username {
 pub struct Password(pub(crate) String);
 
 impl Password {
-    pub fn new(
+    pub fn from_raw(
         password: &str,
         regex: &Regex,
         encoder: &impl PasswordEncoder,
-    ) -> Result<Self, ApiError> {
+    ) -> Result<Self, DomainError> {
         if !regex.is_match(password) {
-            return Err(ApiError::new(
-                Cause::ClientBadRequest,
-                "Invalid password format".to_string(),
-            ));
+            return Err(DomainError::InvalidPasswordFormat);
         }
-        let hashed_string = encoder
+        let hashed = encoder
             .encode(password)
-            .map_err(|e| ApiError::new(Cause::ClientBadRequest, e.to_string()))?;
-        Ok(Self(hashed_string))
+            .map_err(|e| DomainError::PasswordEncoding(e.to_string()))?;
+        Ok(Self(hashed))
     }
 
     pub fn as_str(&self) -> &str {
@@ -73,12 +65,9 @@ impl Password {
 pub struct Email(pub(crate) String);
 
 impl Email {
-    pub fn new(email: &str, regex: &Regex) -> Result<Self, ApiError> {
+    pub fn new(email: &str, regex: &Regex) -> Result<Self, DomainError> {
         if !regex.is_match(email) {
-            return Err(ApiError::new(
-                Cause::ClientBadRequest,
-                "Invalid email format".to_string(),
-            ));
+            return Err(DomainError::InvalidEmailFormat);
         }
         Ok(Self(email.to_string()))
     }

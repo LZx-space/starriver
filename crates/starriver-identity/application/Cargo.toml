@@ -1,0 +1,18 @@
+[package]
+name = "starriver-identity-application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+starriver-identity-domain = { path = "../domain" }
+
+regex = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+validator = { workspace = true }

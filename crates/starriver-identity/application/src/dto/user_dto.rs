@@ -1,8 +1,7 @@
 pub mod req {
     use serde::Deserialize;
+    use starriver_shared_base::regex_patterns::Patterns;
     use validator::{Validate, ValidationError};
-
-    use crate::common::regex_patterns::Patterns;
 
     #[derive(Debug, Deserialize, Validate)]
     #[validate(context = Patterns)]
@@ -21,11 +20,6 @@ pub mod req {
     pub struct EmailVerifyCmd {
         #[validate(email)]
         pub email: String,
-    }
-
-    pub struct UsernamePasswordCredentials {
-        pub username: String,
-        pub password: String,
     }
 
     //////////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,69 @@
+use sea_orm::entity::prelude::*;
+use sea_orm::{DeriveActiveEnum, EnumIter};
+use starriver_blogging_domain::post::value_object::PostState;
+use time::OffsetDateTime;
+
+/// 博客
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(schema_name = "public", table_name = "article")]
+pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub id: Uuid,
+    #[sea_orm(indexed)]
+    pub title: String,
+    #[sea_orm(column_type = "Text")]
+    pub content: String,
+    pub state: PostStatePo,
+    pub author_id: Uuid,
+    pub category_id: Uuid,
+    #[sea_orm(indexed)]
+    pub published_at: Option<OffsetDateTime>,
+    pub created_at: OffsetDateTime,
+    pub updated_at: Option<OffsetDateTime>,
+}
+
+impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::category_po::Entity",
+        from = "Column::CategoryId",
+        to = "super::category_po::Column::Id"
+    )]
+    Category,
+}
+
+//////////////////////////////////////////////////////////
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
+pub enum PostStatePo {
+    #[sea_orm(num_value = 0)]
+    #[default]
+    Draft,
+    #[sea_orm(num_value = 1)]
+    Published,
+}
+
+//////////////////////////////////////////////////////////
+
+impl From<PostStatePo> for PostState {
+    fn from(value: PostStatePo) -> Self {
+        if value.eq(&PostStatePo::Draft) {
+            PostState::Draft
+        } else {
+            PostState::Published
+        }
+    }
+}
+
+impl From<PostState> for PostStatePo {
+    fn from(value: PostState) -> Self {
+        if value.eq(&PostState::Draft) {
+            PostStatePo::Draft
+        } else {
+            PostStatePo::Published
+        }
+    }
+}

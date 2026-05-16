@@ -2,21 +2,20 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
-use starriver_identity_application::{
-    common::regex_patterns::Patterns, service::user_service::UserApplicationService,
-};
-use starriver_identity_domain::aggregate::user_policy::BadPassswordPolicy;
+use starriver_identity_application::service::user_service::UserApplicationService;
+use starriver_identity_domain::user::policy::BadPasswordPolicy;
+use starriver_shared_base::regex_patterns::Patterns;
+use starriver_shared_framework::principal::Auth;
 
 use crate::{
-    config::{AuthConfig, IdentityConfig},
+    config::IdentityConfig,
     port_out::{
         persistence::{
             query::user_query_port::DefaultUserQueryPort,
             repository::user_repository::DefaultUserRepository,
         },
         service::{
-            password_encoder::DefaultPasswordEncoder,
-            verification_code_port::DefaultVerificationCodePort,
+            email_verification_port::SmtpVerificationPort, password_encoder::Argon2PasswordEncoder,
         },
     },
 };
@@ -26,37 +25,41 @@ use crate::{
 pub struct IdentityState {
     pub conn: DatabaseConnection,
     pub patterns: Patterns,
-    pub auth_cfg: AuthConfig,
+    pub auth: Auth,
     //////////////////////////////////////////
     pub user_service: Arc<
         UserApplicationService<
             DefaultUserQueryPort,
             DefaultUserRepository<DatabaseConnection>,
-            DefaultVerificationCodePort,
-            DefaultPasswordEncoder,
+            SmtpVerificationPort,
+            Argon2PasswordEncoder,
         >,
     >,
 }
 
 impl IdentityState {
-    pub async fn new(conn: DatabaseConnection, cfg: &IdentityConfig) -> Result<Self, String> {
+    pub async fn new(
+        conn: DatabaseConnection,
+        auth: Auth,
+        cfg: &IdentityConfig,
+    ) -> Result<Self, String> {
         let patterns = Patterns::new(
             &cfg.regexes.email,
             &cfg.regexes.username,
             &cfg.regexes.password,
         )
         .map_err(|e| e.to_string())?;
-        let auth_cfg = cfg.auth_cfg.clone();
         ////////////////////////////////////////////////////////
 
         let query = DefaultUserQueryPort { conn: conn.clone() };
         let repo = DefaultUserRepository::new(conn.clone(), patterns.clone());
-        let verification_code_port = DefaultVerificationCodePort {};
-        let bad_password_policy = BadPassswordPolicy {
+        let verification_code_port =
+            SmtpVerificationPort::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
+        let bad_password_policy = BadPasswordPolicy {
             window_minutes: cfg.bad_password.window_minutes,
             max_attempts: cfg.bad_password.max_attempts as usize,
         };
-        let password_encoder = DefaultPasswordEncoder {};
+        let password_encoder = Argon2PasswordEncoder::default().into();
         let user_service = UserApplicationService::new(
             query,
             repo,
@@ -69,7 +72,7 @@ impl IdentityState {
         Ok(IdentityState {
             conn,
             patterns,
-            auth_cfg,
+            auth,
             user_service,
         })
     }
@@ -81,8 +84,8 @@ impl FromRef<IdentityState> for Patterns {
     }
 }
 
-impl FromRef<IdentityState> for AuthConfig {
-    fn from_ref(state: &IdentityState) -> AuthConfig {
-        state.auth_cfg.clone()
+impl FromRef<IdentityState> for Auth {
+    fn from_ref(state: &IdentityState) -> Auth {
+        state.auth.clone()
     }
 }

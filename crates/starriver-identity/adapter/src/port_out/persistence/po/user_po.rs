@@ -2,7 +2,7 @@ use sea_orm::DerivePrimaryKey;
 use sea_orm::entity::prelude::*;
 use sea_orm::sqlx::types::time::OffsetDateTime;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
-use starriver_identity_domain::aggregate::user_value_object::UserState;
+use starriver_identity_domain::user::value_object::UserState;
 use uuid::Uuid;
 
 /// 用户

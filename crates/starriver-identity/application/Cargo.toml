@@ -9,10 +9,12 @@ workspace = true
 
 [dependencies]
 starriver-identity-domain = { path = "../domain" }
+starriver-shared-base = { workspace = true }
 
 regex = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+time = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 validator = { workspace = true }

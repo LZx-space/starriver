@@ -3,3 +3,13 @@ name = "starriver-blogging-domain"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+starriver-shared-base = { workspace = true }
+
+chrono = { workspace = true }
+derive-getters = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }

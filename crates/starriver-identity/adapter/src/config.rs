@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct IdentityConfig {
     pub regexes: Regexes,
-    pub bad_password: BadPasssword,
-    pub auth_cfg: AuthConfig,
+    pub bad_password: BadPassword,
+    pub email_smtp: SmtpVerification,
 }
 
 #[derive(Deserialize)]
@@ -17,18 +15,17 @@ pub struct Regexes {
 }
 
 #[derive(Deserialize)]
-pub struct BadPasssword {
+pub struct BadPassword {
     pub window_minutes: u64,
     pub max_attempts: u64,
 }
 
-#[derive(Clone, Deserialize)]
-pub struct AuthConfig {
-    pub jws_secret: Arc<String>,
-}
-
-impl AuthConfig {
-    pub fn jws_secret_as_ref(&self) -> &[u8] {
-        self.jws_secret.as_bytes()
-    }
+#[derive(Deserialize)]
+pub struct SmtpVerification {
+    pub smtp_username: String,
+    pub smtp_password: String,
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub code_cache_max_capacity: u64,
+    pub code_cache_ttl_hours: u64,
 }

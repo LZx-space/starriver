@@ -10,12 +10,16 @@ workspace = true
 [dependencies]
 starriver-identity-application = { path = "../application" }
 starriver-identity-domain = { path = "../domain" }
-starriver-shared = { path = "../../starriver-shared" }
+starriver-shared-base = { workspace = true }
+starriver-shared-framework = { workspace = true }
 
+argon2 = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 axum-valid = { workspace = true }
-jsonwebtoken = { workspace = true }
+moka = { workspace = true }
+lettre = { workspace = true }
+rand = { workspace = true }
 regex = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }

@@ -1,29 +1,25 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, sync::Arc};
 
 use starriver_identity_domain::{
-    aggregate::{
-        authentication_service::AuthenticationService, user_factory::UserFactory,
-        user_policy::BadPassswordPolicy, user_repository::UserRepository,
-    },
-    common::{error::RepositoryError, traits::PasswordEncoder},
+    authentication_service::AuthenticationService,
+    password_encoder::PasswordEncoder,
+    user::{factory::UserFactory, policy::BadPasswordPolicy, repository::UserRepository},
+};
+use starriver_shared_base::{
+    authentication::UsernamePasswordCredentials, error::RepositoryError, regex_patterns::Patterns,
 };
 use tracing::{error, info, warn};
 
 use crate::{
-    common::{error::AppError, regex_patterns::Patterns},
     dto::user_dto::{
-        req::{EmailVerifyCmd, UserCmd, UsernamePasswordCredentials},
+        req::{EmailVerifyCmd, UserCmd},
         res::UserDetail,
     },
-    port_out::{user_query_port::UserQueryPort, verification_code_port::VerificationCodePort},
+    error::CtxError,
+    port_out::{email_verification_port::EmailVerificationPort, user_query_port::UserQueryPort},
 };
 
-pub struct UserApplicationService<
-    UQP: UserQueryPort,
-    REPO: UserRepository,
-    VCP: VerificationCodePort,
-    PE: PasswordEncoder,
-> {
+pub struct UserApplicationService<UQP, REPO, VCP, PE> {
     query: UQP,
     repo: REPO,
     verification_code_port: VCP,
@@ -35,7 +31,7 @@ impl<UQP, REPO, VCP, PE> UserApplicationService<UQP, REPO, VCP, PE>
 where
     UQP: UserQueryPort,
     REPO: UserRepository,
-    VCP: VerificationCodePort,
+    VCP: EmailVerificationPort,
     PE: PasswordEncoder + Clone,
 {
     /// 新建
@@ -44,8 +40,8 @@ where
         user_repo: REPO,
         verification_code_port: VCP,
         patterns: Patterns,
-        bad_password_policy: BadPassswordPolicy,
-        password_encoder: PE,
+        bad_password_policy: BadPasswordPolicy,
+        password_encoder: Arc<PE>,
     ) -> Self {
         let factory = UserFactory::new(
             patterns.email,
@@ -85,7 +81,7 @@ where
         }
     }
 
-    pub async fn register_user(&self, cmd: UserCmd) -> Result<(), AppError> {
+    pub async fn register_user(&self, cmd: UserCmd) -> Result<(), CtxError> {
         let email_code = cmd.email_code.as_str();
         let email = cmd.email.as_str();
         self.verification_code_port
@@ -100,26 +96,26 @@ where
             .insert(user)
             .await
             .map(|_| ())
-            .map_err(AppError::from)
+            .map_err(CtxError::from)
             .inspect_err(|e| error!(email=%email, error=%e, "repository insert user failed"))
     }
 
     pub async fn authenticate(
         &self,
         credentials: &UsernamePasswordCredentials,
-    ) -> Result<UserDetail, AppError> {
+    ) -> Result<UserDetail, CtxError> {
         let username = credentials.username.as_str();
         let password = credentials.password.as_str();
         let user = self
             .repo
             .find_by_username(username)
             .await
-            .map_err(AppError::from)?;
+            .map_err(CtxError::from)?;
 
         let Some(user) = user else {
             info!(username = %username, "user not found");
-            return Err(AppError::from(RepositoryError::NotFound(
-                "user not found".to_string(),
+            return Err(CtxError::from(RepositoryError::NotFound(
+                username.to_string(),
             )));
         };
 

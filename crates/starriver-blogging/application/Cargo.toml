@@ -3,3 +3,14 @@ name = "starriver-blogging-application"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+starriver-shared-base = { workspace = true }
+starriver-blogging-domain = {path = "../domain"}
+
+serde = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+validator = { workspace = true }

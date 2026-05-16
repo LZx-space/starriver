@@ -1,2 +1,2 @@
+pub mod email_verification_port;
 pub mod user_query_port;
-pub mod verification_code_port;

@@ -8,14 +8,19 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-starriver-identity-adapter = { path = "../starriver-identity/adapter" }
-# starriver-blogging-adapter = { path = "../starriver-blogging/adapter" }
+starriver-identity-adapter = { workspace = true }
+starriver-blogging-adapter = { workspace = true }
+starriver-shared-base = { workspace = true }
+starriver-shared-framework = { workspace = true }
 
 axum = { workspace = true }
+axum-extra = { workspace = true }
 config = { workspace = true }
+jsonwebtoken = { workspace = true }
 mimalloc = { version = "*", features = ["secure"] }
 sea-orm = { workspace = true }
 serde = { workspace = true }
+time = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

@@ -1,3 +1,2 @@
-pub mod error;
-pub mod model;
-pub mod traits;
+pub mod shared_error;
+pub mod shared_traits;

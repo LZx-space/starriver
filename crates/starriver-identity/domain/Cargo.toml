@@ -8,6 +8,8 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+starriver-shared-base = { workspace = true }
+
 derive-getters = { workspace = true }
 regex = { workspace = true }
 thiserror = { workspace = true }

@@ -15,7 +15,7 @@ pub mod res {
     use uuid::Uuid;
 
     #[derive(Serialize)]
-    pub struct CategoryDetail {
+    pub struct CategoryDetailDto {
         pub id: Uuid,
         pub name: String,
         pub created_at: OffsetDateTime,

@@ -37,20 +37,19 @@ pub mod res {
     use uuid::Uuid;
 
     #[derive(Serialize)]
-    pub struct PostDetail {
+    pub struct PostDetailDto {
         pub id: Uuid,
         pub title: String,
         pub content: String,
         pub state: i16,
         pub category: IdName<Uuid>,
-        pub attachments: Vec<PostAttachment>,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
         pub updated_at: Option<OffsetDateTime>,
     }
 
     #[derive(Serialize)]
-    pub struct PostExcerpt {
+    pub struct PostExcerptDto {
         pub id: Uuid,
         pub title: String,
         pub excerpt: String,
@@ -59,12 +58,5 @@ pub mod res {
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
         pub updated_at: Option<OffsetDateTime>,
-    }
-
-    #[derive(Serialize)]
-    pub struct PostAttachment {
-        pub id: Uuid,
-        pub file_name: String,
-        pub url: String,
     }
 }

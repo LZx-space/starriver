@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::dto::post_dto::{
     req::PageQuery,
-    res::{PostDetail, PostExcerpt},
+    res::{PostDetailDto, PostExcerptDto},
 };
 
 pub trait PostQueryPort {
@@ -11,10 +11,10 @@ pub trait PostQueryPort {
     fn paginate(
         &self,
         q: PageQuery,
-    ) -> impl Future<Output = Result<PageResult<PostExcerpt>, QueryError>> + Send;
+    ) -> impl Future<Output = Result<PageResult<PostExcerptDto>, QueryError>> + Send;
 
     fn find_detail(
         &self,
         id: Uuid,
-    ) -> impl Future<Output = Result<Option<PostDetail>, QueryError>> + Send;
+    ) -> impl Future<Output = Result<Option<PostDetailDto>, QueryError>> + Send;
 }

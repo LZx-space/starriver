@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use starriver_blogging_domain::post::{
     entity::Post, params::PostUpdate, repository::PostRepository,
 };
@@ -10,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     dto::post_dto::{
         req::{PageQuery, UpdatePostCmd},
-        res::{PostDetail, PostExcerpt},
+        res::{PostDetailDto, PostExcerptDto},
     },
     error::CtxError,
     port_out::post_query_port::PostQueryPort,
@@ -31,11 +33,11 @@ where
         Self { query, repo }
     }
 
-    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerpt>, CtxError> {
+    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, CtxError> {
         self.query.paginate(q).await.map_err(CtxError::from)
     }
 
-    pub async fn find(&self, id: Uuid) -> Result<PostDetail, CtxError> {
+    pub async fn find(&self, id: Uuid) -> Result<PostDetailDto, CtxError> {
         let post = self
             .query
             .find_detail(id)
@@ -44,7 +46,7 @@ where
         Ok(post)
     }
 
-    pub async fn create_draft(&self, author: PrincipalClaims) -> Result<PostDetail, CtxError> {
+    pub async fn create_draft(&self, author: PrincipalClaims) -> Result<PostDetailDto, CtxError> {
         let author_id = author.sub;
         let draft_post = Post::new_empty_draft(author_id)?;
         let created = self.repo.add(draft_post).await?;

@@ -18,16 +18,37 @@ To get started:
 5. Run tests: `cargo test`.
 6. Initialize DB: `cd script && wsl_local_db_pg_init.bat`
 
-## DDD Overview
+## Architecture
 
-This project follows DDD principles:
+Hexagonal + Clean Architecture, DDD tactical patterns.
 
-- **Adapter Layer**: Web controllers (REST API endpoints), Authentication and authorization, etc.
-- **Application Layer**: Handles use cases and orchestrates domain logic, **`Provides implementations for repositories`**.
-- **Domain Layer**: Contains entities, value objects, aggregates, and domain services.
-- **Infrastructure Layer**: Common model and services, Security implementations, Shared models and error types, etc.
+### Layered Structure
 
-This structure promotes separation of concerns and testability.
+adapter → application → domain
+
+| Layer | Ability | Depends on |
+|---|---|---|
+| **Domain**      | Aggregates, value objects, domain services, repository traits | Nothing |
+| **Application** | Use cases, DTOs, port interfaces, error mapping               | Domain |
+| **Adapter**     | HTTP handlers, Domain & Application IDP Traits Impl           | Application + Domain |
+
+All ports are traits defined in domain or application. All implementations live in adapter. Dependency only points inward.
+
+### Shared Kernel
+
+| Crate | What it holds |
+|---|---|
+| `shared-base`      | `Patterns`, IO traits... — zero external deps |
+| `shared-framework` | `ApiError`, `AuthenticatedUser`, middleware, extractors... |
+
+### Bounded Contexts
+
+| Context | crates |
+|---|---|
+| Identity | `starriver-identity/*` — users, authentication, security events |
+| Blogging | `starriver-blogging/*` — posts, categories, attachments |
+
+Contexts isolated; cross-context shared only through `shared-base`.
 
 ## Run
 

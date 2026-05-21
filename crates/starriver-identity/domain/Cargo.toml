@@ -1,0 +1,17 @@
+[package]
+name = "starriver-identity-domain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+starriver-shared-base = { workspace = true }
+
+derive-getters = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }

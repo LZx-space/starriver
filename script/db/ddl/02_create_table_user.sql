@@ -1,6 +1,6 @@
 CREATE TABLE public."user"
 (
-    id         uuid primary key         NOT NULL,
+    id         uuid PRIMARY KEY         NOT NULL,
     username   character varying(20)    NOT NULL,
     password   character varying(128)   NOT NULL,
     email      character varying(254)   NOT NULL,

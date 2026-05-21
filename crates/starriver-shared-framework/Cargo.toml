@@ -1,0 +1,29 @@
+[package]
+name = "starriver-shared-framework"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+starriver-shared-base = { path = "../starriver-shared-base" }
+
+axum = { workspace = true }
+axum-extra = { workspace = true }
+axum-valid = { workspace = true }
+futures-util = { workspace = true }
+http = "^1"
+jsonwebtoken = { workspace = true }
+regex = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+validator = { workspace = true }

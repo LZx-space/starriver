@@ -1,0 +1,40 @@
+[http_server]
+ip = "127.0.0.1"
+port = 8080
+
+[database]
+url = "postgresql://postgres:postgres@localhost:5432/starriver"
+
+[auth]
+jws_secret = "LZx"
+
+[logging]
+file_enabled = false
+file_directory = "log"
+file_name_prefix = "starriver"
+max_files = 30
+
+[uploads]
+storage_dir = "../../portable software/nginx-1.29.8/html/uploads"
+proxy_prefix = "/uploads"
+################################################################
+
+[ctx_identity.regexes]
+email = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+username = "^[a-zA-Z0-9_]{3,16}$"
+password = "^[A-Za-z0-9@$!%*?&]{8,12}$"
+
+[ctx_identity.bad_password]
+window_minutes = 10
+max_attempts = 5
+
+[ctx_identity.email_smtp]
+smtp_username = "lzx@example.com"
+smtp_password = "cllaiqdcfqokgbbg"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+code_cache_max_capacity = 1000
+code_cache_ttl_hours = 1
+################################################################
+
+[ctx_blogging]

@@ -7,9 +7,9 @@ rust-version.workspace = true
 [dependencies]
 starriver-shared-base = { workspace = true }
 
-chrono = { workspace = true }
 derive-getters = { workspace = true }
 regex = { workspace = true }
+serde = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
 uuid = { workspace = true }

@@ -14,8 +14,10 @@ argon2 = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 axum-valid = { workspace = true }
+infer = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
+validator = { workspace = true }

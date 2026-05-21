@@ -1,6 +1,7 @@
 pub mod req {
     use serde::Deserialize;
     use starriver_shared_base::regex_patterns::Patterns;
+    use uuid::Uuid;
     use validator::{Validate, ValidationError};
 
     #[derive(Debug, Deserialize, Validate)]
@@ -20,6 +21,19 @@ pub mod req {
     pub struct EmailVerifyCmd {
         #[validate(email)]
         pub email: String,
+    }
+
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct EmailActiveCmd {
+        pub user_id: Uuid,
+        #[validate(email)]
+        pub email: String,
+    }
+
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct UserActiveCmd {
+        #[validate(length(equal = 6))]
+        pub email_code: String,
     }
 
     //////////////////////////////////////////////////////////////////////////////////////

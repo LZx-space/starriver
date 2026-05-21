@@ -4,8 +4,8 @@ use regex::Regex;
 use uuid::Uuid;
 
 use crate::{
+    error::DomainError,
     password_encoder::PasswordEncoder,
-    shared_error::DomainError,
     user::{
         entity::User,
         value_object::{Email, Password, Username},
@@ -45,10 +45,7 @@ impl<PE: PasswordEncoder> UserFactory<PE> {
         if !self.password_regex.is_match(password) {
             return Err(DomainError::InvalidPasswordFormat);
         }
-        let hashed_pwd = &self
-            .password_encoder
-            .encode(password)
-            .map_err(|e| DomainError::PasswordEncoding(e.to_string()))?;
+        let hashed_pwd = &self.password_encoder.encode(password)?;
         let password = Password::new(hashed_pwd)?;
         let email = Email::new(email, &self.email_regex)?;
         Ok(User::new(

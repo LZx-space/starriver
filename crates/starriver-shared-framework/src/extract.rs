@@ -139,11 +139,8 @@ where
 {
     type Rejection = ApiError;
 
-    async fn from_request(
-        req: axum::extract::Request,
-        _state: &S,
-    ) -> Result<Self, Self::Rejection> {
-        let multipart = axum::extract::multipart::Multipart::from_request(req, _state)
+    async fn from_request(req: axum::extract::Request, state: &S) -> Result<Self, Self::Rejection> {
+        let multipart = axum::extract::multipart::Multipart::from_request(req, state)
             .await
             .map_err(unified_bad_request_err)?;
         Ok(Multipart(multipart))

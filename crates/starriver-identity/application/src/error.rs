@@ -1,4 +1,4 @@
-use starriver_identity_domain::shared_error::{DomainError, PasswordEncoderError};
+use starriver_identity_domain::error::{DomainError, PasswordEncoderError};
 use starriver_shared_base::error::RepositoryError;
 use thiserror::Error;
 
@@ -32,8 +32,6 @@ pub enum EmailVerificationError {
     BuildClientError(String),
     #[error("发送验证码错误：{0}")]
     SendCodeError(String),
-    #[error("验证验证码错误：{0}")]
-    ValidateCodeError(String),
 }
 
 ///////////////////////////////////////////
@@ -57,9 +55,7 @@ impl From<DomainError> for CtxError {
                 CtxError::AuthenticationFailed(e.to_string())
             }
             // 密码编码/验证失败是内部问题
-            DomainError::PasswordEncoding(_) | DomainError::PasswordVerificationFailed(_) => {
-                CtxError::Internal(e.to_string())
-            }
+            DomainError::PasswordEncoding(_) => CtxError::Internal(e.to_string()),
         }
     }
 }

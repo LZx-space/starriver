@@ -21,9 +21,15 @@ impl<T: FileTypeChecker> AttachmentFactory<T> {
         bytes: &[u8],
         claimed_extension: &str,
     ) -> Result<Attachment, DomainError> {
-        self.file_type_checker.check(bytes, claimed_extension)?;
+        let checked = self.file_type_checker.check(bytes, claimed_extension)?;
+        if !checked {
+            return Err(DomainError::AttachmentMimeTypeInvalid(
+                claimed_extension.to_string(),
+            ));
+        }
+
         let mime_type = MimeType::new_verified(claimed_extension)?;
-        let file_size = FileSize::new(bytes.len() as u64)?;
+        let file_size = FileSize::new(bytes.len() as i64)?;
         Ok(Attachment::new(mime_type, file_size))
     }
 }

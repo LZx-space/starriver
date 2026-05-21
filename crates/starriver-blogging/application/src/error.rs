@@ -1,5 +1,8 @@
 use starriver_blogging_domain::shared_error::DomainError;
-use starriver_shared_base::error::{QueryError, RepositoryError};
+use starriver_shared_base::{
+    error::{QueryError, RepositoryError},
+    io::{AsyncReaderError, AsyncWriterError},
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -53,5 +56,17 @@ impl From<RepositoryError> for CtxError {
 impl From<QueryError> for CtxError {
     fn from(e: QueryError) -> Self {
         CtxError::Internal(e.to_string())
+    }
+}
+
+impl From<AsyncReaderError> for CtxError {
+    fn from(value: AsyncReaderError) -> Self {
+        CtxError::Internal(value.to_string())
+    }
+}
+
+impl From<AsyncWriterError> for CtxError {
+    fn from(value: AsyncWriterError) -> Self {
+        CtxError::Internal(value.to_string())
     }
 }

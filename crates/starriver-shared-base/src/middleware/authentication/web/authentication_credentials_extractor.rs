@@ -1,5 +1,5 @@
 use crate::middleware::authentication::core::{
-    authenticator::AuthenticationError, credentials::Credentials,
+    credentials::Credentials, error::AuthenticationError,
 };
 
 pub trait CredentialsExtractor {

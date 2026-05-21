@@ -1,7 +1,7 @@
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use starriver_identity_adapter::config::IdentityConfig;
-use starriver_shared_framework::principal::Auth;
+use starriver_shared_framework::config::{Auth, Uploads};
 
 pub fn load_config() -> Result<AppConfig, ConfigError> {
     let config_path = std::env::var("APP_CONFIG_PATH").unwrap_or_else(|_| "config-dev".into());
@@ -19,6 +19,7 @@ pub struct AppConfig {
     pub database: Database,
     pub logging: Logging,
     pub auth: Auth,
+    pub uploads: Uploads,
     pub ctx_identity: IdentityConfig,
 }
 

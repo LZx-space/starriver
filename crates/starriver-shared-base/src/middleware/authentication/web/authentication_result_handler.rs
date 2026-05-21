@@ -1,6 +1,4 @@
-use crate::middleware::authentication::core::{
-    authenticator::AuthenticationError, principal::Principal,
-};
+use crate::middleware::authentication::core::{error::AuthenticationError, principal::Principal};
 
 pub trait AuthenticationSuccessHandler {
     type Response;

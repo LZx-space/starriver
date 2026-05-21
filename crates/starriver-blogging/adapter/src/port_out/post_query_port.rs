@@ -1,6 +1,6 @@
 use sea_orm::{
-    ActiveEnum, ColumnTrait, Condition, DatabaseConnection, EntityTrait, JoinType, PaginatorTrait,
-    QueryFilter, QuerySelect, RelationTrait,
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
+    QuerySelect, RelationTrait,
 };
 use starriver_blogging_application::{
     dto::post_dto::{
@@ -10,7 +10,7 @@ use starriver_blogging_application::{
     port_out::post_query_port::PostQueryPort,
 };
 use starriver_shared_base::{
-    dto::PageResult,
+    dto::{IdName, IdValue, PageResult},
     error::QueryError,
     html_utils::{DefaultExcerptor, Excerptor},
 };
@@ -19,13 +19,19 @@ use uuid::Uuid;
 use crate::port_out::{
     dto::post_dto::{PostDetailRow, PostExcerptRow},
     po::{
-        category_po,
+        attachment_po, category_po, post_attachment_po,
         post_po::{Column, Entity, PostStatePo, Relation},
     },
 };
 
 pub struct DefaultPostQueryPort {
     conn: DatabaseConnection,
+}
+
+impl DefaultPostQueryPort {
+    pub fn new(conn: DatabaseConnection) -> Self {
+        Self { conn }
+    }
 }
 
 impl PostQueryPort for DefaultPostQueryPort {
@@ -85,13 +91,46 @@ impl PostQueryPort for DefaultPostQueryPort {
                 Column::CreatedAt,
                 Column::UpdatedAt,
             ])
-            .column_as(Column::Id, "article_id")
             .join(JoinType::LeftJoin, Relation::Category.def())
-            .columns([category_po::Column::Id, category_po::Column::Name])
+            .column_as(category_po::Column::Id, "category_id")
+            .column_as(category_po::Column::Name, "category_name")
             .into_model::<PostDetailRow>()
             .one(&self.conn)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(post)
+
+        let Some(post) = post else {
+            return Ok(None);
+        };
+
+        // 2. 附件（零到多行）
+        let attachments: Vec<IdValue<_, _>> = post_attachment_po::Entity::find()
+            .filter(post_attachment_po::Column::PostId.eq(id))
+            .find_with_related(attachment_po::Entity)
+            .all(&self.conn)
+            .await
+            .map_err(|e| QueryError::DbError(e.to_string()))?
+            .into_iter()
+            .flat_map(|(_, attachments)| attachments)
+            .map(|a| IdValue {
+                id: a.id,
+                value: a.file_name,
+            })
+            .collect();
+
+        Ok(Some(PostDetailDto {
+            id,
+            title: post.title,
+            content: post.content,
+            state: post.state,
+            category: IdName {
+                id: post.category_id,
+                name: post.category_name,
+            },
+            attachments,
+            published_at: post.published_at,
+            created_at: post.created_at,
+            updated_at: post.updated_at,
+        }))
     }
 }

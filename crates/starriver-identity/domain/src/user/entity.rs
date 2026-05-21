@@ -32,7 +32,7 @@ impl User {
         }
     }
 
-    pub fn lock(&mut self) {
+    pub(crate) fn lock(&mut self) {
         self.state = UserState::Locked;
     }
 

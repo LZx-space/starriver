@@ -8,7 +8,7 @@ pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,
     file_name: String,
-    file_size: u64,
+    file_size: i64,
 }
 
 impl Attachment {
@@ -17,6 +17,14 @@ impl Attachment {
             id: Uuid::now_v7(),
             file_name: Uuid::now_v7().to_string() + "." + mime_type.as_str(),
             file_size: file_size.size,
+        }
+    }
+
+    pub fn from_repo(id: Uuid, file_name: String, file_size: i64) -> Self {
+        Self {
+            id,
+            file_name,
+            file_size,
         }
     }
 }

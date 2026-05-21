@@ -1,10 +1,9 @@
 CREATE TABLE public.category
 (
-    id         uuid                     NOT NULL,
+    id         uuid PRIMARY KEY         NOT NULL,
     name       character varying(10)    NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone,
-    CONSTRAINT category_pkey PRIMARY KEY (id)
+    updated_at timestamp with time zone
 );
 COMMENT ON TABLE public.category IS '分类';
 

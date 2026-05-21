@@ -1,3 +1,5 @@
+use std::{ops::Add, time::Duration};
+
 use derive_getters::{Dissolve, Getters};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -24,6 +26,22 @@ impl SecurityEvent {
         }
     }
 
+    pub fn from_repo(
+        id: Uuid,
+        event_type: SecurityEventType,
+        message: String,
+        created_at: OffsetDateTime,
+        user_id: Uuid,
+    ) -> Self {
+        Self {
+            id,
+            event_type,
+            message,
+            created_at,
+            user_id,
+        }
+    }
+
     /// 是否是某种事件类型
     pub fn is_of_type(&self, event_type: SecurityEventType) -> bool {
         self.event_type == event_type
@@ -32,5 +50,10 @@ impl SecurityEvent {
     /// 是否是错误密码登录尝试
     pub fn is_bad_password_attempt(&self) -> bool {
         self.is_of_type(SecurityEventType::TryLoginWithBadPwd)
+    }
+
+    /// 是否在窗口期内发生
+    pub fn occurred_within(&self, window: Duration, now: OffsetDateTime) -> bool {
+        self.created_at().add(window) >= now
     }
 }

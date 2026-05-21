@@ -18,10 +18,7 @@ where
     }
 
     pub async fn list_all(&self) -> Result<Vec<Category>, CtxError> {
-        self.repo
-            .list_all()
-            .await
-            .map_err(|e| CtxError::Internal(e.to_string()))
+        self.repo.list_all().await.map(Ok)?
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Category, CtxError> {
@@ -42,10 +39,7 @@ where
             "creating category"
         );
         let category = Category::new(name)?;
-        self.repo
-            .insert(category)
-            .await
-            .map_err(|e| CtxError::Internal(e.to_string()))
+        self.repo.insert(category).await.map(Ok)?
     }
 
     pub async fn update(
@@ -69,7 +63,7 @@ where
         self.repo
             .update(Revision::new(original, category))
             .await
-            .map_err(|e| CtxError::Internal(e.to_string()))
+            .map(Ok)?
     }
 
     pub async fn delete(&self, operator: PrincipalClaims, id: Uuid) -> Result<(), CtxError> {
@@ -78,10 +72,6 @@ where
             category_id = %id,
             "deleting category"
         );
-        self.repo
-            .delete(id)
-            .await
-            .map(|_| ())
-            .map_err(|e| CtxError::Internal(e.to_string()))
+        self.repo.delete(id).await.map(|_| Ok(()))?
     }
 }

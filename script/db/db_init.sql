@@ -12,6 +12,7 @@
 \i ./db/ddl/04_create_table_category.sql;
 \i ./db/ddl/05_create_table_post.sql;
 \i ./db/ddl/06_create_table_attachment.sql;
+\i ./db/ddl/07_create_table_post-attachment.sql;
 
 -- 按顺序执行dml目录下的所有SQL文件
 \i ./db/dml/01_insert_user.sql;

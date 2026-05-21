@@ -16,14 +16,13 @@ pub mod req {
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    pub struct UpdatePostCmd {
+    pub struct SaveOrUpdatePostCmd {
         #[validate(length(min = 1, max = 50))]
         pub title: String,
         #[validate(length(min = 1, max = 50000))]
         pub content: String,
         pub category_id: Uuid,
-        #[validate(length(min = 0, max = 10))]
-        pub attachment_ids: Vec<uuid::Uuid>,
+        pub attachments: Vec<Uuid>,
         /// 是否发布
         pub publish: bool,
     }
@@ -32,7 +31,7 @@ pub mod req {
 pub mod res {
 
     use serde::Serialize;
-    use starriver_shared_base::dto::IdName;
+    use starriver_shared_base::dto::{IdName, IdValue};
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -43,6 +42,7 @@ pub mod res {
         pub content: String,
         pub state: i16,
         pub category: IdName<Uuid>,
+        pub attachments: Vec<IdValue<Uuid, String>>,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
         pub updated_at: Option<OffsetDateTime>,

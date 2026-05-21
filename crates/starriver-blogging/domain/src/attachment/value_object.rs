@@ -1,10 +1,10 @@
 use crate::shared_error::DomainError;
 
 pub struct FileSize {
-    pub size: u64,
+    pub size: i64,
 }
 impl FileSize {
-    pub fn new(size: u64) -> Result<Self, DomainError> {
+    pub fn new(size: i64) -> Result<Self, DomainError> {
         if size > 1024 * 1024 * 10 {
             return Err(DomainError::AttachmentFileSizeInvalid(size));
         }

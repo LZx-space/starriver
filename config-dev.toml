@@ -13,6 +13,10 @@ file_enabled = false
 file_directory = "log"
 file_name_prefix = "starriver"
 max_files = 30
+
+[uploads]
+storage_dir = "../../portable software/nginx-1.29.8/html/uploads"
+proxy_prefix = "/uploads"
 ################################################################
 
 [ctx_identity.regexes]
@@ -32,8 +36,5 @@ smtp_port = 587
 code_cache_max_capacity = 1000
 code_cache_ttl_hours = 1
 ################################################################
-[ctx_blogging]
 
-[uploads]
-storage_dir = "../../portable software/nginx-1.29.8/html/uploads"
-proxy_prefix = "/uploads"
+[ctx_blogging]

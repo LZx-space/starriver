@@ -1,7 +1,5 @@
-use std::io::Read;
-
 use starriver_blogging_domain::post::{
-    entity::Post, params::PostUpdate, repository::PostRepository,
+    entity::Post, params::PostUpdate, repository::PostRepository, value_object::PostState,
 };
 use starriver_shared_base::{
     authentication::PrincipalClaims, dto::PageResult, repository::Revision,
@@ -11,25 +9,25 @@ use uuid::Uuid;
 
 use crate::{
     dto::post_dto::{
-        req::{PageQuery, UpdatePostCmd},
+        req::{PageQuery, SaveOrUpdatePostCmd},
         res::{PostDetailDto, PostExcerptDto},
     },
     error::CtxError,
     port_out::post_query_port::PostQueryPort,
 };
 
-pub struct PostApplication<Q, R> {
+pub struct PostApplication<Q, PR> {
     query: Q,
-    repo: R,
+    repo: PR,
 }
 
-impl<Q, R> PostApplication<Q, R>
+impl<Q, PR> PostApplication<Q, PR>
 where
     Q: PostQueryPort,
-    R: PostRepository,
+    PR: PostRepository,
 {
     /// 新建
-    pub fn new(query: Q, repo: R) -> Self {
+    pub fn new(query: Q, repo: PR) -> Self {
         Self { query, repo }
     }
 
@@ -38,18 +36,32 @@ where
     }
 
     pub async fn find(&self, id: Uuid) -> Result<PostDetailDto, CtxError> {
-        let post = self
-            .query
+        self.query
             .find_detail(id)
             .await?
-            .ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id)))?;
-        Ok(post)
+            .ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id)))
+            .map(Ok)?
     }
 
-    pub async fn create_draft(&self, author: PrincipalClaims) -> Result<PostDetailDto, CtxError> {
+    pub async fn create(
+        &self,
+        author: PrincipalClaims,
+        cmd: SaveOrUpdatePostCmd,
+    ) -> Result<PostDetailDto, CtxError> {
         let author_id = author.sub;
-        let draft_post = Post::new_empty_draft(author_id)?;
-        let created = self.repo.add(draft_post).await?;
+        let state = match cmd.publish {
+            true => PostState::Published,
+            false => PostState::Draft,
+        };
+        let post = Post::new(
+            cmd.title,
+            cmd.content,
+            state,
+            author_id,
+            cmd.category_id,
+            cmd.attachments,
+        )?;
+        let created = self.repo.add(post).await?;
         let post_id = created.id().to_owned();
         self.find(post_id).await
     }
@@ -58,7 +70,7 @@ where
         &self,
         operator: PrincipalClaims,
         id: Uuid,
-        cmd: UpdatePostCmd,
+        cmd: SaveOrUpdatePostCmd,
     ) -> Result<(), CtxError> {
         info!(
             user_id = %operator.sub,
@@ -74,7 +86,7 @@ where
             title: cmd.title,
             content: cmd.content,
             category_id: cmd.category_id,
-            attachment_ids: cmd.attachment_ids,
+            attachments: cmd.attachments,
             published: cmd.publish,
         };
         let original = found.clone();
@@ -82,8 +94,7 @@ where
         self.repo
             .update(Revision::new(original, found))
             .await
-            .map(|_| ())
-            .map_err(CtxError::from)
+            .map(|_| Ok(()))?
     }
 
     pub async fn delete_by_id(
@@ -96,6 +107,6 @@ where
             Post_id = %id,
             "deleting post"
         );
-        self.repo.delete_by_id(id).await.map_err(CtxError::from)
+        self.repo.delete_by_id(id).await.map(Ok)?
     }
 }

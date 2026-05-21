@@ -7,6 +7,7 @@ use uuid::Uuid;
 pub struct PostExcerptRow {
     pub id: Uuid,
     pub title: String,
+    #[sea_orm(from_alias = "content")]
     pub excerpt: String,
     pub state: i16,
     pub category: String,

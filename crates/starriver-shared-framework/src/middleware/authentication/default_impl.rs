@@ -1,8 +1,19 @@
-use crate::{
+use axum::{
+    Form,
+    body::Body,
+    extract::{FromRef, FromRequest, FromRequestParts},
+    http::{Method, Request, StatusCode, header},
+    response::{IntoResponse, Response},
+};
+use axum_extra::extract::{CookieJar, cookie::Cookie};
+use http::request::Parts;
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use serde::{Deserialize, Serialize};
+use starriver_shared_base::{
+    authentication::{PrincipalClaims, UsernamePasswordCredentials},
     middleware::authentication::{
         core::{
-            authenticator::AuthenticationError,
-            credentials::Credentials,
+            error::AuthenticationError,
             principal::{Principal, SimpleAuthority},
         },
         web::{
@@ -13,20 +24,15 @@ use crate::{
             request_matcher::RequestMatcher,
         },
     },
-    principal::{Auth, AuthenticatedUser},
 };
-use axum::{
-    Form,
-    body::Body,
-    extract::FromRequest,
-    http::{Method, Request, StatusCode, header},
-    response::{IntoResponse, Response},
-};
-use axum_extra::extract::cookie::Cookie;
-use jsonwebtoken::{EncodingKey, Header, encode};
-use serde::Deserialize;
-use starriver_shared_base::authentication::UsernamePasswordCredentials;
-use tracing::{error, info, warn};
+use tracing::{error, info};
+
+use core::time::Duration;
+use starriver_shared_base::middleware::authentication::web::timing_attack_protection::TimingAttackProtection;
+use std::time::Instant;
+use tokio::time::sleep;
+
+use crate::config::Auth;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -56,7 +62,8 @@ impl Default for LoginRequestMatcher {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-impl Credentials for UsernamePasswordCredentials {}
+#[derive(Serialize)]
+pub struct AuthenticatedUser(pub PrincipalClaims);
 
 impl Principal for AuthenticatedUser {
     type Id = String;
@@ -71,9 +78,47 @@ impl Principal for AuthenticatedUser {
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 const AUTHENTION_TOKEN_COOKIE_NAME: &str = "token";
+
+impl<S> FromRequestParts<S> for AuthenticatedUser
+where
+    Auth: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = StatusCode;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let cookie_jar = CookieJar::from_request_parts(parts, state)
+            .await
+            .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
+
+        let jws = cookie_jar
+            .get(AUTHENTION_TOKEN_COOKIE_NAME)
+            .ok_or_else(|| {
+                info!("authentication cookie not found in request");
+                StatusCode::UNAUTHORIZED
+            })?
+            .value();
+
+        let authentication = Auth::from_ref(state);
+
+        decode::<PrincipalClaims>(
+            jws,
+            &DecodingKey::from_secret(authentication.jws_secret_as_ref()),
+            &Validation::default(),
+        )
+        .map(|data| {
+            let principal_claims = data.claims;
+            AuthenticatedUser(principal_claims)
+        })
+        .map_err(|e| {
+            error!(error = %e, "JWS token decode failed");
+            StatusCode::UNAUTHORIZED
+        })
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 pub struct DefaultAuthenticationSuccessHandler {
     cfg: Auth,
@@ -134,12 +179,24 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
     type Response = Response;
 
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
-        warn!(error = %err, "authentication failed");
+        info!(error=%err, "authentication failed");
         let (cause, message) = match err {
-            AuthenticationError::UserLocked => (StatusCode::BAD_REQUEST, "user locked"),
-            AuthenticationError::UserDisabled => (StatusCode::BAD_REQUEST, "user disabled"),
-            AuthenticationError::InnerError => (StatusCode::INTERNAL_SERVER_ERROR, "inner error"),
-            _ => (StatusCode::BAD_REQUEST, "username or password incorrect"),
+            AuthenticationError::UserLocked => (StatusCode::BAD_REQUEST, "user locked".to_string()),
+            AuthenticationError::UserDisabled => {
+                (StatusCode::BAD_REQUEST, "user disabled".to_string())
+            }
+            AuthenticationError::BadPassword => (
+                StatusCode::BAD_REQUEST,
+                "username or password incorrect".to_string(),
+            ),
+            AuthenticationError::InnerError { message, source } => {
+                error!(error=%source, "authentication failed inner error");
+                (StatusCode::INTERNAL_SERVER_ERROR, message)
+            }
+            _ => (
+                StatusCode::BAD_REQUEST,
+                "username or password incorrect".to_string(),
+            ),
         };
         (cause, message).into_response()
     }
@@ -164,7 +221,10 @@ impl CredentialsExtractor for DefaultCredentialsExtractor {
         // 提取表单数据
         let form = Form::<FormLoginCmd>::from_request(req, &())
             .await
-            .map_err(|_| AuthenticationError::InnerError)?;
+            .map_err(|e| AuthenticationError::InnerError {
+                message: e.to_string(),
+                source: Box::new(e),
+            })?;
         info!(username = %form.0.username, "login credentials received");
         // 创建凭证
         let credentials = UsernamePasswordCredentials {
@@ -176,16 +236,43 @@ impl CredentialsExtractor for DefaultCredentialsExtractor {
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// 异步运行时为tokio时，使用tokio的sleep函数实现延时以防止认证时的时差攻击
+pub struct TokioTimingAttackProtection {
+    pub delay: Duration,
+}
+
+impl TimingAttackProtection for TokioTimingAttackProtection {
+    async fn fixed_duration_delay(&self, authenticate_start_at: Instant) {
+        let elapsed = authenticate_start_at.elapsed();
+        let to_delay = self.delay.saturating_sub(elapsed);
+        if Duration::ZERO.eq(&to_delay) {
+            return;
+        }
+        sleep(to_delay).await;
+    }
+}
+
+impl Default for TokioTimingAttackProtection {
+    fn default() -> Self {
+        Self {
+            delay: Duration::from_millis(500),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     use axum::{
         body::Body,
         http::{Method, Request},
     };
+    use starriver_shared_base::middleware::authentication::web::request_matcher::RequestMatcher;
 
-    use crate::middleware::authentication::{
-        _default_impl::LoginRequestMatcher, web::request_matcher::RequestMatcher,
-    };
+    use crate::middleware::authentication::default_impl::LoginRequestMatcher;
 
     #[tokio::test]
     async fn test_is_authenticate_request() {

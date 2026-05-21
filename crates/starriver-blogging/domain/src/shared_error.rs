@@ -24,5 +24,5 @@ pub enum DomainError {
     AttachmentMimeTypeInvalid(String),
 
     #[error("附件大小违规：{0}")]
-    AttachmentFileSizeInvalid(u64),
+    AttachmentFileSizeInvalid(i64),
 }

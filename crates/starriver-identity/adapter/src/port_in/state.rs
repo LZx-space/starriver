@@ -5,14 +5,17 @@ use sea_orm::DatabaseConnection;
 use starriver_identity_application::service::user_service::UserApplicationService;
 use starriver_identity_domain::user::policy::BadPasswordPolicy;
 use starriver_shared_base::regex_patterns::Patterns;
-use starriver_shared_framework::principal::Auth;
+use starriver_shared_framework::config::Auth;
 
 use crate::{
     config::IdentityConfig,
     port_out::{
         persistence::{
             query::user_query_port::DefaultUserQueryPort,
-            repository::user_repository::DefaultUserRepository,
+            repository::{
+                security_event_repository::DefaultSecurityEventRepository,
+                user_repository::DefaultUserRepository,
+            },
         },
         service::{
             email_verification_port::SmtpVerificationPort, password_encoder::Argon2PasswordEncoder,
@@ -23,7 +26,6 @@ use crate::{
 /// 应用的各个状态
 #[derive(Clone)]
 pub struct IdentityState {
-    pub conn: DatabaseConnection,
     pub patterns: Patterns,
     pub auth: Auth,
     //////////////////////////////////////////
@@ -31,6 +33,7 @@ pub struct IdentityState {
         UserApplicationService<
             DefaultUserQueryPort,
             DefaultUserRepository<DatabaseConnection>,
+            DefaultSecurityEventRepository,
             SmtpVerificationPort,
             Argon2PasswordEncoder,
         >,
@@ -51,8 +54,9 @@ impl IdentityState {
         .map_err(|e| e.to_string())?;
         ////////////////////////////////////////////////////////
 
-        let query = DefaultUserQueryPort { conn: conn.clone() };
-        let repo = DefaultUserRepository::new(conn.clone(), patterns.clone());
+        let user_query = DefaultUserQueryPort { conn: conn.clone() };
+        let user_repo = DefaultUserRepository::new(conn.clone(), patterns.clone());
+        let security_event_repo = DefaultSecurityEventRepository::new(conn.clone());
         let verification_code_port =
             SmtpVerificationPort::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
         let bad_password_policy = BadPasswordPolicy {
@@ -61,8 +65,9 @@ impl IdentityState {
         };
         let password_encoder = Argon2PasswordEncoder::default().into();
         let user_service = UserApplicationService::new(
-            query,
-            repo,
+            user_query,
+            user_repo,
+            security_event_repo,
             verification_code_port,
             patterns.clone(),
             bad_password_policy,
@@ -70,7 +75,6 @@ impl IdentityState {
         )
         .into();
         Ok(IdentityState {
-            conn,
             patterns,
             auth,
             user_service,

@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use chrono::Local;
-
 use crate::shared_error::DomainError;
 
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
@@ -31,12 +29,6 @@ impl Title {
             return Err(DomainError::PostTitleTooLong(value));
         }
         Ok(Self(value))
-    }
-
-    pub fn draft() -> Self {
-        let time = Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
-        let draft_title = format!("{} {}", "draft", time);
-        Self(draft_title)
     }
 }
 

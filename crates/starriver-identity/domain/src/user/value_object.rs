@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use regex::Regex;
 
-use crate::shared_error::DomainError;
+use crate::error::DomainError;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum UserState {

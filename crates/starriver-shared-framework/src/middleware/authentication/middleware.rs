@@ -2,21 +2,20 @@ use axum::body::Body;
 use axum::http::Request;
 use axum::response::Response;
 use futures_util::future::BoxFuture;
+use starriver_shared_base::middleware::authentication::core::authenticator::Authenticator;
+use starriver_shared_base::middleware::authentication::core::credentials::Credentials;
+use starriver_shared_base::middleware::authentication::core::principal::Principal;
+use starriver_shared_base::middleware::authentication::web::authentication_credentials_extractor::CredentialsExtractor;
+use starriver_shared_base::middleware::authentication::web::authentication_result_handler::{
+    AuthenticationFailureHandler, AuthenticationSuccessHandler,
+};
+use starriver_shared_base::middleware::authentication::web::request_matcher::RequestMatcher;
+use starriver_shared_base::middleware::authentication::web::timing_attack_protection::TimingAttackProtection;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Instant;
 use tower::{Layer, Service};
-
-use crate::middleware::authentication::core::authenticator::Authenticator;
-use crate::middleware::authentication::core::credentials::Credentials;
-use crate::middleware::authentication::core::principal::Principal;
-use crate::middleware::authentication::web::authentication_credentials_extractor::CredentialsExtractor;
-use crate::middleware::authentication::web::authentication_result_handler::{
-    AuthenticationFailureHandler, AuthenticationSuccessHandler,
-};
-use crate::middleware::authentication::web::request_matcher::RequestMatcher;
-use crate::middleware::authentication::web::timing_attack_protection::TimingAttackProtection;
 
 pub struct AuthenticationLayer<RM, CE, A, TAP, RS, RF, C, P> {
     login_request_matcher: Arc<RM>,

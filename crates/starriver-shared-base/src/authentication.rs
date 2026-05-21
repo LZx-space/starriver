@@ -2,11 +2,17 @@ use serde::{Deserialize, Serialize};
 use time::UtcDateTime;
 use uuid::Uuid;
 
+use crate::middleware::authentication::core::credentials::Credentials;
+
 #[derive(Clone, Debug)]
 pub struct UsernamePasswordCredentials {
     pub username: String,
     pub password: String,
 }
+
+impl Credentials for UsernamePasswordCredentials {}
+
+/////////////////////////////////////////////////////////////////////////
 
 #[derive(Deserialize, Serialize)]
 pub struct PrincipalClaims {

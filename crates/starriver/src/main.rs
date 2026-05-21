@@ -39,16 +39,19 @@ async fn main() {
             panic!("failed to connect to database: {}", e);
         });
     let auth = app_cfg.auth;
-    let identity_state = IdentityState::new(conn.clone(), auth, &app_cfg.ctx_identity)
+    let uploads = app_cfg.uploads;
+    let identity_state = IdentityState::new(conn.clone(), auth.clone(), &app_cfg.ctx_identity)
         .await
         .unwrap_or_else(|e| {
             error!(error = %e, "failed to create identity state");
             panic!("failed to create identity state: {}", e);
         });
-    let blogging_state = BloggingState::new(conn.clone()).await.unwrap_or_else(|e| {
-        error!(error = %e, "failed to create blogging state");
-        panic!("failed to create blogging state: {}", e);
-    });
+    let blogging_state = BloggingState::new(conn.clone(), auth.clone(), uploads.clone())
+        .await
+        .unwrap_or_else(|e| {
+            error!(error = %e, "failed to create blogging state");
+            panic!("failed to create blogging state: {}", e);
+        });
 
     let user_service = identity_state.user_service.clone();
     let auth = identity_state.auth.clone();

@@ -6,23 +6,30 @@ use starriver_identity_adapter::{
     port_out::{
         persistence::{
             query::user_query_port::DefaultUserQueryPort,
-            repository::user_repository::DefaultUserRepository,
+            repository::{
+                security_event_repository::DefaultSecurityEventRepository,
+                user_repository::DefaultUserRepository,
+            },
         },
         service::{
             email_verification_port::SmtpVerificationPort, password_encoder::Argon2PasswordEncoder,
         },
     },
 };
-use starriver_shared_base::authentication::{PrincipalClaims, UsernamePasswordCredentials};
-use starriver_shared_framework::principal::{Auth, AuthenticatedUser};
-
-use starriver_shared_framework::middleware::authentication::{
-    _default_impl::{
-        DefaultAuthenticationFailureHandler, DefaultAuthenticationSuccessHandler,
-        DefaultCredentialsExtractor, LoginRequestMatcher,
+use starriver_shared_base::{
+    authentication::{PrincipalClaims, UsernamePasswordCredentials},
+    middleware::authentication::core::{authenticator::Authenticator, error::AuthenticationError},
+};
+use starriver_shared_framework::{
+    config::Auth,
+    middleware::authentication::{
+        default_impl::{
+            AuthenticatedUser, DefaultAuthenticationFailureHandler,
+            DefaultAuthenticationSuccessHandler, DefaultCredentialsExtractor, LoginRequestMatcher,
+            TokioTimingAttackProtection,
+        },
+        middleware::AuthenticationLayer,
     },
-    core::authenticator::{AuthenticationError, Authenticator},
-    web::{middleware::AuthenticationLayer, timing_attack_protection::TokioTimingAttackProtection},
 };
 
 pub struct UsernamePasswordAuthenticator<T> {
@@ -30,6 +37,7 @@ pub struct UsernamePasswordAuthenticator<T> {
         UserApplicationService<
             DefaultUserQueryPort,
             DefaultUserRepository<T>,
+            DefaultSecurityEventRepository,
             SmtpVerificationPort,
             Argon2PasswordEncoder,
         >,
@@ -47,14 +55,9 @@ where
         &self,
         credentials: &Self::Credentials,
     ) -> Result<Self::Principal, AuthenticationError> {
-        self.user_service
-            .authenticate(credentials)
-            .await
-            .map(|e| {
-                let claims = PrincipalClaims::new(e.id, e.username, e.email);
-                AuthenticatedUser(claims)
-            })
-            .map_err(|_| AuthenticationError::InnerError)
+        let detail = self.user_service.authenticate(credentials).await?;
+        let claims = PrincipalClaims::new(detail.id, detail.username, detail.email);
+        Ok(AuthenticatedUser(claims))
     }
 }
 

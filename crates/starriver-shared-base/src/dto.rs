@@ -6,6 +6,12 @@ pub struct IdName<T> {
     pub name: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct IdValue<I, V> {
+    pub id: I,
+    pub value: V,
+}
+
 /// 页数据结果
 #[derive(Debug, Serialize)]
 pub struct PageResult<T: Serialize> {

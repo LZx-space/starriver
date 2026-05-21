@@ -6,12 +6,7 @@ use crate::user::entity::User;
 pub trait UserRepository {
     fn find_by_username(
         &self,
-        username: &str,
-    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
-
-    fn find_by_id(
-        &self,
-        user_id: Uuid,
+        username: String,
     ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
 
     fn insert(&self, user: User) -> impl Future<Output = Result<User, RepositoryError>> + Send;

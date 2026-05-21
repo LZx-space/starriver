@@ -6,7 +6,7 @@ use sea_orm::ColumnTrait;
 use sea_orm::ConnectionTrait;
 use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
-use starriver_identity_domain::shared_error::DomainError;
+use starriver_identity_domain::error::DomainError;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::repository::UserRepository;
 use starriver_identity_domain::user::value_object::Email;
@@ -16,14 +16,13 @@ use starriver_identity_domain::user::value_object::Username;
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_base::regex_patterns::Patterns;
 use starriver_shared_base::repository::Revision;
+use starriver_shared_framework::error_mapping::db_error_2_repo_error;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::port_out::persistence::po::user_po::ActiveModel;
 use crate::port_out::persistence::po::user_po::Column;
 use crate::port_out::persistence::po::user_po::Entity;
 use crate::port_out::persistence::po::user_po::Model;
-use crate::port_out::persistence::po::user_po::UserStateDo;
 
 pub struct DefaultUserRepository<T> {
     conn: T,
@@ -40,53 +39,41 @@ impl<T> UserRepository for DefaultUserRepository<T>
 where
     T: ConnectionTrait,
 {
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, RepositoryError> {
+    async fn find_by_username(&self, username: String) -> Result<Option<User>, RepositoryError> {
         Entity::find()
             .filter(Column::Username.eq(username))
             .one(&self.conn)
             .await
-            .map_err(|e| RepositoryError::Infrastructure(e.to_string()))?
-            .map(|e| self.model_to_entity(e))
-            .transpose()
-            .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
-    }
-
-    async fn find_by_id(&self, user_id: Uuid) -> Result<Option<User>, RepositoryError> {
-        Entity::find_by_id(user_id)
-            .one(&self.conn)
-            .await
-            .map_err(|e| RepositoryError::Infrastructure(e.to_string()))?
+            .map_err(db_error_2_repo_error)?
             .map(|e| self.model_to_entity(e))
             .transpose()
             .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
     }
 
     async fn insert(&self, user: User) -> Result<User, RepositoryError> {
-        let (id, username, password, email, _) = user.dissolve();
+        let (id, username, password, email, state) = user.dissolve();
         let model = ActiveModel {
             id: Set(id),
             username: Set(username.to_string()),
             password: Set(password.as_str().to_string()),
             email: Set(email.to_string()),
-            state: Set(UserStateDo::Active),
+            state: Set(state.into()),
             created_at: Set(OffsetDateTime::now_utc()),
             updated_at: NotSet,
         }
         .insert(&self.conn)
         .await
-        .map_err(|e| RepositoryError::Infrastructure(e.to_string()))?;
+        .map_err(db_error_2_repo_error)?;
         self.model_to_entity(model)
             .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
     }
 
     async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, RepositoryError> {
-        let result = Entity::delete_by_id(user_id)
+        Entity::delete_by_id(user_id)
             .exec(&self.conn)
             .await
-            .map_err(|e| RepositoryError::Infrastructure(e.to_string()))?
-            .rows_affected
-            > 0;
-        Ok(result)
+            .map(|e| e.rows_affected > 0)
+            .map_err(db_error_2_repo_error)
     }
 
     async fn update(&self, user: Revision<User>) -> Result<User, RepositoryError> {
@@ -117,7 +104,7 @@ where
         }
         .update(&self.conn)
         .await
-        .map_err(|e| RepositoryError::Infrastructure(e.to_string()))?;
+        .map_err(db_error_2_repo_error)?;
         self.model_to_entity(model)
             .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
     }

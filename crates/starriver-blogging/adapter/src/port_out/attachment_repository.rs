@@ -19,18 +19,20 @@ impl DefaultAttachmentRepository {
 
 impl AttachmentRepository for DefaultAttachmentRepository {
     async fn insert(&self, attachment: Attachment) -> Result<Attachment, RepositoryError> {
+        let file_name = attachment.file_name();
+        let file_size = attachment.file_size();
         let fields = attachment.dissolve();
         ActiveModel {
             id: Set(fields.0),
-            file_name: Set(fields.1),
-            file_size: Set(fields.2),
+            file_name: Set(file_name),
+            file_size: Set(file_size),
             created_at: Set(OffsetDateTime::now_utc()),
             updated_at: Set(None),
         }
         .insert(&self.conn)
         .await
-        .map(|e| Attachment::from_repo(e.id, e.file_name, e.file_size))
         .map_err(db_error_2_repo_error)
+        .map(|e| Attachment::from_repo(e.id, e.file_name, e.file_size))?
     }
 
     async fn delete(&self, id: Uuid) -> Result<bool, RepositoryError> {

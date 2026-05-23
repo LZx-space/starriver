@@ -6,3 +6,4 @@ pub mod io;
 pub mod middleware;
 pub mod regex_patterns;
 pub mod repository;
+pub mod upload_file;

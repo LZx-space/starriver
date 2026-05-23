@@ -170,7 +170,7 @@ where
             }
             Err(e) => {
                 error!(user_id=%username, error=%e, "find user by id failed");
-                Err(CtxError::Internal(e.to_string()))
+                Err(CtxError::Internal)
             }
         }
     }

@@ -31,9 +31,11 @@ pub mod req {
 pub mod res {
 
     use serde::Serialize;
-    use starriver_shared_base::dto::{IdName, IdValue};
+    use starriver_shared_base::dto::IdName;
     use time::OffsetDateTime;
     use uuid::Uuid;
+
+    use crate::dto::attachment_dto::res::AttachmentDto;
 
     #[derive(Serialize)]
     pub struct PostDetailDto {
@@ -42,7 +44,7 @@ pub mod res {
         pub content: String,
         pub state: i16,
         pub category: IdName<Uuid>,
-        pub attachments: Vec<IdValue<Uuid, String>>,
+        pub attachments: Vec<AttachmentDto>,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
         pub updated_at: Option<OffsetDateTime>,

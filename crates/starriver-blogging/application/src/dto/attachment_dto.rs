@@ -14,7 +14,7 @@ pub mod res {
     use uuid::Uuid;
 
     #[derive(Serialize)]
-    pub struct PostAttachmentDto {
+    pub struct AttachmentDto {
         pub id: Uuid,
         pub file_name: String,
         pub url: String,

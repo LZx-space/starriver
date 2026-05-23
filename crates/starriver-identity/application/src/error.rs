@@ -1,6 +1,7 @@
 use starriver_identity_domain::error::{DomainError, PasswordEncoderError};
 use starriver_shared_base::error::RepositoryError;
 use thiserror::Error;
+use tracing::error;
 
 /// 应用上下文错误，包含所有可能的错误类型
 #[derive(Debug, Error)]
@@ -23,7 +24,7 @@ pub enum CtxError {
 
     /// 内部错误（基础设施故障，不暴露细节给客户端）
     #[error("内部服务器错误")]
-    Internal(String),
+    Internal,
 }
 
 #[derive(Debug, Error)]
@@ -38,7 +39,8 @@ pub enum EmailVerificationError {
 
 impl From<EmailVerificationError> for CtxError {
     fn from(e: EmailVerificationError) -> Self {
-        CtxError::Internal(e.to_string())
+        error!(error=%e, "email verification error");
+        CtxError::Internal
     }
 }
 
@@ -55,7 +57,10 @@ impl From<DomainError> for CtxError {
                 CtxError::AuthenticationFailed(e.to_string())
             }
             // 密码编码/验证失败是内部问题
-            DomainError::PasswordEncoding(_) => CtxError::Internal(e.to_string()),
+            DomainError::PasswordEncoding(_) => {
+                error!(error=%e, "password encoding error");
+                CtxError::Internal
+            }
         }
     }
 }
@@ -66,13 +71,17 @@ impl From<RepositoryError> for CtxError {
             RepositoryError::NotFound(_) => CtxError::NotFound(e.to_string()),
             RepositoryError::UniqueViolation { .. } => CtxError::Conflict(e.to_string()),
             // 其他基础设施错误不暴露细节
-            _ => CtxError::Internal(e.to_string()),
+            _ => {
+                error!(error=%e, "repository error");
+                CtxError::Internal
+            }
         }
     }
 }
 
 impl From<PasswordEncoderError> for CtxError {
     fn from(e: PasswordEncoderError) -> Self {
-        CtxError::Internal(e.to_string())
+        error!(error=%e, "password encoder error");
+        CtxError::Internal
     }
 }

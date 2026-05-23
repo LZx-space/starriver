@@ -1,7 +1,8 @@
 use crate::shared_error::DomainError;
 
+#[derive(Clone)]
 pub struct FileSize {
-    pub size: i64,
+    size: i64,
 }
 impl FileSize {
     pub fn new(size: i64) -> Result<Self, DomainError> {
@@ -10,24 +11,28 @@ impl FileSize {
         }
         Ok(Self { size })
     }
+
+    pub fn size(&self) -> i64 {
+        self.size
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MimeType(String);
+pub struct Extension(String);
 
-impl MimeType {
+impl Extension {
     /// 允许的 MIME 类型白名单
-    const ALLOWED_TYPES: &[&str] = &["image/png", "image/jpeg", "image/gif"];
+    const ALLOWED_TYPES: &[&str] = &["png", "jpg", "jpeg", "gif"];
 
-    pub fn new_verified(verified_extension: &str) -> Result<Self, DomainError> {
+    pub fn new(extension: &str) -> Result<Self, DomainError> {
         // 检查是否在白名单中
-        if !Self::ALLOWED_TYPES.contains(&verified_extension) {
-            return Err(DomainError::AttachmentMimeTypeInvalid(format!(
+        if !Self::ALLOWED_TYPES.contains(&extension) {
+            return Err(DomainError::AttachmentExtensionInvalid(format!(
                 "不允许的文件类型：{}",
-                verified_extension
+                extension
             )));
         }
-        Ok(Self(verified_extension.to_string()))
+        Ok(Self(extension.to_string()))
     }
 
     pub fn as_str(&self) -> &str {

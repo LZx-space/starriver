@@ -5,6 +5,11 @@ pub trait FileTypeChecker {
 
     /// # params
     /// - `header`: the first few bytes of the file
-    /// - `claimed_mime_type`: the mime type claimed by the user
-    fn check(&self, header: &[u8], claimed_mime_type: &str) -> Result<bool, DomainError>;
+    /// - `claimed_extension`: the extension claimed by the user
+    ///
+    /// # returns
+    /// - `Ok(true)` if the file type matches the claimed extension
+    /// - `Ok(false)` if the file type does not match the claimed extension
+    /// - `Err` if an error occurs during the check
+    fn check(&self, header: &[u8], claimed_extension: &str) -> Result<bool, DomainError>;
 }

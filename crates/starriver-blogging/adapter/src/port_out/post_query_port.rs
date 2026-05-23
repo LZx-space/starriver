@@ -1,19 +1,26 @@
+use std::sync::Arc;
+
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
     QuerySelect, RelationTrait,
 };
 use starriver_blogging_application::{
-    dto::post_dto::{
-        req::PageQuery,
-        res::{PostDetailDto, PostExcerptDto},
+    dto::{
+        attachment_dto::res::AttachmentDto,
+        post_dto::{
+            req::PageQuery,
+            res::{PostDetailDto, PostExcerptDto},
+        },
     },
     port_out::post_query_port::PostQueryPort,
 };
 use starriver_shared_base::{
-    dto::{IdName, IdValue, PageResult},
+    dto::{IdName, PageResult},
     error::QueryError,
     html_utils::{DefaultExcerptor, Excerptor},
+    upload_file::UploadLocationResolver,
 };
+use starriver_shared_framework::file_access::DefaultUploadLocationResolver;
 use uuid::Uuid;
 
 use crate::port_out::{
@@ -26,11 +33,18 @@ use crate::port_out::{
 
 pub struct DefaultPostQueryPort {
     conn: DatabaseConnection,
+    file_url_builder: Arc<DefaultUploadLocationResolver>,
 }
 
 impl DefaultPostQueryPort {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
+    pub fn new(
+        conn: DatabaseConnection,
+        file_url_builder: Arc<DefaultUploadLocationResolver>,
+    ) -> Self {
+        Self {
+            conn,
+            file_url_builder,
+        }
     }
 }
 
@@ -104,7 +118,7 @@ impl PostQueryPort for DefaultPostQueryPort {
         };
 
         // 2. 附件（零到多行）
-        let attachments: Vec<IdValue<_, _>> = post_attachment_po::Entity::find()
+        let attachments: Vec<AttachmentDto> = post_attachment_po::Entity::find()
             .filter(post_attachment_po::Column::PostId.eq(id))
             .find_with_related(attachment_po::Entity)
             .all(&self.conn)
@@ -112,9 +126,10 @@ impl PostQueryPort for DefaultPostQueryPort {
             .map_err(|e| QueryError::DbError(e.to_string()))?
             .into_iter()
             .flat_map(|(_, attachments)| attachments)
-            .map(|a| IdValue {
+            .map(|a| AttachmentDto {
                 id: a.id,
-                value: a.file_name,
+                file_name: a.file_name.clone(),
+                url: self.file_url_builder.url(a.file_name.as_str()),
             })
             .collect();
 

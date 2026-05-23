@@ -7,9 +7,9 @@ pub struct DefaultFileTypeChecker {}
 impl FileTypeChecker for DefaultFileTypeChecker {
     const MAGIC_CHECKER_HEADER_SIZE: usize = 100;
 
-    fn check(&self, header: &[u8], claimed_mime_type: &str) -> Result<bool, DomainError> {
+    fn check(&self, header: &[u8], claimed_extension: &str) -> Result<bool, DomainError> {
         if let Some(file_type) = infer::get(header) {
-            Ok(file_type.mime_type() == claimed_mime_type)
+            Ok(file_type.extension() == claimed_extension)
         } else {
             Ok(false)
         }

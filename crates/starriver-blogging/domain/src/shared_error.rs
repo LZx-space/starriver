@@ -21,7 +21,7 @@ pub enum DomainError {
     PostCategoryTooLong(String),
 
     #[error("附件类型违规：{0}")]
-    AttachmentMimeTypeInvalid(String),
+    AttachmentExtensionInvalid(String),
 
     #[error("附件大小违规：{0}")]
     AttachmentFileSizeInvalid(i64),

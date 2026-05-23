@@ -1,30 +1,55 @@
-use derive_getters::{Dissolve, Getters};
+use derive_getters::Dissolve;
+use starriver_shared_base::error::RepositoryError;
 use uuid::Uuid;
 
-use crate::attachment::value_object::{FileSize, MimeType};
+use crate::attachment::value_object::{Extension, FileSize};
 
-#[derive(Clone, Debug, Getters, Dissolve)]
+#[derive(Clone, Dissolve)]
 pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,
-    file_name: String,
-    file_size: i64,
+    extension: Extension,
+    file_size: FileSize,
 }
 
 impl Attachment {
-    pub(crate) fn new(mime_type: MimeType, file_size: FileSize) -> Self {
+    pub(crate) fn new(id: Uuid, extension: Extension, file_size: FileSize) -> Self {
         Self {
-            id: Uuid::now_v7(),
-            file_name: Uuid::now_v7().to_string() + "." + mime_type.as_str(),
-            file_size: file_size.size,
+            id,
+            extension,
+            file_size,
         }
     }
 
-    pub fn from_repo(id: Uuid, file_name: String, file_size: i64) -> Self {
-        Self {
+    pub fn from_repo(id: Uuid, file_name: String, file_size: i64) -> Result<Self, RepositoryError> {
+        let ext = file_name
+            .split(".")
+            .last()
+            .ok_or(RepositoryError::BadData("no file extension".to_string()))?;
+        let extension = Extension::new(ext).map_err(|e| RepositoryError::BadData(e.to_string()))?;
+        let file_size =
+            FileSize::new(file_size).map_err(|e| RepositoryError::BadData(e.to_string()))?;
+        Ok(Self {
             id,
-            file_name,
+            extension,
             file_size,
-        }
+        })
+    }
+
+    pub fn id(&self) -> &Uuid {
+        &self.id
+    }
+
+    pub fn file_name(&self) -> String {
+        Attachment::make_file_name(&self.id, &self.extension)
+    }
+
+    pub fn file_size(&self) -> i64 {
+        self.file_size.size()
+    }
+
+    /// 命名规则的单点来源：`{id}.{extension}`
+    pub fn make_file_name(id: &Uuid, extension: &Extension) -> String {
+        format!("{}.{}", id, extension.as_str())
     }
 }

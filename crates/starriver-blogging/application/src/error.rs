@@ -4,6 +4,7 @@ use starriver_shared_base::{
     io::{AsyncReaderError, AsyncWriterError},
 };
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum CtxError {
@@ -21,7 +22,7 @@ pub enum CtxError {
 
     /// 内部错误（基础设施故障，不暴露细节给客户端）
     #[error("内部服务器错误")]
-    Internal(String),
+    Internal,
 }
 
 ///////////////////////////////////////////
@@ -36,7 +37,7 @@ impl From<DomainError> for CtxError {
             | DomainError::PostTitleTooLong(_)
             | DomainError::PostCategoryTooLong(_)
             | DomainError::PostContentTooLong(_)
-            | DomainError::AttachmentMimeTypeInvalid(_)
+            | DomainError::AttachmentExtensionInvalid(_)
             | DomainError::AttachmentFileSizeInvalid(_) => CtxError::InvalidInput(e.to_string()),
         }
     }
@@ -48,25 +49,31 @@ impl From<RepositoryError> for CtxError {
             RepositoryError::NotFound(_) => CtxError::NotFound(e.to_string()),
             RepositoryError::UniqueViolation { .. } => CtxError::Conflict(e.to_string()),
             // 其他基础设施错误不暴露细节
-            _ => CtxError::Internal(e.to_string()),
+            _ => {
+                error!(error=%e, "database error");
+                CtxError::Internal
+            }
         }
     }
 }
 
 impl From<QueryError> for CtxError {
     fn from(e: QueryError) -> Self {
-        CtxError::Internal(e.to_string())
+        error!(error=%e, "database error");
+        CtxError::Internal
     }
 }
 
 impl From<AsyncReaderError> for CtxError {
     fn from(value: AsyncReaderError) -> Self {
-        CtxError::Internal(value.to_string())
+        error!(error=%value, "IO error");
+        CtxError::Internal
     }
 }
 
 impl From<AsyncWriterError> for CtxError {
     fn from(value: AsyncWriterError) -> Self {
-        CtxError::Internal(value.to_string())
+        error!(error=%value, "IO error");
+        CtxError::Internal
     }
 }

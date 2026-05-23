@@ -1,32 +1,44 @@
+use std::sync::Arc;
+
 use starriver_blogging_domain::attachment::{
-    entity::Attachment, factory::AttachmentFactory, file_type_checker::FileTypeChecker,
+    factory::AttachmentFactory, file_type_checker::FileTypeChecker,
     repository::AttachmentRepository,
 };
-use starriver_shared_base::io::{AsyncReader, AsyncWriter};
-use tracing::info;
+use starriver_shared_base::{
+    io::{AsyncReader, AsyncWriter},
+    upload_file::UploadLocationResolver,
+};
+use uuid::Uuid;
 
-use crate::error::CtxError;
+use crate::{dto::attachment_dto::res::AttachmentDto, error::CtxError};
 
-pub struct AttachmentApplication<R, FC> {
+pub struct AttachmentApplication<R, FC, UB> {
     repo: R,
     factory: AttachmentFactory<FC>,
+    upload_location_resolver: Arc<UB>,
 }
 
-impl<R, FC> AttachmentApplication<R, FC>
+impl<R, FC, UB> AttachmentApplication<R, FC, UB>
 where
     R: AttachmentRepository,
     FC: FileTypeChecker,
+    UB: UploadLocationResolver,
 {
-    pub fn new(repo: R, factory: AttachmentFactory<FC>) -> Self {
-        Self { repo, factory }
+    pub fn new(repo: R, factory: AttachmentFactory<FC>, upload_location_resolver: Arc<UB>) -> Self {
+        Self {
+            repo,
+            factory,
+            upload_location_resolver,
+        }
     }
 
     pub async fn upload(
         &self,
-        claimed_mime_type: &str,
+        attachment_id: Uuid,
+        claimed_extension: &str,
         mut async_reader: impl AsyncReader,
         mut async_writer: impl AsyncWriter,
-    ) -> Result<Attachment, CtxError> {
+    ) -> Result<AttachmentDto, CtxError> {
         let mut buf = [0u8; 4096];
         let mut magic_checker_buf = vec![0u8; FC::MAGIC_CHECKER_HEADER_SIZE];
         let mut magic_filled = 0; // 已收集的字节数
@@ -45,15 +57,26 @@ where
         }
         // 文件太小，不足以检测 MIME
         if magic_filled < FC::MAGIC_CHECKER_HEADER_SIZE {
-            return Err(CtxError::Internal(
+            return Err(CtxError::InvalidInput(
                 "file too small for MIME detection".to_string(),
             ));
         }
-        let attachment = self
-            .factory
-            .create_attachment(&magic_checker_buf, claimed_mime_type)?;
-        info!(attachment_id=%attachment.id(), "attachment created");
-        let attachment = self.repo.insert(attachment).await?;
-        Ok(attachment)
+        let attachment =
+            self.factory
+                .create_attachment(attachment_id, &magic_checker_buf, claimed_extension)?;
+        self.repo
+            .insert(attachment)
+            .await
+            .map(|e| {
+                let file_name = e.file_name();
+                let url = self.upload_location_resolver.url(&e.file_name());
+                let fields = e.dissolve();
+                AttachmentDto {
+                    id: fields.0,
+                    file_name,
+                    url,
+                }
+            })
+            .map(Ok)?
     }
 }

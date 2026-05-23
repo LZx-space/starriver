@@ -7,7 +7,10 @@ use starriver_blogging_application::service::{
     post_service::PostApplication,
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
-use starriver_shared_framework::config::{Auth, Uploads};
+use starriver_shared_framework::{
+    config::{Auth, Uploads},
+    file_access::DefaultUploadLocationResolver,
+};
 
 use crate::port_out::{
     attachment_repository::DefaultAttachmentRepository,
@@ -20,10 +23,16 @@ use crate::port_out::{
 pub struct BloggingState {
     pub auth: Auth,
     pub uploads: Uploads,
+    pub upload_file_url_builder: Arc<DefaultUploadLocationResolver>,
     pub post_service: Arc<PostApplication<DefaultPostQueryPort, DefaultPostRepository>>,
     pub category_service: Arc<CategoryApplication<DefaultCategoryRepository>>,
-    pub attachment_service:
-        Arc<AttachmentApplication<DefaultAttachmentRepository, DefaultFileTypeChecker>>,
+    pub attachment_service: Arc<
+        AttachmentApplication<
+            DefaultAttachmentRepository,
+            DefaultFileTypeChecker,
+            DefaultUploadLocationResolver,
+        >,
+    >,
 }
 
 impl BloggingState {
@@ -32,8 +41,9 @@ impl BloggingState {
         auth: Auth,
         uploads: Uploads,
     ) -> Result<Self, String> {
+        let upload_file_url_builder = Arc::new(DefaultUploadLocationResolver::new(uploads.clone()));
         let post_service = PostApplication::new(
-            DefaultPostQueryPort::new(conn.clone()),
+            DefaultPostQueryPort::new(conn.clone(), upload_file_url_builder.clone()),
             DefaultPostRepository::new(conn.clone()),
         )
         .into();
@@ -42,11 +52,13 @@ impl BloggingState {
         let attachment_service = AttachmentApplication::new(
             DefaultAttachmentRepository::new(conn.clone()),
             AttachmentFactory::new(DefaultFileTypeChecker {}),
+            upload_file_url_builder.clone(),
         )
         .into();
         Ok(BloggingState {
             auth,
             uploads,
+            upload_file_url_builder,
             post_service,
             category_service,
             attachment_service,

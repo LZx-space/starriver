@@ -1,11 +1,11 @@
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait};
 use starriver_blogging_domain::attachment::{entity::Attachment, repository::AttachmentRepository};
 use starriver_shared_base::error::RepositoryError;
-use starriver_shared_framework::error_mapping::db_error_2_repo_error;
+use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::port_out::po::attachment_po::{ActiveModel, Entity};
+use crate::port_out::persistence::po::attachment_po::{ActiveModel, Entity};
 
 pub struct DefaultAttachmentRepository {
     conn: DatabaseConnection,
@@ -31,7 +31,7 @@ impl AttachmentRepository for DefaultAttachmentRepository {
         }
         .insert(&self.conn)
         .await
-        .map_err(db_error_2_repo_error)
+        .map_err(db_2_repo_error)
         .map(|e| Attachment::from_repo(e.id, e.file_name, e.file_size))?
     }
 
@@ -40,6 +40,6 @@ impl AttachmentRepository for DefaultAttachmentRepository {
             .exec(&self.conn)
             .await
             .map(|r| r.rows_affected > 0)
-            .map_err(db_error_2_repo_error)
+            .map_err(db_2_repo_error)
     }
 }

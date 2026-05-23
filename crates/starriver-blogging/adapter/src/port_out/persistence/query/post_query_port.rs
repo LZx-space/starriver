@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use sea_orm::{
-    ColumnTrait, Condition, DatabaseConnection, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
-    QuerySelect, RelationTrait,
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, JoinType, Order, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, sea_query::NullOrdering,
 };
 use starriver_blogging_application::{
     dto::{
@@ -20,12 +20,12 @@ use starriver_shared_base::{
     html_utils::{DefaultExcerptor, Excerptor},
     upload_file::UploadLocationResolver,
 };
-use starriver_shared_framework::file_access::DefaultUploadLocationResolver;
+use starriver_shared_framework::upload_file::DefaultUploadLocationResolver;
 use uuid::Uuid;
 
-use crate::port_out::{
+use crate::{
     dto::post_dto::{PostDetailRow, PostExcerptRow},
-    po::{
+    port_out::persistence::po::{
         attachment_po, category_po, post_attachment_po,
         post_po::{Column, Entity, PostStatePo, Relation},
     },
@@ -51,8 +51,12 @@ impl DefaultPostQueryPort {
 impl PostQueryPort for DefaultPostQueryPort {
     async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, QueryError> {
         let mut cond = Condition::all();
+        let order;
         if q.published_only {
             cond = cond.add(Column::State.eq(PostStatePo::Published));
+            order = Column::PublishedAt;
+        } else {
+            order = Column::UpdatedAt;
         }
         if let Some(category_id) = q.category_id {
             cond = cond.add(Column::CategoryId.eq(category_id));
@@ -71,6 +75,7 @@ impl PostQueryPort for DefaultPostQueryPort {
             .join(JoinType::LeftJoin, Relation::Category.def())
             .column_as(category_po::Column::Name, "category")
             .filter(cond.clone())
+            .order_by_with_nulls(order, Order::Desc, NullOrdering::Last)
             .offset(q.page * q.page_size)
             .limit(q.page_size)
             .into_model::<PostExcerptRow>()

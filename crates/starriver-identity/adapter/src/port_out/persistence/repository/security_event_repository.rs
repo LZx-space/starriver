@@ -5,7 +5,7 @@ use starriver_identity_domain::security_event::{
     entity::SecurityEvent, repository::SecurityEventRepository, value_object::SecurityEventType,
 };
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
-use starriver_shared_framework::error_mapping::db_error_2_repo_error;
+use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -37,7 +37,7 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
             .filter(Column::CreatedAt.gte(since))
             .all(&self.conn)
             .await
-            .map_err(db_error_2_repo_error)?
+            .map_err(db_2_repo_error)?
             .into_iter()
             .map(|e| {
                 SecurityEvent::from_repo(
@@ -73,7 +73,7 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
                 e.user_id,
             )
         })
-        .map_err(db_error_2_repo_error)
+        .map_err(db_2_repo_error)
     }
 
     async fn update(
@@ -102,7 +102,7 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
                 e.user_id,
             )
         })
-        .map_err(db_error_2_repo_error)
+        .map_err(db_2_repo_error)
     }
 
     async fn delete(&self, event_id: Uuid) -> Result<bool, RepositoryError> {
@@ -110,6 +110,6 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
             .exec(&self.conn)
             .await
             .map(|e| e.rows_affected > 0)
-            .map_err(db_error_2_repo_error)
+            .map_err(db_2_repo_error)
     }
 }

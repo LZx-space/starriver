@@ -1,10 +1,10 @@
 use sea_orm::DbErr;
-use starriver_shared_base::error::RepositoryError;
+use starriver_shared_base::error::{QueryError, RepositoryError};
 use tracing::warn;
 
-pub fn db_error_2_repo_error(error: DbErr) -> RepositoryError {
-    warn!(error=%error, "db error");
-    match error {
+pub fn db_2_repo_error(err: DbErr) -> RepositoryError {
+    warn!(error=%err, "db error");
+    match err {
         DbErr::ConnectionAcquire(conn_acquire_err) => {
             RepositoryError::ConnectionFailed(conn_acquire_err.to_string())
         }
@@ -26,4 +26,9 @@ pub fn db_error_2_repo_error(error: DbErr) -> RepositoryError {
         DbErr::RecordNotInserted => RepositoryError::BadData("RecordNotInserted".to_string()),
         DbErr::RecordNotUpdated => RepositoryError::BadData("RecordNotUpdated".to_string()),
     }
+}
+
+pub fn db_2_query_error(err: DbErr) -> QueryError {
+    warn!(error=%err, "db error");
+    QueryError::DbError(err.to_string())
 }

@@ -9,13 +9,20 @@ use starriver_blogging_application::service::{
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_framework::{
     config::{Auth, Uploads},
-    file_access::DefaultUploadLocationResolver,
+    upload_file::DefaultUploadLocationResolver,
 };
 
 use crate::port_out::{
-    attachment_repository::DefaultAttachmentRepository,
-    category_repository::DefaultCategoryRepository, file_type_checker::DefaultFileTypeChecker,
-    post_query_port::DefaultPostQueryPort, post_repository::DefaultPostRepository,
+    persistence::{
+        query::{
+            category_query_port::DefaultCategoryQueryPort, post_query_port::DefaultPostQueryPort,
+        },
+        repository::{
+            attachment_repository::DefaultAttachmentRepository,
+            category_repository::DefaultCategoryRepository, post_repository::DefaultPostRepository,
+        },
+    },
+    service::file_type_checker::DefaultFileTypeChecker,
 };
 
 /// 应用的各个状态
@@ -25,7 +32,8 @@ pub struct BloggingState {
     pub uploads: Uploads,
     pub upload_file_url_builder: Arc<DefaultUploadLocationResolver>,
     pub post_service: Arc<PostApplication<DefaultPostQueryPort, DefaultPostRepository>>,
-    pub category_service: Arc<CategoryApplication<DefaultCategoryRepository>>,
+    pub category_service:
+        Arc<CategoryApplication<DefaultCategoryQueryPort, DefaultCategoryRepository>>,
     pub attachment_service: Arc<
         AttachmentApplication<
             DefaultAttachmentRepository,
@@ -47,8 +55,11 @@ impl BloggingState {
             DefaultPostRepository::new(conn.clone()),
         )
         .into();
-        let category_service =
-            CategoryApplication::new(DefaultCategoryRepository::new(conn.clone())).into();
+        let category_service = CategoryApplication::new(
+            DefaultCategoryQueryPort::new(conn.clone()),
+            DefaultCategoryRepository::new(conn.clone()),
+        )
+        .into();
         let attachment_service = AttachmentApplication::new(
             DefaultAttachmentRepository::new(conn.clone()),
             AttachmentFactory::new(DefaultFileTypeChecker {}),

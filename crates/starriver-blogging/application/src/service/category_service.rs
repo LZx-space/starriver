@@ -3,22 +3,26 @@ use starriver_shared_base::{authentication::PrincipalClaims, repository::Revisio
 use tracing::info;
 use uuid::Uuid;
 
+use crate::dto::category_dto::res::CategoryDetailDto;
 use crate::error::CtxError;
+use crate::port_out::category_query_port::CategoryQueryPort;
 
-pub struct CategoryApplication<R> {
+pub struct CategoryApplication<Q, R> {
+    query: Q,
     repo: R,
 }
 
-impl<R> CategoryApplication<R>
+impl<Q, R> CategoryApplication<Q, R>
 where
+    Q: CategoryQueryPort,
     R: CategoryRepository,
 {
-    pub fn new(repo: R) -> Self {
-        Self { repo }
+    pub fn new(query: Q, repo: R) -> Self {
+        Self { query, repo }
     }
 
-    pub async fn list_all(&self) -> Result<Vec<Category>, CtxError> {
-        self.repo.list_all().await.map(Ok)?
+    pub async fn list_all(&self) -> Result<Vec<CategoryDetailDto>, CtxError> {
+        self.query.list_all().await.map(Ok)?
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Category, CtxError> {

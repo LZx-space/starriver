@@ -16,7 +16,7 @@ use starriver_identity_domain::user::value_object::Username;
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_base::regex_patterns::Patterns;
 use starriver_shared_base::repository::Revision;
-use starriver_shared_framework::error_mapping::db_error_2_repo_error;
+use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
 use crate::port_out::persistence::po::user_po::ActiveModel;
@@ -44,7 +44,7 @@ where
             .filter(Column::Username.eq(username))
             .one(&self.conn)
             .await
-            .map_err(db_error_2_repo_error)?
+            .map_err(db_2_repo_error)?
             .map(|e| self.model_to_entity(e))
             .transpose()
             .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
@@ -63,7 +63,7 @@ where
         }
         .insert(&self.conn)
         .await
-        .map_err(db_error_2_repo_error)?;
+        .map_err(db_2_repo_error)?;
         self.model_to_entity(model)
             .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
     }
@@ -73,7 +73,7 @@ where
             .exec(&self.conn)
             .await
             .map(|e| e.rows_affected > 0)
-            .map_err(db_error_2_repo_error)
+            .map_err(db_2_repo_error)
     }
 
     async fn update(&self, user: Revision<User>) -> Result<User, RepositoryError> {
@@ -104,7 +104,7 @@ where
         }
         .update(&self.conn)
         .await
-        .map_err(db_error_2_repo_error)?;
+        .map_err(db_2_repo_error)?;
         self.model_to_entity(model)
             .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
     }

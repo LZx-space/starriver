@@ -4,8 +4,6 @@ use uuid::Uuid;
 use crate::category::entity::Category;
 
 pub trait CategoryRepository {
-    fn list_all(&self) -> impl Future<Output = Result<Vec<Category>, RepositoryError>> + Send;
-
     fn find_by_id(
         &self,
         id: Uuid,

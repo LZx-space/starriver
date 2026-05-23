@@ -5,10 +5,10 @@ use sea_orm::{
 };
 use starriver_blogging_domain::post::{entity::Post, repository::PostRepository};
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
-use starriver_shared_framework::error_mapping::db_error_2_repo_error;
+use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
-use crate::port_out::po::{
+use crate::port_out::persistence::po::{
     post_attachment_po,
     post_po::{ActiveModel, Entity},
 };
@@ -29,7 +29,7 @@ impl PostRepository for DefaultPostRepository {
             .find_with_related(post_attachment_po::Entity)
             .all(&self.conn)
             .await
-            .map_err(db_error_2_repo_error)?;
+            .map_err(db_2_repo_error)?;
         let Some((post, attachments)) = results.into_iter().next() else {
             return Ok(None);
         };
@@ -68,7 +68,7 @@ impl PostRepository for DefaultPostRepository {
         }
         .insert(&self.conn)
         .await
-        .map_err(db_error_2_repo_error)?;
+        .map_err(db_2_repo_error)?;
 
         // 插入附件关联
         if !attachments.is_empty() {
@@ -82,7 +82,7 @@ impl PostRepository for DefaultPostRepository {
             }))
             .exec(&self.conn)
             .await
-            .map_err(db_error_2_repo_error)?;
+            .map_err(db_2_repo_error)?;
         }
 
         // 构建 Post 实体
@@ -104,7 +104,7 @@ impl PostRepository for DefaultPostRepository {
         let not_zero = Entity::delete_by_id(id)
             .exec(&self.conn)
             .await
-            .map_err(db_error_2_repo_error)?
+            .map_err(db_2_repo_error)?
             .rows_affected
             != 0;
         Ok(not_zero)
@@ -156,10 +156,7 @@ impl PostRepository for DefaultPostRepository {
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         };
 
-        let updated = model
-            .update(&self.conn)
-            .await
-            .map_err(db_error_2_repo_error)?;
+        let updated = model.update(&self.conn).await.map_err(db_2_repo_error)?;
 
         if !new_attachments.is_empty() {
             // 更新附件关联
@@ -167,7 +164,7 @@ impl PostRepository for DefaultPostRepository {
                 .filter(post_attachment_po::Column::PostId.eq(id))
                 .exec(&self.conn)
                 .await
-                .map_err(db_error_2_repo_error)?;
+                .map_err(db_2_repo_error)?;
             // 插入新的附件关联
             post_attachment_po::Entity::insert_many(new_attachments.iter().map(|att_id| {
                 post_attachment_po::ActiveModel {
@@ -179,7 +176,7 @@ impl PostRepository for DefaultPostRepository {
             }))
             .exec(&self.conn)
             .await
-            .map_err(db_error_2_repo_error)?;
+            .map_err(db_2_repo_error)?;
         }
 
         let updated = Post::from_repo(

@@ -6,7 +6,6 @@ use sea_orm::Database;
 use starriver_blogging_adapter::port_in::{router as blogging_router, state::BloggingState};
 use starriver_identity_adapter::port_in::router as identity_router;
 use starriver_identity_adapter::port_in::state::IdentityState;
-use std::future::pending;
 use tokio::{net::TcpListener, signal};
 use tower::ServiceBuilder;
 use tower_http::{
@@ -110,7 +109,7 @@ async fn shutdown_signal(handler: impl Future<Output = ()>) {
                     .await;
             }
         }
-        _ => { pending::<()>() }
+        _ => { std::future::pending::<()>() }
     };
     tokio::select! {
         _ = ctrl_c => {

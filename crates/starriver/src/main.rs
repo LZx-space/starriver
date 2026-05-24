@@ -1,13 +1,12 @@
 mod config;
 
 use axum::Router;
-
 use mimalloc::MiMalloc;
 use sea_orm::Database;
 use starriver_blogging_adapter::port_in::{router as blogging_router, state::BloggingState};
 use starriver_identity_adapter::port_in::router as identity_router;
 use starriver_identity_adapter::port_in::state::IdentityState;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, signal};
 use tower::ServiceBuilder;
 use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
@@ -35,7 +34,7 @@ async fn main() {
     let conn = Database::connect(app_cfg.database.url)
         .await
         .unwrap_or_else(|e| {
-            error!(error = %e, "failed to connect to database");
+            error!(error = %e, "connect to database");
             panic!("failed to connect to database: {}", e);
         });
     let auth = app_cfg.auth;
@@ -43,13 +42,13 @@ async fn main() {
     let identity_state = IdentityState::new(conn.clone(), auth.clone(), &app_cfg.ctx_identity)
         .await
         .unwrap_or_else(|e| {
-            error!(error = %e, "failed to create identity state");
+            error!(error = %e, "create identity state");
             panic!("failed to create identity state: {}", e);
         });
     let blogging_state = BloggingState::new(conn.clone(), auth.clone(), uploads.clone())
         .await
         .unwrap_or_else(|e| {
-            error!(error = %e, "failed to create blogging state");
+            error!(error = %e, "create blogging state");
             panic!("failed to create blogging state: {}", e);
         });
 
@@ -75,16 +74,51 @@ async fn main() {
         .layer(middleware_service);
 
     let listener = TcpListener::bind(addrs).await.unwrap_or_else(|e| {
-        error!(error = %e, "can't bind to addr");
-        std::process::exit(1);
+        error!(error = %e, "listener bind addr");
+        panic!("failed to bind local address");
     });
 
     let bound_addr = listener.local_addr().unwrap_or_else(|e| {
-        error!(error = %e, "listener missing local addr");
-        std::process::exit(1);
+        error!(error = %e, "listener local addr");
+        panic!("failed to get local address");
     });
-    info!("Server listening on {}", bound_addr);
-    if let Err(e) = axum::serve(listener, router).await {
-        error!(error = %e, "server terminated with error");
+    info!(addr = %bound_addr, "server listening");
+    if let Err(e) = axum::serve(listener, router)
+        .with_graceful_shutdown(shutdown_signal(async {
+            info!("graceful shutdown completed");
+        }))
+        .await
+    {
+        error!(error = %e, "server start failed");
     }
+}
+
+async fn shutdown_signal(handler: impl Future<Output = ()>) {
+    // listen for ctrl+c and terminate signals
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install ctrl+c handler");
+    };
+    let terminate = cfg_select! {
+        unix => {
+            async {
+                signal::unix::signal(signal::unix::SignalKind::terminate())
+                    .expect("failed to install signal handler")
+                    .recv()
+                    .await;
+            }
+        }
+        _ => { std::future::pending::<()>() }
+    };
+    tokio::select! {
+        _ = ctrl_c => {
+            info!("ctrl+c received, starting graceful shutdown");
+            handler.await
+        }
+        _ = terminate => {
+            info!("terminate received, starting graceful shutdown");
+            handler.await
+        }
+    };
 }

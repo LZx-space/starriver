@@ -27,7 +27,6 @@ axum-extra = { version = "^0", features = ["cookie", "form"] }
 axum-valid = "^0"
 anyhow = "^1"
 argon2 = "^0"
-bytes = "^1"
 chrono = "^0"
 config = "^0"
 derive-getters = "^0"
@@ -40,10 +39,10 @@ rand = "^0"
 regex = { version = "^1" }
 serde = { version = "^1", features = ["derive"] }
 serde_json = "^1"
-sea-orm = { version = "^1", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-bigdecimal", "with-json", "with-rust_decimal", "with-time", "with-uuid"] }
+sea-orm = { version = "^1", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-json", "with-time", "with-uuid"] }
 time = { version = "^0", features = ["serde-human-readable", "serde-well-known"] }
 thiserror = "^2"
-tokio = { version = "^1", features = ["full"] }
+tokio = { version = "^1", features = ["rt-multi-thread", "net", "fs", "macros", "signal"] }
 tracing = "^0"
 tracing-subscriber = { version = "^0", features = ["env-filter", "json", "local-time"] }
 tracing-appender = "^0"
@@ -54,6 +53,9 @@ validator = { version = "^0", features = ["derive"] }
 
 [profile.dev]
 opt-level = 0
+debug = 0
+codegen-units = 256
 # Set the default for dependencies.
 [profile.dev.package."*"]
 opt-level = 0
+debug = 0

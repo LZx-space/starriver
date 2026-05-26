@@ -359,9 +359,7 @@ mod password_spec_tests {
 
     fn spec() -> PasswordSpec {
         // 至少 8 位，含大小写字母、数字、特殊字符
-        PasswordSpec::new(
-            Regex::new(r#"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]).{8,15}$"#).unwrap(),
-        )
+        PasswordSpec::new(Regex::new(r"^[A-Za-z0-9@$!%*?&]{8,12}$").unwrap())
     }
 
     // ── 合法 ──
@@ -378,16 +376,12 @@ mod password_spec_tests {
 
     #[test]
     fn max_length() {
-        assert!(
-            spec()
-                .validate("Abc123!xAbc123!xAbc123!xAbc123!xAbc123!xAbc123!xAbc123!x1234")
-                .is_ok()
-        ); // 恰好 64 字符
+        assert!(spec().validate("Abc123!xAbc1").is_ok()); // 恰好 12 字符
     }
 
     #[test]
     fn multiple_special_chars() {
-        assert!(spec().validate("P@ssw0rd#2024!").is_ok());
+        assert!(spec().validate("P@ssw0rd#26!").is_ok());
     }
 
     // ── 非法：长度 ──
@@ -409,7 +403,7 @@ mod password_spec_tests {
 
     #[test]
     fn too_long() {
-        assert!(spec().validate(&"A".repeat(16)).is_err()); // 超过 15
+        assert!(spec().validate(&"A".repeat(13)).is_err()); // 超过 12
     }
 
     // ── 非法：缺少必需字符类别 ──

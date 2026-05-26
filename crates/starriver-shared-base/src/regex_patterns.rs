@@ -1,11 +1,9 @@
 use regex::{Error, Regex};
-use std::sync::Arc;
 
-#[derive(Clone)]
 pub struct Patterns {
-    pub email: Arc<Regex>,
-    pub username: Arc<Regex>,
-    pub password: Arc<Regex>,
+    pub email: Regex,
+    pub username: Regex,
+    pub password: Regex,
 }
 
 impl Patterns {
@@ -14,9 +12,9 @@ impl Patterns {
         let username = Regex::new(username_reg)?;
         let password = Regex::new(password_reg)?;
         Ok(Self {
-            email: Arc::new(email),
-            username: Arc::new(username),
-            password: Arc::new(password),
+            email,
+            username,
+            password,
         })
     }
 }

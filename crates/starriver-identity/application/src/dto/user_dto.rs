@@ -1,11 +1,13 @@
 pub mod req {
+    use std::sync::Arc;
+
     use serde::Deserialize;
-    use starriver_shared_base::regex_patterns::Patterns;
+    use starriver_identity_domain::user::value_object::{PasswordSpec, UsernameSpec};
     use uuid::Uuid;
     use validator::{Validate, ValidationError};
 
     #[derive(Debug, Deserialize, Validate)]
-    #[validate(context = Patterns)]
+    #[validate(context = UserValidateCxt)]
     pub struct UserCmd {
         #[validate(custom(function = "validate_username", use_context))]
         pub username: String,
@@ -38,23 +40,23 @@ pub mod req {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
-    fn validate_username(value: &str, context: &Patterns) -> Result<(), ValidationError> {
-        if !context.username.is_match(value) {
-            let reg = context.username.as_str();
-            let msg = format!("username does not match pattern [{reg}]");
-            let err = ValidationError::new("invalid_username").with_message(msg.into());
-            return Err(err);
-        }
+    #[derive(Clone)]
+    pub struct UserValidateCxt {
+        pub username_spec: Arc<UsernameSpec>,
+        pub password_spec: Arc<PasswordSpec>,
+    }
+
+    fn validate_username(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
+        ctx.username_spec.validate(value).map_err(|e| {
+            ValidationError::new("invalid_username").with_message(e.to_string().into())
+        })?;
         Ok(())
     }
 
-    fn validate_password(value: &str, context: &Patterns) -> Result<(), ValidationError> {
-        if !context.password.is_match(value) {
-            let reg = context.password.as_str();
-            let msg = format!("password does not match pattern [{reg}]");
-            let err = ValidationError::new("invalid_password").with_message(msg.into());
-            return Err(err);
-        }
+    fn validate_password(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
+        ctx.password_spec.validate(value).map_err(|e| {
+            ValidationError::new("invalid_password").with_message(e.to_string().into())
+        })?;
         Ok(())
     }
 }

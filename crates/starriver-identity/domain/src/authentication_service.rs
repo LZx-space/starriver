@@ -11,12 +11,12 @@ use crate::user::policy::BadPasswordPolicy;
 use crate::user::value_object::UserState;
 
 #[derive(Clone)]
-pub struct AuthenticationService<PE> {
+pub struct AuthenticationDomainService<PE> {
     policy: BadPasswordPolicy,
     encoder: Arc<PE>,
 }
 
-impl<PE> AuthenticationService<PE>
+impl<PE> AuthenticationDomainService<PE>
 where
     PE: PasswordEncoder,
 {

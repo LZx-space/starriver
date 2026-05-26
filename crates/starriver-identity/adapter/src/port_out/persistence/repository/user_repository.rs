@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use sea_orm::ActiveModelTrait;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
@@ -10,11 +12,12 @@ use starriver_identity_domain::error::DomainError;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::repository::UserRepository;
 use starriver_identity_domain::user::value_object::Email;
+use starriver_identity_domain::user::value_object::EmailSpec;
 use starriver_identity_domain::user::value_object::Password;
 use starriver_identity_domain::user::value_object::UserState;
 use starriver_identity_domain::user::value_object::Username;
+use starriver_identity_domain::user::value_object::UsernameSpec;
 use starriver_shared_base::error::RepositoryError;
-use starriver_shared_base::regex_patterns::Patterns;
 use starriver_shared_base::repository::Revision;
 use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
@@ -26,12 +29,17 @@ use crate::port_out::persistence::po::user_po::Model;
 
 pub struct DefaultUserRepository<T> {
     conn: T,
-    patterns: Patterns,
+    email_spec: Arc<EmailSpec>,
+    username_spec: Arc<UsernameSpec>,
 }
 
 impl<T> DefaultUserRepository<T> {
-    pub fn new(conn: T, patterns: Patterns) -> Self {
-        Self { conn, patterns }
+    pub fn new(conn: T, email_spec: Arc<EmailSpec>, username_spec: Arc<UsernameSpec>) -> Self {
+        Self {
+            conn,
+            email_spec,
+            username_spec,
+        }
     }
 }
 
@@ -113,9 +121,9 @@ where
 impl<T> DefaultUserRepository<T> {
     #[inline]
     fn model_to_entity(&self, m: Model) -> Result<User, DomainError> {
-        let username = Username::new(&m.username, &self.patterns.username)?;
+        let username = Username::new(&m.username, &self.username_spec)?;
         let hashed_pwd = Password::new(&m.password)?;
-        let email = Email::new(&m.email, &self.patterns.email)?;
+        let email = Email::new(&m.email, &self.email_spec)?;
         let state = UserState::from(m.state);
         Ok(User::new(m.id, username, hashed_pwd, email, state))
     }

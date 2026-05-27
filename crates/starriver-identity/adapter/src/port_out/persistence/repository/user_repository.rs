@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sea_orm::ActiveModelTrait;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
@@ -8,15 +6,8 @@ use sea_orm::ColumnTrait;
 use sea_orm::ConnectionTrait;
 use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
-use starriver_identity_domain::error::DomainError;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::repository::UserRepository;
-use starriver_identity_domain::user::value_object::Email;
-use starriver_identity_domain::user::value_object::EmailSpec;
-use starriver_identity_domain::user::value_object::Password;
-use starriver_identity_domain::user::value_object::UserState;
-use starriver_identity_domain::user::value_object::Username;
-use starriver_identity_domain::user::value_object::UsernameSpec;
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_base::repository::Revision;
 use starriver_shared_framework::error_mapping::db_2_repo_error;
@@ -25,21 +16,14 @@ use time::OffsetDateTime;
 use crate::port_out::persistence::po::user_po::ActiveModel;
 use crate::port_out::persistence::po::user_po::Column;
 use crate::port_out::persistence::po::user_po::Entity;
-use crate::port_out::persistence::po::user_po::Model;
 
 pub struct DefaultUserRepository<T> {
     conn: T,
-    email_spec: Arc<EmailSpec>,
-    username_spec: Arc<UsernameSpec>,
 }
 
 impl<T> DefaultUserRepository<T> {
-    pub fn new(conn: T, email_spec: Arc<EmailSpec>, username_spec: Arc<UsernameSpec>) -> Self {
-        Self {
-            conn,
-            email_spec,
-            username_spec,
-        }
+    pub fn new(conn: T) -> Self {
+        Self { conn }
     }
 }
 
@@ -52,10 +36,10 @@ where
             .filter(Column::Username.eq(username))
             .one(&self.conn)
             .await
-            .map_err(db_2_repo_error)?
-            .map(|e| self.model_to_entity(e))
-            .transpose()
-            .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
+            .map(|e| {
+                e.map(|e| User::from_repo(e.id, e.username, e.password, e.email, e.state.into()))
+            })
+            .map_err(db_2_repo_error)
     }
 
     async fn insert(&self, user: User) -> Result<User, RepositoryError> {
@@ -72,8 +56,13 @@ where
         .insert(&self.conn)
         .await
         .map_err(db_2_repo_error)?;
-        self.model_to_entity(model)
-            .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
+        Ok(User::from_repo(
+            model.id,
+            model.username,
+            model.password,
+            model.email,
+            model.state.into(),
+        ))
     }
 
     async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, RepositoryError> {
@@ -113,18 +102,12 @@ where
         .update(&self.conn)
         .await
         .map_err(db_2_repo_error)?;
-        self.model_to_entity(model)
-            .map_err(|e| RepositoryError::Infrastructure(e.to_string()))
-    }
-}
-
-impl<T> DefaultUserRepository<T> {
-    #[inline]
-    fn model_to_entity(&self, m: Model) -> Result<User, DomainError> {
-        let username = Username::new(&m.username, &self.username_spec)?;
-        let hashed_pwd = Password::new(&m.password)?;
-        let email = Email::new(&m.email, &self.email_spec)?;
-        let state = UserState::from(m.state);
-        Ok(User::new(m.id, username, hashed_pwd, email, state))
+        Ok(User::from_repo(
+            model.id,
+            model.username,
+            model.password,
+            model.email,
+            model.state.into(),
+        ))
     }
 }

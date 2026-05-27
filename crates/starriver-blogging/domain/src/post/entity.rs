@@ -60,10 +60,10 @@ impl Post {
         category_id: Uuid,
         attachments: Vec<Uuid>,
         published_at: Option<OffsetDateTime>,
-    ) -> Result<Self, DomainError> {
-        let title = Title::new(title)?;
-        let content = Content::new(content)?;
-        Ok(Self {
+    ) -> Self {
+        let title = Title(title);
+        let content = Content(content);
+        Self {
             id,
             title,
             content,
@@ -72,7 +72,7 @@ impl Post {
             category_id,
             attachments,
             published_at,
-        })
+        }
     }
 
     /// 非附件属性更新

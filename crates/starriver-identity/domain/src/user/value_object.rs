@@ -26,6 +26,10 @@ impl Username {
         Ok(Self(username.to_string()))
     }
 
+    pub(crate) fn from_repo(username: String) -> Self {
+        Self(username)
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -69,6 +73,10 @@ impl Password {
         Ok(Self(hashed_password.to_string()))
     }
 
+    pub(crate) fn from_repo(hashed_password: String) -> Self {
+        Self(hashed_password)
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -104,6 +112,10 @@ impl Email {
     pub fn new(email: &str, spec: &EmailSpec) -> Result<Self, DomainError> {
         spec.validate(email)?;
         Ok(Self(email.to_string()))
+    }
+
+    pub(crate) fn from_repo(email: String) -> Self {
+        Self(email)
     }
 
     /// Returns a masked email address, showing only the first character of the local part

@@ -37,7 +37,7 @@ impl PostRepository for DefaultPostRepository {
             .into_iter()
             .map(|e| e.attachment_id)
             .collect::<Vec<_>>();
-        Post::from_repo(
+        let post = Post::from_repo(
             id,
             post.title,
             post.content,
@@ -46,9 +46,8 @@ impl PostRepository for DefaultPostRepository {
             post.category_id,
             attachments,
             post.published_at,
-        )
-        .map(Some)
-        .map_err(|e| RepositoryError::BadData(e.to_string()))
+        );
+        Ok(Some(post))
     }
 
     async fn add(&self, post: Post) -> Result<Post, RepositoryError> {
@@ -95,8 +94,7 @@ impl PostRepository for DefaultPostRepository {
             model.category_id,
             attachments,
             model.published_at,
-        )
-        .map_err(|e| RepositoryError::BadData(e.to_string()))?;
+        );
         Ok(post)
     }
 
@@ -188,8 +186,7 @@ impl PostRepository for DefaultPostRepository {
             updated.category_id,
             new_attachments,
             updated.published_at,
-        )
-        .map_err(|e| RepositoryError::BadData(e.to_string()))?;
+        );
         Ok(updated)
     }
 }

@@ -71,8 +71,7 @@ impl IdentityState {
         ////////////////////////////////////////////////////////
 
         let user_query = DefaultUserQueryPort { conn: conn.clone() };
-        let user_repo =
-            DefaultUserRepository::new(conn.clone(), email_spec.clone(), username_spec.clone());
+        let user_repo = DefaultUserRepository::new(conn.clone());
         let security_event_repo = DefaultSecurityEventRepository::new(conn.clone());
         let verification_code_port =
             SmtpVerificationPort::new(&cfg.email_smtp).map_err(|e| e.to_string())?;

@@ -2,6 +2,7 @@ use axum::{extract::State, response::IntoResponse};
 use starriver_shared_framework::{
     extract::{Json, Path},
     middleware::authentication::default_impl::AuthenticatedUser,
+    response::ApiError,
 };
 use uuid::Uuid;
 
@@ -10,7 +11,7 @@ use crate::{
     port_in::state::BloggingState,
 };
 
-pub async fn list_all(state: State<BloggingState>) -> impl IntoResponse {
+pub async fn list_all(state: State<BloggingState>) -> Result<impl IntoResponse, ApiError> {
     state
         .category_service
         .list_all()
@@ -19,7 +20,10 @@ pub async fn list_all(state: State<BloggingState>) -> impl IntoResponse {
         .map_err(map_error)
 }
 
-pub async fn show(state: State<BloggingState>, id: Path<Uuid>) -> impl IntoResponse {
+pub async fn show(
+    state: State<BloggingState>,
+    id: Path<Uuid>,
+) -> Result<impl IntoResponse, ApiError> {
     state
         .category_service
         .find(id.0)
@@ -32,7 +36,7 @@ pub async fn create(
     state: State<BloggingState>,
     user: AuthenticatedUser,
     cmd: Json<CreateOrUpdateCategoryCmd>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     state
         .category_service
         .create(user.0, cmd.0.name)
@@ -46,7 +50,7 @@ pub async fn update(
     user: AuthenticatedUser,
     Path(id): Path<Uuid>,
     Json(cmd): Json<CreateOrUpdateCategoryCmd>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     state
         .category_service
         .update(user.0, id, cmd.name)
@@ -59,7 +63,7 @@ pub async fn delete(
     state: State<BloggingState>,
     user: AuthenticatedUser,
     Path(id): Path<Uuid>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     state
         .category_service
         .delete(user.0, id)

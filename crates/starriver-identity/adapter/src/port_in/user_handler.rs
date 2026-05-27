@@ -11,8 +11,8 @@ use starriver_shared_framework::response::ApiError;
 use crate::error_mapping::map_error;
 use crate::port_in::state::IdentityState;
 
-pub async fn me(user: AuthenticatedUser) -> impl IntoResponse {
-    Json(user)
+pub async fn me(user: AuthenticatedUser) -> Result<impl IntoResponse, ApiError> {
+    Ok(Json(user))
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -20,8 +20,12 @@ pub async fn me(user: AuthenticatedUser) -> impl IntoResponse {
 pub async fn send_register_email(
     state: State<IdentityState>,
     cmd: Json<EmailVerifyCmd>,
-) -> impl IntoResponse {
-    state.user_service.send_register_email(cmd.0).await
+) -> Result<impl IntoResponse, ApiError> {
+    state
+        .user_service
+        .send_register_email(cmd.0)
+        .await
+        .map_err(|e| e.into())
 }
 
 #[axum::debug_handler]
@@ -42,15 +46,19 @@ pub async fn register_user(
 pub async fn send_activate_email(
     state: State<IdentityState>,
     cmd: Json<EmailActiveCmd>,
-) -> impl IntoResponse {
-    state.user_service.send_active_email(cmd.0).await
+) -> Result<impl IntoResponse, ApiError> {
+    state
+        .user_service
+        .send_active_email(cmd.0)
+        .await
+        .map_err(|e| e.into())
 }
 
 pub async fn activate_user(
     state: State<IdentityState>,
     username: Path<String>,
     cmd: Json<UserActiveCmd>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     state
         .user_service
         .activate_user(username.0, cmd.0)

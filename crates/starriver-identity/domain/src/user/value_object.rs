@@ -113,7 +113,7 @@ impl Email {
             return self.0.clone();
         }
         let (local, domain) = (parts[0], parts[1]);
-        let masked_local = format!("{}*", &local[..1]);
+        let masked_local = format!("{}{}", &local[..1], "*".repeat(local.len() - 1));
         format!("{}@{}", masked_local, domain)
     }
 
@@ -350,6 +350,26 @@ mod email_tests {
     #[test]
     fn single_char_tld() {
         assert!(spec().validate("alice@example.a").is_err());
+    }
+
+    // ── 掩码 ──
+
+    #[test]
+    fn mask() {
+        let email = Email::new("alice@example.com", &spec()).unwrap();
+        assert_eq!(email.masking(), "a****@example.com".to_string());
+    }
+
+    #[test]
+    fn single_char_local_mask() {
+        let email = Email::new("a@example.com", &spec()).unwrap();
+        assert_eq!(email.masking(), "a@example.com".to_string());
+    }
+
+    #[test]
+    fn double_char_local_mask() {
+        let email = Email::new("ab@example.com", &spec()).unwrap();
+        assert_eq!(email.masking(), "a*@example.com".to_string());
     }
 }
 

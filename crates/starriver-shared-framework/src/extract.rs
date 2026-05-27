@@ -114,7 +114,7 @@ where
             .await
             .map_err(unified_bad_request_err)?;
 
-        // 2. 从 State 获取验证上下文（Patterns）
+        // 2. 从 State 获取验证上下文
         let ctx = CTX::from_ref(state);
 
         // 3. 使用上下文进行验证

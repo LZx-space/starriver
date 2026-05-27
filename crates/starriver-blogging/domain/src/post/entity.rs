@@ -83,6 +83,8 @@ impl Post {
         self.attachments = update.attachments;
         if update.published {
             self.publish()?;
+        } else {
+            self.draft();
         }
         Ok(())
     }

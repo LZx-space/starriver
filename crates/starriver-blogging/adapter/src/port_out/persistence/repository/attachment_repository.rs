@@ -32,7 +32,7 @@ impl AttachmentRepository for DefaultAttachmentRepository {
         .insert(&self.conn)
         .await
         .map_err(db_2_repo_error)
-        .map(|e| Attachment::from_repo(e.id, e.file_name, e.file_size))?
+        .map(|e| Attachment::from_repo(e.id, e.file_name, e.file_size))
     }
 
     async fn delete(&self, id: Uuid) -> Result<bool, RepositoryError> {

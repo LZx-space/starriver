@@ -8,7 +8,6 @@ use axum::{
 
 use http::StatusCode;
 use serde::{Serialize, de::DeserializeOwned};
-use starriver_shared_base::regex_patterns::Patterns;
 use validator::ValidationErrors;
 use validator::{Validate, ValidateArgs};
 
@@ -101,11 +100,11 @@ impl<T> From<T> for Json<T> {
 /// JSON参数抽取器（支持上下文验证）
 pub struct JsonEx<T>(pub T);
 
-impl<State, T> FromRequest<State> for JsonEx<T>
+impl<State, T, CTX> FromRequest<State> for JsonEx<T>
 where
     State: Send + Sync,
-    Patterns: FromRef<State>,
-    T: for<'v> ValidateArgs<'v, Args = &'v Patterns> + DeserializeOwned + Send,
+    CTX: FromRef<State>,
+    T: for<'v> ValidateArgs<'v, Args = &'v CTX> + DeserializeOwned + Send,
 {
     type Rejection = ApiError;
 
@@ -115,14 +114,12 @@ where
             .await
             .map_err(unified_bad_request_err)?;
 
-        // 2. 从 State 获取验证上下文（Patterns）
-        let patterns = Patterns::from_ref(state);
+        // 2. 从 State 获取验证上下文
+        let ctx = CTX::from_ref(state);
 
         // 3. 使用上下文进行验证
         let value = json.0;
-        value
-            .validate_with_args(&patterns)
-            .map_err(unified_valid_err2)?;
+        value.validate_with_args(&ctx).map_err(unified_valid_err2)?;
 
         Ok(JsonEx(value))
     }

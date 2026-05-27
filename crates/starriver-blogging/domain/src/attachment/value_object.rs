@@ -1,24 +1,22 @@
 use crate::shared_error::DomainError;
 
 #[derive(Clone)]
-pub struct FileSize {
-    size: i64,
-}
+pub struct FileSize(pub(crate) i64);
 impl FileSize {
     pub fn new(size: i64) -> Result<Self, DomainError> {
         if size > 1024 * 1024 * 10 {
             return Err(DomainError::AttachmentFileSizeInvalid(size));
         }
-        Ok(Self { size })
+        Ok(Self(size))
     }
 
     pub fn size(&self) -> i64 {
-        self.size
+        self.0
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Extension(String);
+pub struct Extension(pub(crate) String);
 
 impl Extension {
     /// 允许的 MIME 类型白名单

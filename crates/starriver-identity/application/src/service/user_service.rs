@@ -1,21 +1,17 @@
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 use starriver_identity_domain::{
-    authentication_service::AuthenticationService,
+    authentication_service::AuthenticationDomainService,
     error::DomainError,
     password_encoder::PasswordEncoder,
     security_event::{
         entity::SecurityEvent, repository::SecurityEventRepository, value_object::SecurityEventType,
     },
-    user::{
-        factory::UserFactory, policy::BadPasswordPolicy, repository::UserRepository,
-        value_object::UserState,
-    },
+    user::{factory::UserFactory, repository::UserRepository, value_object::UserState},
 };
 use starriver_shared_base::{
     authentication::UsernamePasswordCredentials, error::RepositoryError,
-    middleware::authentication::core::error::AuthenticationError, regex_patterns::Patterns,
-    repository::Revision,
+    middleware::authentication::core::error::AuthenticationError, repository::Revision,
 };
 use time::{Duration, OffsetDateTime};
 use tracing::{error, info, warn};
@@ -34,8 +30,8 @@ pub struct UserApplicationService<UQP, UREPO, SREPO, VCP, PE> {
     user_repo: UREPO,
     security_event_repo: SREPO,
     verification_code_port: VCP,
-    factory: UserFactory<PE>,
-    auth_service: AuthenticationService<PE>,
+    user_factory: UserFactory<PE>,
+    auth_service: AuthenticationDomainService<PE>,
 }
 
 impl<UQP, UREPO, SREPO, VCP, PE> UserApplicationService<UQP, UREPO, SREPO, VCP, PE>
@@ -52,24 +48,15 @@ where
         user_repo: UREPO,
         security_event_repo: SREPO,
         verification_code_port: VCP,
-        patterns: Patterns,
-        bad_password_policy: BadPasswordPolicy,
-        password_encoder: Arc<PE>,
+        user_factory: UserFactory<PE>,
+        auth_service: AuthenticationDomainService<PE>,
     ) -> Self {
-        let factory = UserFactory::new(
-            patterns.email,
-            patterns.username,
-            patterns.password,
-            password_encoder.clone(),
-        );
-        let auth_service = AuthenticationService::new(bad_password_policy, password_encoder);
-
         Self {
             user_query: user_query_port,
             user_repo,
             security_event_repo,
             verification_code_port,
-            factory,
+            user_factory,
             auth_service,
         }
     }
@@ -107,7 +94,7 @@ where
             return Err(CtxError::InvalidInput("invalid email code".to_string()));
         }
         let user = self
-            .factory
+            .user_factory
             .create_user(cmd.username.as_str(), cmd.password.as_str(), email)
             .inspect_err(|e| info!(email=%email, error=%e, "rigister user create user failed"))?;
         self.user_repo

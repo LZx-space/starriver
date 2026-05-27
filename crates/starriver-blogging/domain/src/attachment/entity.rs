@@ -1,5 +1,4 @@
 use derive_getters::Dissolve;
-use starriver_shared_base::error::RepositoryError;
 use uuid::Uuid;
 
 use crate::attachment::value_object::{Extension, FileSize};
@@ -21,19 +20,15 @@ impl Attachment {
         }
     }
 
-    pub fn from_repo(id: Uuid, file_name: String, file_size: i64) -> Result<Self, RepositoryError> {
-        let ext = file_name
-            .split(".")
-            .last()
-            .ok_or(RepositoryError::BadData("no file extension".to_string()))?;
-        let extension = Extension::new(ext).map_err(|e| RepositoryError::BadData(e.to_string()))?;
-        let file_size =
-            FileSize::new(file_size).map_err(|e| RepositoryError::BadData(e.to_string()))?;
-        Ok(Self {
+    pub fn from_repo(id: Uuid, file_name: String, file_size: i64) -> Self {
+        let ext = file_name.split(".").last().unwrap_or_default().to_string();
+        let extension = Extension(ext);
+        let file_size = FileSize(file_size);
+        Self {
             id,
             extension,
             file_size,
-        })
+        }
     }
 
     pub fn id(&self) -> &Uuid {

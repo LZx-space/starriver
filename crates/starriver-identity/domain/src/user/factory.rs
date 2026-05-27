@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use regex::Regex;
 use uuid::Uuid;
 
 use crate::{
@@ -8,29 +7,29 @@ use crate::{
     password_encoder::PasswordEncoder,
     user::{
         entity::User,
-        value_object::{Email, Password, Username},
+        value_object::{Email, EmailSpec, Password, PasswordSpec, Username, UsernameSpec},
     },
 };
 
 #[derive(Clone)]
 pub struct UserFactory<PE> {
-    email_regex: Arc<Regex>,
-    username_regex: Arc<Regex>,
-    password_regex: Arc<Regex>,
+    email_spec: Arc<EmailSpec>,
+    username_spec: Arc<UsernameSpec>,
+    password_spec: Arc<PasswordSpec>,
     password_encoder: Arc<PE>,
 }
 
 impl<PE: PasswordEncoder> UserFactory<PE> {
     pub fn new(
-        email_regex: Arc<Regex>,
-        username_regex: Arc<Regex>,
-        password_regex: Arc<Regex>,
+        email_spec: Arc<EmailSpec>,
+        username_spec: Arc<UsernameSpec>,
+        password_spec: Arc<PasswordSpec>,
         password_encoder: Arc<PE>,
     ) -> Self {
         Self {
-            email_regex,
-            username_regex,
-            password_regex,
+            email_spec,
+            username_spec,
+            password_spec,
             password_encoder,
         }
     }
@@ -41,13 +40,11 @@ impl<PE: PasswordEncoder> UserFactory<PE> {
         password: &str,
         email: &str,
     ) -> Result<User, DomainError> {
-        let username = Username::new(username, &self.username_regex)?;
-        if !self.password_regex.is_match(password) {
-            return Err(DomainError::InvalidPasswordFormat);
-        }
+        let username = Username::new(username, &self.username_spec)?;
+        self.password_spec.validate(password)?;
         let hashed_pwd = &self.password_encoder.encode(password)?;
         let password = Password::new(hashed_pwd)?;
-        let email = Email::new(email, &self.email_regex)?;
+        let email = Email::new(email, &self.email_spec)?;
         Ok(User::new(
             Uuid::now_v7(),
             username,

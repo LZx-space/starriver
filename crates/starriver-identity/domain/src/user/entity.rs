@@ -32,6 +32,25 @@ impl User {
         }
     }
 
+    pub fn from_repo(
+        id: Uuid,
+        username: String,
+        password: String,
+        email: String,
+        state: UserState,
+    ) -> Self {
+        let username = Username::from_repo(username);
+        let password = Password::from_repo(password);
+        let email = Email::from_repo(email);
+        Self {
+            id,
+            username,
+            password,
+            email,
+            state,
+        }
+    }
+
     pub(crate) fn lock(&mut self) {
         self.state = UserState::Locked;
     }

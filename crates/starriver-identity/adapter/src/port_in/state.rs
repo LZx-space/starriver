@@ -2,8 +2,17 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
-use starriver_identity_application::service::user_service::UserApplicationService;
-use starriver_identity_domain::user::policy::BadPasswordPolicy;
+use starriver_identity_application::{
+    dto::user_dto::req::UserValidateCxt, service::user_service::UserApplicationService,
+};
+use starriver_identity_domain::{
+    authentication_service::AuthenticationDomainService,
+    user::{
+        factory::UserFactory,
+        policy::BadPasswordPolicy,
+        value_object::{EmailSpec, PasswordSpec, UsernameSpec},
+    },
+};
 use starriver_shared_base::regex_patterns::Patterns;
 use starriver_shared_framework::config::Auth;
 
@@ -26,8 +35,10 @@ use crate::{
 /// 应用的各个状态
 #[derive(Clone)]
 pub struct IdentityState {
-    pub patterns: Patterns,
     pub auth: Auth,
+    pub email_spec: Arc<EmailSpec>,
+    pub username_spec: Arc<UsernameSpec>,
+    pub password_spec: Arc<PasswordSpec>,
     //////////////////////////////////////////
     pub user_service: Arc<
         UserApplicationService<
@@ -52,39 +63,56 @@ impl IdentityState {
             &cfg.regexes.password,
         )
         .map_err(|e| e.to_string())?;
+        let email_spec: Arc<_> = EmailSpec::new(patterns.email).into();
+        let username_spec: Arc<_> = UsernameSpec::new(patterns.username).into();
+        let password_spec: Arc<_> = PasswordSpec::new(patterns.password).into();
+
+        let password_encoder: Arc<Argon2PasswordEncoder> = Argon2PasswordEncoder::default().into();
         ////////////////////////////////////////////////////////
 
         let user_query = DefaultUserQueryPort { conn: conn.clone() };
-        let user_repo = DefaultUserRepository::new(conn.clone(), patterns.clone());
+        let user_repo = DefaultUserRepository::new(conn.clone());
         let security_event_repo = DefaultSecurityEventRepository::new(conn.clone());
         let verification_code_port =
             SmtpVerificationPort::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
+
+        let user_factory = UserFactory::new(
+            email_spec.clone(),
+            username_spec.clone(),
+            password_spec.clone(),
+            password_encoder.clone(),
+        );
         let bad_password_policy = BadPasswordPolicy {
             window_minutes: cfg.bad_password.window_minutes,
             max_attempts: cfg.bad_password.max_attempts as usize,
         };
-        let password_encoder = Argon2PasswordEncoder::default().into();
+
+        let auth_service = AuthenticationDomainService::new(bad_password_policy, password_encoder);
         let user_service = UserApplicationService::new(
             user_query,
             user_repo,
             security_event_repo,
             verification_code_port,
-            patterns.clone(),
-            bad_password_policy,
-            password_encoder,
+            user_factory,
+            auth_service,
         )
         .into();
         Ok(IdentityState {
-            patterns,
             auth,
+            email_spec,
+            username_spec,
+            password_spec,
             user_service,
         })
     }
 }
 
-impl FromRef<IdentityState> for Patterns {
-    fn from_ref(state: &IdentityState) -> Patterns {
-        state.patterns.clone()
+impl FromRef<IdentityState> for UserValidateCxt {
+    fn from_ref(state: &IdentityState) -> UserValidateCxt {
+        UserValidateCxt {
+            username_spec: state.username_spec.clone(),
+            password_spec: state.password_spec.clone(),
+        }
     }
 }
 

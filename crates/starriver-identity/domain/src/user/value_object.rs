@@ -155,218 +155,93 @@ impl EmailSpec {
     }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+// ===================================================================
+// 单元测试：仅验证 *Spec 封装机制，不绑定具体业务正则
+// 具体正则的业务规则测试见 starriver-shared-base/src/regex_patterns.rs
+// ===================================================================
 
 #[cfg(test)]
-mod username_tests {
+mod username_spec_tests {
     use super::*;
 
-    fn spec() -> UsernameSpec {
-        let spec = UsernameSpec::new(Regex::new(r"^[a-zA-Z0-9._%+-]{3,15}$").unwrap());
-        spec
-    }
-
-    // ── 合法 ──
-
+    /// 测试 UsernameSpec 正确委托给 Regex
     #[test]
-    fn pure_letters() {
-        assert!(spec().validate("alice").is_ok());
+    fn validate_returns_ok_when_regex_matches() {
+        let spec = UsernameSpec::new(Regex::new(r"^alice$").unwrap());
+        assert!(spec.validate("alice").is_ok());
     }
 
     #[test]
-    fn letters_and_digits() {
-        assert!(spec().validate("user123").is_ok());
+    fn validate_returns_err_when_regex_mismatches() {
+        let spec = UsernameSpec::new(Regex::new(r"^alice$").unwrap());
+        assert!(spec.validate("bob").is_err());
+    }
+
+    /// 测试 Username::new 集成 UsernameSpec 校验
+    #[test]
+    fn username_new_passes_validation() {
+        let spec = UsernameSpec::new(Regex::new(r"^[a-z]+$").unwrap());
+        let username = Username::new("alice", &spec).unwrap();
+        assert_eq!(username.as_str(), "alice");
     }
 
     #[test]
-    fn allowed_special_chars() {
-        assert!(spec().validate("alice.bob").is_ok());
-        assert!(spec().validate("user_name").is_ok());
-        assert!(spec().validate("test+tag").is_ok());
-    }
-
-    #[test]
-    fn min_length() {
-        assert!(spec().validate("abc").is_ok()); // 恰好 3
-    }
-
-    #[test]
-    fn max_length() {
-        assert!(spec().validate("123456789012345").is_ok()); // 恰好 15
-    }
-
-    // ── 非法 ──
-
-    #[test]
-    fn too_short() {
-        assert!(spec().validate("ab").is_err()); // 只有 2 字符
-    }
-
-    #[test]
-    fn too_long() {
-        assert!(spec().validate("123456789012345678901").is_err()); // 21 字符
-    }
-
-    #[test]
-    fn empty() {
-        assert!(spec().validate("").is_err());
-    }
-
-    #[test]
-    fn contains_space() {
-        assert!(spec().validate("alice bob").is_err());
-    }
-
-    #[test]
-    fn contains_special_char() {
-        assert!(spec().validate("alice@bob").is_err());
-    }
-
-    #[test]
-    fn unicode_char() {
-        assert!(spec().validate("用户").is_err());
+    fn username_new_fails_validation() {
+        let spec = UsernameSpec::new(Regex::new(r"^[a-z]+$").unwrap());
+        assert!(Username::new("ALICE", &spec).is_err());
     }
 }
 
 #[cfg(test)]
-mod email_tests {
+mod email_spec_tests {
     use super::*;
 
-    fn spec() -> EmailSpec {
-        EmailSpec::new(Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap())
-    }
-
-    // ── 合法 ──
-
     #[test]
-    fn simple() {
-        assert!(spec().validate("alice@example.com").is_ok());
+    fn validate_returns_ok_when_regex_matches() {
+        let spec = EmailSpec::new(Regex::new(r"^x@y\.z$").unwrap());
+        assert!(spec.validate("x@y.z").is_ok());
     }
 
     #[test]
-    fn with_digits() {
-        assert!(spec().validate("user123@domain.com").is_ok());
+    fn validate_returns_err_when_regex_mismatches() {
+        let spec = EmailSpec::new(Regex::new(r"^x@y\.z$").unwrap());
+        assert!(spec.validate("no_at_sign").is_err());
+    }
+}
+
+#[cfg(test)]
+mod email_masking_tests {
+    use super::*;
+
+    fn dummy_spec() -> EmailSpec {
+        EmailSpec::new(Regex::new(r"^.+@.+$").unwrap())
     }
 
     #[test]
-    fn with_dots_in_local() {
-        assert!(spec().validate("alice.bob@example.com").is_ok());
+    fn mask_normal_email() {
+        let email = Email::new("alice@example.com", &dummy_spec()).unwrap();
+        assert_eq!(email.masking(), "a****@example.com");
     }
 
     #[test]
-    fn with_plus_alias() {
-        assert!(spec().validate("user+tag@example.com").is_ok());
+    fn mask_single_char_local() {
+        let email = Email::new("a@example.com", &dummy_spec()).unwrap();
+        assert_eq!(email.masking(), "a@example.com");
     }
 
     #[test]
-    fn with_percent() {
-        assert!(spec().validate("user%name@example.com").is_ok());
+    fn mask_double_char_local() {
+        let email = Email::new("ab@example.com", &dummy_spec()).unwrap();
+        assert_eq!(email.masking(), "a*@example.com");
     }
 
     #[test]
-    fn with_hyphen_in_local() {
-        assert!(spec().validate("first-last@example.com").is_ok());
-    }
-
-    #[test]
-    fn with_subdomain() {
-        assert!(spec().validate("alice@mail.example.com").is_ok());
-    }
-
-    #[test]
-    fn with_hyphen_in_domain() {
-        assert!(spec().validate("alice@my-domain.com").is_ok());
-    }
-
-    #[test]
-    fn two_char_tld() {
-        assert!(spec().validate("alice@example.io").is_ok());
-    }
-
-    // ── 非法：缺少必要部分 ──
-
-    #[test]
-    fn empty() {
-        assert!(spec().validate("").is_err());
-    }
-
-    #[test]
-    fn missing_at() {
-        assert!(spec().validate("aliceexample.com").is_err());
-    }
-
-    #[test]
-    fn missing_local_part() {
-        assert!(spec().validate("@example.com").is_err());
-    }
-
-    #[test]
-    fn missing_domain() {
-        assert!(spec().validate("alice@.com").is_err());
-    }
-
-    #[test]
-    fn missing_tld() {
-        assert!(spec().validate("alice@example").is_err());
-    }
-
-    #[test]
-    fn missing_dot_before_tld() {
-        assert!(spec().validate("alice@examplecom").is_err());
-    }
-
-    // ── 非法：不允许的字符 ──
-
-    #[test]
-    fn contains_space() {
-        assert!(spec().validate("alice @example.com").is_err());
-    }
-
-    #[test]
-    fn double_at() {
-        assert!(spec().validate("alice@bob@example.com").is_err());
-    }
-
-    #[test]
-    fn unicode_local() {
-        assert!(spec().validate("用户@example.com").is_err());
-    }
-
-    #[test]
-    fn unicode_domain() {
-        assert!(spec().validate("alice@例子.com").is_err());
-    }
-
-    #[test]
-    fn special_char_in_local() {
-        assert!(spec().validate("alice#bob@example.com").is_err());
-    }
-
-    // ── 非法：格式边界 ──
-
-    #[test]
-    fn single_char_tld() {
-        assert!(spec().validate("alice@example.a").is_err());
-    }
-
-    // ── 掩码 ──
-
-    #[test]
-    fn mask() {
-        let email = Email::new("alice@example.com", &spec()).unwrap();
-        assert_eq!(email.masking(), "a****@example.com".to_string());
-    }
-
-    #[test]
-    fn single_char_local_mask() {
-        let email = Email::new("a@example.com", &spec()).unwrap();
-        assert_eq!(email.masking(), "a@example.com".to_string());
-    }
-
-    #[test]
-    fn double_char_local_mask() {
-        let email = Email::new("ab@example.com", &spec()).unwrap();
-        assert_eq!(email.masking(), "a*@example.com".to_string());
+    fn mask_no_at_sign_passthrough() {
+        // 无 @ 时直接返回原文
+        assert_eq!(
+            Email::from_repo("no_at_sign".into()).masking(),
+            "no_at_sign"
+        );
     }
 }
 
@@ -374,59 +249,34 @@ mod email_tests {
 mod password_spec_tests {
     use super::*;
 
-    fn spec() -> PasswordSpec {
-        // 至少 8 位，含大小写字母、数字、特殊字符
-        PasswordSpec::new(Regex::new(r"^[A-Za-z0-9@$!%*?&]{8,12}$").unwrap())
-    }
-
-    // ── 合法 ──
-
     #[test]
-    fn meets_all_requirements() {
-        assert!(spec().validate("Abcd1234!").is_ok());
+    fn validate_returns_ok_when_regex_matches() {
+        let spec = PasswordSpec::new(Regex::new(r"^secret123$").unwrap());
+        assert!(spec.validate("secret123").is_ok());
     }
 
     #[test]
-    fn min_length() {
-        assert!(spec().validate("Abc123!x").is_ok()); // 恰好 8 字符
+    fn validate_returns_err_when_regex_mismatches() {
+        let spec = PasswordSpec::new(Regex::new(r"^secret123$").unwrap());
+        assert!(spec.validate("wrong").is_err());
+    }
+
+    /// 测试 Password::new 的独立校验逻辑（非 Spec 部分）
+    #[test]
+    fn password_new_rejects_empty() {
+        assert!(Password::new("").is_err());
     }
 
     #[test]
-    fn max_length() {
-        assert!(spec().validate("Abc123!xAbc1").is_ok()); // 恰好 12 字符
-    }
-
-    // ── 非法：长度 ──
-
-    #[test]
-    fn empty() {
-        assert!(spec().validate("").is_err());
+    fn password_new_rejects_too_short() {
+        // < 50 字符
+        assert!(Password::new("short").is_err());
     }
 
     #[test]
-    fn too_short() {
-        assert!(spec().validate("Ab1!").is_err()); // 只有 4 字符
-    }
-
-    #[test]
-    fn just_below_min() {
-        assert!(spec().validate("Abc123!").is_err()); // 7 字符
-    }
-
-    #[test]
-    fn too_long() {
-        assert!(spec().validate(&"A".repeat(13)).is_err()); // 超过 12
-    }
-
-    // ── 非法：禁止字符 ──
-
-    #[test]
-    fn contains_space() {
-        assert!(spec().validate("Abcd 1234!").is_err());
-    }
-
-    #[test]
-    fn unicode_char() {
-        assert!(spec().validate("Abcd密码123!").is_err());
+    fn password_new_accepts_long_hash() {
+        let hash = "a".repeat(60);
+        let pwd = Password::new(&hash).unwrap();
+        assert_eq!(pwd.as_str(), hash);
     }
 }

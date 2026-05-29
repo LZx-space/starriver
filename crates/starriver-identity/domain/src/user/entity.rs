@@ -2,7 +2,7 @@ use derive_getters::{Dissolve, Getters};
 
 use uuid::Uuid;
 
-use crate::user::value_object::{Email, Password, UserState, Username};
+use crate::user::value_object::{Email, HashedPassword, UserState, Username};
 
 // -----Aggregate Root User------------------------------------------------------
 /// The user aggregate. User is the aggregate root.
@@ -10,7 +10,7 @@ use crate::user::value_object::{Email, Password, UserState, Username};
 pub struct User {
     id: Uuid,
     username: Username,
-    password: Password,
+    password: HashedPassword,
     email: Email,
     state: UserState,
 }
@@ -19,7 +19,7 @@ impl User {
     pub fn new(
         id: Uuid,
         username: Username,
-        password: Password,
+        password: HashedPassword,
         email: Email,
         state: UserState,
     ) -> Self {
@@ -40,7 +40,7 @@ impl User {
         state: UserState,
     ) -> Self {
         let username = Username::from_repo(username);
-        let password = Password::from_repo(password);
+        let password = HashedPassword::from_repo(password);
         let email = Email::from_repo(email);
         Self {
             id,

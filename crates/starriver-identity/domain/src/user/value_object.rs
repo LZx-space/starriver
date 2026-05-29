@@ -1,8 +1,7 @@
 use std::fmt::Display;
 
-use regex::Regex;
-
 use crate::error::DomainError;
+use crate::user::specification::{EmailSpec, UsernameSpec};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum UserState {
@@ -41,35 +40,21 @@ impl Display for Username {
     }
 }
 
-pub struct UsernameSpec(Regex);
-
-impl UsernameSpec {
-    pub fn new(regex: Regex) -> Self {
-        Self(regex)
-    }
-
-    pub fn validate(&self, username: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(username) {
-            return Err(DomainError::InvalidUsernameFormat);
-        }
-        Ok(())
-    }
-}
-
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Password(pub(crate) String);
+pub struct HashedPassword(pub(crate) String);
 
-impl Password {
+impl HashedPassword {
     pub fn new(hashed_password: &str) -> Result<Self, DomainError> {
         if hashed_password.is_empty() {
-            return Err(DomainError::InvalidPasswordFormat);
+            return Err(DomainError::InvalidPasswordHash);
         }
         // 任意现代密码哈希（argon2/bcrypt/scrypt）都远超 50 字符
-        if hashed_password.len() < 50 {
-            return Err(DomainError::InvalidPasswordFormat);
-        }
+        debug_assert!(
+            hashed_password.len() >= 50,
+            "HashedPassword 应来自密码编码器，收到非法输入"
+        );
         Ok(Self(hashed_password.to_string()))
     }
 
@@ -82,24 +67,9 @@ impl Password {
     }
 }
 
-impl Display for Password {
+impl Display for HashedPassword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-pub struct PasswordSpec(Regex);
-
-impl PasswordSpec {
-    pub fn new(regex: Regex) -> Self {
-        Self(regex)
-    }
-
-    pub fn validate(&self, password: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(password) {
-            return Err(DomainError::InvalidPasswordFormat);
-        }
-        Ok(())
     }
 }
 
@@ -140,42 +110,15 @@ impl Display for Email {
     }
 }
 
-pub struct EmailSpec(Regex);
-
-impl EmailSpec {
-    pub fn new(regex: Regex) -> Self {
-        Self(regex)
-    }
-
-    pub fn validate(&self, email: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(email) {
-            return Err(DomainError::InvalidEmailFormat);
-        }
-        Ok(())
-    }
-}
-
 // ===================================================================
-// 单元测试：仅验证 *Spec 封装机制，不绑定具体业务正则
-// 具体正则的业务规则测试见 starriver-shared-base/src/regex_patterns.rs
+// 单元测试
 // ===================================================================
 
 #[cfg(test)]
-mod username_spec_tests {
+mod username_integration_tests {
     use super::*;
-
-    /// 测试 UsernameSpec 正确委托给 Regex
-    #[test]
-    fn validate_returns_ok_when_regex_matches() {
-        let spec = UsernameSpec::new(Regex::new(r"^alice$").unwrap());
-        assert!(spec.validate("alice").is_ok());
-    }
-
-    #[test]
-    fn validate_returns_err_when_regex_mismatches() {
-        let spec = UsernameSpec::new(Regex::new(r"^alice$").unwrap());
-        assert!(spec.validate("bob").is_err());
-    }
+    use crate::user::specification::UsernameSpec;
+    use regex::Regex;
 
     /// 测试 Username::new 集成 UsernameSpec 校验
     #[test]
@@ -193,25 +136,10 @@ mod username_spec_tests {
 }
 
 #[cfg(test)]
-mod email_spec_tests {
-    use super::*;
-
-    #[test]
-    fn validate_returns_ok_when_regex_matches() {
-        let spec = EmailSpec::new(Regex::new(r"^x@y\.z$").unwrap());
-        assert!(spec.validate("x@y.z").is_ok());
-    }
-
-    #[test]
-    fn validate_returns_err_when_regex_mismatches() {
-        let spec = EmailSpec::new(Regex::new(r"^x@y\.z$").unwrap());
-        assert!(spec.validate("no_at_sign").is_err());
-    }
-}
-
-#[cfg(test)]
 mod email_masking_tests {
     use super::*;
+    use crate::user::specification::EmailSpec;
+    use regex::Regex;
 
     fn dummy_spec() -> EmailSpec {
         EmailSpec::new(Regex::new(r"^.+@.+$").unwrap())
@@ -246,37 +174,25 @@ mod email_masking_tests {
 }
 
 #[cfg(test)]
-mod password_spec_tests {
+mod hashed_password_tests {
     use super::*;
 
     #[test]
-    fn validate_returns_ok_when_regex_matches() {
-        let spec = PasswordSpec::new(Regex::new(r"^secret123$").unwrap());
-        assert!(spec.validate("secret123").is_ok());
+    fn new_rejects_empty() {
+        assert!(HashedPassword::new("").is_err());
     }
 
     #[test]
-    fn validate_returns_err_when_regex_mismatches() {
-        let spec = PasswordSpec::new(Regex::new(r"^secret123$").unwrap());
-        assert!(spec.validate("wrong").is_err());
-    }
-
-    /// 测试 Password::new 的独立校验逻辑（非 Spec 部分）
-    #[test]
-    fn password_new_rejects_empty() {
-        assert!(Password::new("").is_err());
+    #[should_panic(expected = "HashedPassword 应来自密码编码器")]
+    fn new_panics_on_too_short() {
+        // < 50 字符在 debug 模式下触发 panic
+        let _ = HashedPassword::new("short");
     }
 
     #[test]
-    fn password_new_rejects_too_short() {
-        // < 50 字符
-        assert!(Password::new("short").is_err());
-    }
-
-    #[test]
-    fn password_new_accepts_long_hash() {
+    fn new_accepts_long_hash() {
         let hash = "a".repeat(60);
-        let pwd = Password::new(&hash).unwrap();
+        let pwd = HashedPassword::new(&hash).unwrap();
         assert_eq!(pwd.as_str(), hash);
     }
 }

@@ -2,7 +2,7 @@ pub mod req {
     use std::sync::Arc;
 
     use serde::Deserialize;
-    use starriver_identity_domain::user::value_object::{PasswordSpec, UsernameSpec};
+    use starriver_identity_domain::user::specification::{PasswordSpec, UsernameSpec};
     use uuid::Uuid;
     use validator::{Validate, ValidationError};
 

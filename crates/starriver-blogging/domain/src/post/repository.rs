@@ -15,7 +15,7 @@ pub trait PostRepository {
     fn add(&self, post: Post) -> impl Future<Output = Result<Post, RepositoryError>> + Send;
 
     /// 删除
-    fn delete_by_id(&self, id: Uuid) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
+    fn delete(&self, id: Uuid) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 
     /// 修改
     fn update(

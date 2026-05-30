@@ -17,6 +17,9 @@ pub enum DomainError {
     #[error("密码格式无效")]
     InvalidPasswordFormat,
 
+    #[error("密码哈希无效")]
+    InvalidPasswordHash,
+
     #[error("密码错误")]
     BadPassword,
 

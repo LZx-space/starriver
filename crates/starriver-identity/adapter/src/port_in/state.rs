@@ -10,7 +10,7 @@ use starriver_identity_domain::{
     user::{
         factory::UserFactory,
         policy::BadPasswordPolicy,
-        value_object::{EmailSpec, PasswordSpec, UsernameSpec},
+        specification::{EmailSpec, PasswordSpec, UsernameSpec},
     },
 };
 use starriver_shared_base::regex_patterns::Patterns;

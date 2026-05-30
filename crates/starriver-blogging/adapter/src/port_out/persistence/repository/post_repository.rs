@@ -98,7 +98,7 @@ impl PostRepository for DefaultPostRepository {
         Ok(post)
     }
 
-    async fn delete_by_id(&self, id: uuid::Uuid) -> Result<bool, RepositoryError> {
+    async fn delete(&self, id: uuid::Uuid) -> Result<bool, RepositoryError> {
         let not_zero = Entity::delete_by_id(id)
             .exec(&self.conn)
             .await

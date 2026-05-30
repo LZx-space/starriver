@@ -40,7 +40,6 @@ where
             .find_detail(id)
             .await?
             .ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id)))
-            .map(Ok)?
     }
 
     pub async fn create(
@@ -107,6 +106,6 @@ where
             Post_id = %id,
             "deleting post"
         );
-        self.repo.delete_by_id(id).await.map(Ok)?
+        self.repo.delete(id).await.map(Ok)?
     }
 }

@@ -7,11 +7,11 @@ use crate::{
     password_encoder::PasswordEncoder,
     user::{
         entity::User,
-        value_object::{Email, EmailSpec, Password, PasswordSpec, Username, UsernameSpec},
+        specification::{EmailSpec, PasswordSpec, UsernameSpec},
+        value_object::{Email, HashedPassword, Username},
     },
 };
 
-#[derive(Clone)]
 pub struct UserFactory<PE> {
     email_spec: Arc<EmailSpec>,
     username_spec: Arc<UsernameSpec>,
@@ -43,7 +43,7 @@ impl<PE: PasswordEncoder> UserFactory<PE> {
         let username = Username::new(username, &self.username_spec)?;
         self.password_spec.validate(password)?;
         let hashed_pwd = &self.password_encoder.encode(password)?;
-        let password = Password::new(hashed_pwd)?;
+        let password = HashedPassword::new(hashed_pwd)?;
         let email = Email::new(email, &self.email_spec)?;
         Ok(User::new(
             Uuid::now_v7(),

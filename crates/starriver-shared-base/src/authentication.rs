@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use time::UtcDateTime;
+use time::{Duration, UtcDateTime};
 use uuid::Uuid;
 
 use crate::middleware::authentication::core::credentials::Credentials;
@@ -25,13 +25,12 @@ pub struct PrincipalClaims {
 }
 
 impl PrincipalClaims {
-    pub fn new(sub: Uuid, username: String, email: String) -> Self {
+    pub fn new(exp: Duration, sub: Uuid, username: String, email: String) -> Self {
+        let now = UtcDateTime::now();
         Self {
-            exp: UtcDateTime::now()
-                .saturating_add(time::Duration::hours(1))
-                .unix_timestamp(),
-            nbf: UtcDateTime::now().unix_timestamp(),
-            iat: UtcDateTime::now().unix_timestamp(),
+            exp: now.saturating_add(exp).unix_timestamp(),
+            nbf: now.unix_timestamp(),
+            iat: now.unix_timestamp(),
             sub,
             username,
             email,

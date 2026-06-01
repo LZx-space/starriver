@@ -28,7 +28,7 @@ use crate::port_out::{
 /// 应用的各个状态
 #[derive(Clone)]
 pub struct BloggingState {
-    pub auth: Auth,
+    pub auth: Arc<Auth>,
     pub uploads: Uploads,
     pub upload_file_url_builder: Arc<DefaultUploadLocationResolver>,
     pub post_service: Arc<PostApplication<DefaultPostQueryPort, DefaultPostRepository>>,
@@ -46,7 +46,7 @@ pub struct BloggingState {
 impl BloggingState {
     pub async fn new(
         conn: DatabaseConnection,
-        auth: Auth,
+        auth: Arc<Auth>,
         uploads: Uploads,
     ) -> Result<Self, String> {
         let upload_file_url_builder = Arc::new(DefaultUploadLocationResolver::new(uploads.clone()));
@@ -77,7 +77,7 @@ impl BloggingState {
     }
 }
 
-impl FromRef<BloggingState> for Auth {
+impl FromRef<BloggingState> for Arc<Auth> {
     fn from_ref(input: &BloggingState) -> Self {
         input.auth.clone()
     }

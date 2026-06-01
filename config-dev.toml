@@ -6,6 +6,8 @@ port = 8080
 url = "postgresql://postgres:postgres@localhost:5432/starriver"
 
 [auth]
+jws_exp_hours = 8
+jws_cookie_name = "at"
 jws_secret = "LZx"
 
 [logging]

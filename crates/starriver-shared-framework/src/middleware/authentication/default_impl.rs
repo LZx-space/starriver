@@ -29,7 +29,7 @@ use tracing::{error, info};
 
 use core::time::Duration;
 use starriver_shared_base::middleware::authentication::web::timing_attack_protection::TimingAttackProtection;
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 use tokio::time::sleep;
 
 use crate::config::Auth;
@@ -78,33 +78,31 @@ impl Principal for AuthenticatedUser {
     }
 }
 
-const AUTHENTION_TOKEN_COOKIE_NAME: &str = "token";
-
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
-    Auth: FromRef<S>,
+    Arc<Auth>: FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = StatusCode;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let cfg = Arc::<Auth>::from_ref(state);
+
         let cookie_jar = CookieJar::from_request_parts(parts, state)
             .await
             .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
 
         let jws = cookie_jar
-            .get(AUTHENTION_TOKEN_COOKIE_NAME)
+            .get(&cfg.jws_cookie_name)
             .ok_or_else(|| {
                 info!("authentication cookie not found in request");
                 StatusCode::UNAUTHORIZED
             })?
             .value();
 
-        let authentication = Auth::from_ref(state);
-
         decode::<PrincipalClaims>(
             jws,
-            &DecodingKey::from_secret(authentication.jws_secret_as_ref()),
+            &DecodingKey::from_secret(cfg.jws_secret_as_ref()),
             &Validation::default(),
         )
         .map(|data| {
@@ -121,11 +119,11 @@ where
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct DefaultAuthenticationSuccessHandler {
-    cfg: Auth,
+    cfg: Arc<Auth>,
 }
 
 impl DefaultAuthenticationSuccessHandler {
-    pub fn new(cfg: Auth) -> Self {
+    pub fn new(cfg: Arc<Auth>) -> Self {
         Self { cfg }
     }
 }
@@ -153,9 +151,9 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             }
         };
         // 创建cookie
-        let cookie = Cookie::build((AUTHENTION_TOKEN_COOKIE_NAME, jws))
+        let cookie = Cookie::build((&self.cfg.jws_cookie_name, jws))
             .http_only(true)
-            .secure(false)
+            .secure(true)
             .path("/")
             .build();
 

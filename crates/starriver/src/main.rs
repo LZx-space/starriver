@@ -1,5 +1,7 @@
 mod config;
 
+use std::sync::Arc;
+
 use axum::Router;
 use mimalloc::MiMalloc;
 use sea_orm::Database;
@@ -37,7 +39,7 @@ async fn main() {
             error!(error = %e, "connect to database");
             panic!("failed to connect to database: {}", e);
         });
-    let auth = app_cfg.auth;
+    let auth = Arc::new(app_cfg.auth);
     let uploads = app_cfg.uploads;
     let identity_state = IdentityState::new(conn.clone(), auth.clone(), &app_cfg.ctx_identity)
         .await
@@ -53,7 +55,6 @@ async fn main() {
         });
 
     let user_service = identity_state.user_service.clone();
-    let auth = identity_state.auth.clone();
     let middleware_service = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(
@@ -64,7 +65,10 @@ async fn main() {
                 .on_failure(DefaultOnFailure::default().level(tracing::Level::INFO)),
         )
         .layer(build_authentication_layer(
-            UsernamePasswordAuthenticator { user_service },
+            UsernamePasswordAuthenticator {
+                user_service,
+                cfg: auth.clone(),
+            },
             auth,
         ));
 

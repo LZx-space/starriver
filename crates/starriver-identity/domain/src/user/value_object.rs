@@ -40,21 +40,6 @@ impl Display for Username {
     }
 }
 
-pub struct UsernameSpec(Regex);
-
-impl UsernameSpec {
-    pub fn new(regex: Regex) -> Self {
-        Self(regex)
-    }
-
-    pub fn validate(&self, username: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(username) {
-            return Err(DomainError::InvalidUsernameFormat);
-        }
-        Ok(())
-    }
-}
-
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -85,21 +70,6 @@ impl HashedPassword {
 impl Display for HashedPassword {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-pub struct PasswordSpec(Regex);
-
-impl PasswordSpec {
-    pub fn new(regex: Regex) -> Self {
-        Self(regex)
-    }
-
-    pub fn validate(&self, password: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(password) {
-            return Err(DomainError::InvalidPasswordFormat);
-        }
-        Ok(())
     }
 }
 

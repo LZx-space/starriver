@@ -1,13 +1,15 @@
+use std::sync::Arc;
+
 use starriver_shared_base::upload_file::UploadLocationResolver;
 
 use crate::config::Uploads;
 
 pub struct DefaultUploadLocationResolver {
-    uploads: Uploads,
+    uploads: Arc<Uploads>,
 }
 
 impl DefaultUploadLocationResolver {
-    pub fn new(uploads: Uploads) -> Self {
+    pub fn new(uploads: Arc<Uploads>) -> Self {
         Self { uploads }
     }
 }

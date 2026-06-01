@@ -29,7 +29,7 @@ use crate::port_out::{
 #[derive(Clone)]
 pub struct BloggingState {
     pub auth: Arc<Auth>,
-    pub uploads: Uploads,
+    pub uploads: Arc<Uploads>,
     pub upload_file_url_builder: Arc<DefaultUploadLocationResolver>,
     pub post_service: Arc<PostApplication<DefaultPostQueryPort, DefaultPostRepository>>,
     pub category_service:
@@ -47,7 +47,7 @@ impl BloggingState {
     pub async fn new(
         conn: DatabaseConnection,
         auth: Arc<Auth>,
-        uploads: Uploads,
+        uploads: Arc<Uploads>,
     ) -> Result<Self, String> {
         let upload_file_url_builder = Arc::new(DefaultUploadLocationResolver::new(uploads.clone()));
         let post_service = PostApplication::new(

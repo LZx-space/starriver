@@ -40,7 +40,7 @@ async fn main() {
             panic!("failed to connect to database: {}", e);
         });
     let auth = Arc::new(app_cfg.auth);
-    let uploads = app_cfg.uploads;
+    let uploads = Arc::new(app_cfg.uploads);
     let identity_state = IdentityState::new(conn.clone(), auth.clone(), &app_cfg.ctx_identity)
         .await
         .unwrap_or_else(|e| {

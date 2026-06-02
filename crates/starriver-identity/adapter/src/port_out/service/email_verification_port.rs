@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::Mailbox,
@@ -11,11 +11,10 @@ use starriver_identity_application::{
 
 use crate::config::SmtpVerification;
 
-#[derive(Clone)]
 pub struct SmtpVerificationPort {
     smtp_client: AsyncSmtpTransport<Tokio1Executor>,
     smtp_username: String,
-    code_cache: Arc<Cache<String, String>>,
+    code_cache: Cache<String, String>,
 }
 
 impl SmtpVerificationPort {
@@ -29,8 +28,7 @@ impl SmtpVerificationPort {
         let code_cache = Cache::builder()
             .max_capacity(cfg.code_cache_max_capacity)
             .time_to_live(Duration::from_hours(cfg.code_cache_ttl_hours))
-            .build()
-            .into();
+            .build();
 
         Ok(Self {
             smtp_client,

@@ -30,9 +30,7 @@ COMMENT ON COLUMN public.post.author_id IS '作者';
 COMMENT ON COLUMN public.post.category_id IS '分类';
 COMMENT ON COLUMN public.post.published_at IS '发布时间';
 
-CREATE INDEX idx_post_title              ON public.post (title);
 CREATE INDEX idx_post_author_id          ON public.post (author_id);
 CREATE INDEX idx_post_category_id        ON public.post (category_id);
 CREATE INDEX idx_post_updated_at         ON public.post (updated_at DESC NULLS LAST);
-CREATE INDEX idx_post_published_at       ON public.post (published_at DESC NULLS LAST);
 CREATE INDEX idx_post_state_published_at ON public.post (state, published_at DESC NULLS LAST);

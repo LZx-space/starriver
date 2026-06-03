@@ -108,7 +108,7 @@ impl PostRepository for DefaultPostRepository {
 
     async fn update(&self, post: Revision<Post>) -> Result<Post, RepositoryError> {
         let (original, modified) = post.dissolve();
-        let (id, title, content, state, author_id, category_id, _, published_at) =
+        let (id, title, content, state, author_id, category_id, old_attachments, published_at) =
             original.dissolve();
         let (
             _,
@@ -154,15 +154,28 @@ impl PostRepository for DefaultPostRepository {
 
         let updated = model.update(&self.conn).await.map_err(db_2_repo_error)?;
 
-        if !new_attachments.is_empty() {
-            // 更新附件关联
+        // 增量更新附件关联：只删移除的、只插新增的
+        let to_insert: Vec<_> = new_attachments
+            .iter()
+            .filter(|a| !old_attachments.contains(a))
+            .copied()
+            .collect();
+        let to_delete: Vec<_> = old_attachments
+            .iter()
+            .filter(|a| !new_attachments.contains(a))
+            .copied()
+            .collect();
+
+        if !to_delete.is_empty() {
             post_attachment_po::Entity::delete_many()
                 .filter(post_attachment_po::Column::PostId.eq(id))
+                .filter(post_attachment_po::Column::AttachmentId.is_in(to_delete))
                 .exec(&self.conn)
                 .await
                 .map_err(db_2_repo_error)?;
-            // 插入新的附件关联
-            post_attachment_po::Entity::insert_many(new_attachments.iter().map(|att_id| {
+        }
+        if !to_insert.is_empty() {
+            post_attachment_po::Entity::insert_many(to_insert.iter().map(|att_id| {
                 post_attachment_po::ActiveModel {
                     post_id: Set(id),
                     attachment_id: Set(*att_id),

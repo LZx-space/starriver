@@ -31,7 +31,7 @@ impl<T> UserRepository for DefaultUserRepository<T>
 where
     T: ConnectionTrait,
 {
-    async fn find_by_username(&self, username: String) -> Result<Option<User>, RepositoryError> {
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, RepositoryError> {
         Entity::find()
             .filter(Column::Username.eq(username))
             .one(&self.conn)

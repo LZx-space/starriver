@@ -6,7 +6,8 @@ CREATE TABLE public.security_event
     message     character varying(100)   NOT NULL,
     created_at  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  timestamp with time zone,
-    CONSTRAINT  security_event_fkey FOREIGN KEY (user_id)
+
+    CONSTRAINT fk_user FOREIGN KEY (user_id)
         REFERENCES public."user" (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE CASCADE

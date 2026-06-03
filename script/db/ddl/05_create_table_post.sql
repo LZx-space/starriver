@@ -10,12 +10,12 @@ CREATE TABLE public.post
     created_at   timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   timestamp with time zone,
 
-    CONSTRAINT post_author_fkey FOREIGN KEY (author_id)
+    CONSTRAINT fk_post_author FOREIGN KEY (author_id)
         REFERENCES public."user"(id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE RESTRICT,
 
-    CONSTRAINT post_category_fkey FOREIGN KEY (category_id)
+    CONSTRAINT fk_post_category FOREIGN KEY (category_id)
         REFERENCES public.category(id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE RESTRICT

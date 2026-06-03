@@ -76,6 +76,7 @@ where
             category_id = %id,
             "deleting category"
         );
-        self.repo.delete(id).await.map(|_| Ok(()))?
+        self.repo.delete(id).await?;
+        Ok(())
     }
 }

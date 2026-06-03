@@ -64,19 +64,14 @@ where
         let attachment =
             self.factory
                 .create_attachment(attachment_id, &magic_checker_buf, claimed_extension)?;
-        self.repo
-            .insert(attachment)
-            .await
-            .map(|e| {
-                let file_name = e.file_name();
-                let url = self.upload_location_resolver.url(&e.file_name());
-                let fields = e.dissolve();
-                AttachmentDto {
-                    id: fields.0,
-                    file_name,
-                    url,
-                }
-            })
-            .map(Ok)?
+        let attachment = self.repo.insert(attachment).await?;
+        let file_name = attachment.file_name();
+        let url = self.upload_location_resolver.url(&file_name);
+        let fields = attachment.dissolve();
+        Ok(AttachmentDto {
+            id: fields.0,
+            file_name,
+            url,
+        })
     }
 }

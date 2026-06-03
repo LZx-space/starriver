@@ -94,10 +94,8 @@ where
         };
         let original = found.clone();
         found.update(cmd)?;
-        self.repo
-            .update(Revision::new(original, found))
-            .await
-            .map(|_| Ok(()))?
+        self.repo.update(Revision::new(original, found)).await?;
+        Ok(())
     }
 
     pub async fn delete_by_id(

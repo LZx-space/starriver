@@ -99,13 +99,11 @@ impl PostRepository for DefaultPostRepository {
     }
 
     async fn delete(&self, id: uuid::Uuid) -> Result<bool, RepositoryError> {
-        let not_zero = Entity::delete_by_id(id)
+        Entity::delete_by_id(id)
             .exec(&self.conn)
             .await
-            .map_err(db_2_repo_error)?
-            .rows_affected
-            != 0;
-        Ok(not_zero)
+            .map(|r| r.rows_affected != 0)
+            .map_err(db_2_repo_error)
     }
 
     async fn update(&self, post: Revision<Post>) -> Result<Post, RepositoryError> {

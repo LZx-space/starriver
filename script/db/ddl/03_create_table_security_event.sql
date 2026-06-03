@@ -14,3 +14,5 @@ CREATE TABLE public.security_event
 
 COMMENT ON TABLE public.security_event
     IS '用户安全事件';
+
+CREATE INDEX idx_security_event_user_type_created ON public.security_event (user_id, event_type, created_at DESC);

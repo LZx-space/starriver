@@ -133,8 +133,8 @@ impl PostQueryPort for DefaultPostQueryPort {
             .flat_map(|(_, attachments)| attachments)
             .map(|a| AttachmentDto {
                 id: a.id,
-                file_name: a.file_name.clone(),
                 url: self.file_url_builder.url(a.file_name.as_str()),
+                file_name: a.file_name,
             })
             .collect();
 

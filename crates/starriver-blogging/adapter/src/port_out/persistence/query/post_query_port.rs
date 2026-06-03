@@ -14,6 +14,7 @@ use starriver_blogging_application::{
     },
     port_out::post_query_port::PostQueryPort,
 };
+use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
     dto::{IdName, PageResult},
     error::QueryError,
@@ -142,7 +143,7 @@ impl PostQueryPort for DefaultPostQueryPort {
             id,
             title: post.title,
             content: post.content,
-            state: post.state,
+            state: PostState::from(post.state).to_string(),
             category: IdName {
                 id: post.category_id,
                 name: post.category_name,

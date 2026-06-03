@@ -1,7 +1,10 @@
 use sea_orm::FromQueryResult;
 use starriver_blogging_application::dto::post_dto::res::PostExcerptDto;
+use starriver_blogging_domain::post::value_object::PostState;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::port_out::persistence::po::post_po::PostStatePo;
 
 #[derive(FromQueryResult)]
 pub struct PostExcerptRow {
@@ -9,7 +12,7 @@ pub struct PostExcerptRow {
     pub title: String,
     #[sea_orm(from_alias = "content")]
     pub excerpt: String,
-    pub state: i16,
+    pub state: PostStatePo,
     pub category: String,
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
@@ -21,7 +24,7 @@ pub struct PostDetailRow {
     pub id: Uuid,
     pub title: String,
     pub content: String,
-    pub state: i16,
+    pub state: PostStatePo,
     pub category_id: Uuid,
     pub category_name: String,
     pub published_at: Option<OffsetDateTime>,
@@ -37,7 +40,7 @@ impl From<PostExcerptRow> for PostExcerptDto {
             id: value.id,
             title: value.title,
             excerpt: value.excerpt,
-            state: value.state,
+            state: PostState::from(value.state).to_string(),
             category: value.category,
             published_at: value.published_at,
             created_at: value.created_at,

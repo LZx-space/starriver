@@ -1,5 +1,8 @@
 use starriver_blogging_domain::post::{
-    entity::Post, params::PostUpdate, repository::PostRepository, value_object::PostState,
+    entity::Post,
+    params::PostUpdate,
+    repository::PostRepository,
+    value_object::{Content, PostState, Title},
 };
 use starriver_shared_base::{
     authentication::PrincipalClaims, dto::PageResult, repository::Revision,
@@ -52,9 +55,10 @@ where
             true => PostState::Published,
             false => PostState::Draft,
         };
+
         let post = Post::new(
-            cmd.title,
-            cmd.content,
+            Title::new(cmd.title)?,
+            Content::new(cmd.content)?,
             state,
             author_id,
             cmd.category_id,

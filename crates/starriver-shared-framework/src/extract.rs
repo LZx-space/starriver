@@ -27,9 +27,9 @@ where
         // 解析查询参数，错误自动转为 ApiError
         let query = axum::extract::Query::<T>::from_request_parts(parts, _state)
             .await
-            .map_err(unified_valid_err)?;
+            .map_err(mapping_bad_request_err)?;
         let value = query.0;
-        value.validate().map_err(unified_valid_err2)?;
+        value.validate().map_err(mapping_valid_err)?;
         Ok(Query(value))
     }
 }
@@ -50,7 +50,7 @@ where
         // 解析查询参数，错误自动转为 ApiError
         let path = axum::extract::Path::<T>::from_request_parts(parts, _state)
             .await
-            .map_err(unified_bad_request_err)?;
+            .map_err(mapping_bad_request_err)?;
         let value = path.0;
         Ok(Path(value))
     }
@@ -74,9 +74,9 @@ where
     ) -> Result<Self, Self::Rejection> {
         let json = axum::extract::Json::<T>::from_request(req, _state)
             .await
-            .map_err(unified_valid_err)?;
+            .map_err(mapping_bad_request_err)?;
         let value = json.0;
-        value.validate().map_err(unified_valid_err2)?;
+        value.validate().map_err(mapping_valid_err)?;
         Ok(Json(value))
     }
 }
@@ -112,14 +112,14 @@ where
         // 1. 解析 JSON
         let json = axum::extract::Json::<T>::from_request(req, state)
             .await
-            .map_err(unified_bad_request_err)?;
+            .map_err(mapping_bad_request_err)?;
 
         // 2. 从 State 获取验证上下文
         let ctx = CTX::from_ref(state);
 
         // 3. 使用上下文进行验证
         let value = json.0;
-        value.validate_with_args(&ctx).map_err(unified_valid_err2)?;
+        value.validate_with_args(&ctx).map_err(mapping_valid_err)?;
 
         Ok(JsonEx(value))
     }
@@ -139,22 +139,18 @@ where
     async fn from_request(req: axum::extract::Request, state: &S) -> Result<Self, Self::Rejection> {
         let multipart = axum::extract::multipart::Multipart::from_request(req, state)
             .await
-            .map_err(unified_bad_request_err)?;
+            .map_err(mapping_bad_request_err)?;
         Ok(Multipart(multipart))
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-fn unified_bad_request_err<E: Display>(e: E) -> ApiError {
+fn mapping_bad_request_err<E: Display>(e: E) -> ApiError {
     ApiError::new(StatusCode::BAD_REQUEST, e.to_string())
 }
 
-fn unified_valid_err<E: Display>(e: E) -> ApiError {
-    ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string())
-}
-
-fn unified_valid_err2(e: ValidationErrors) -> ApiError {
+fn mapping_valid_err(e: ValidationErrors) -> ApiError {
     let msg = serde_json::json!(e.errors());
     ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, msg.to_string())
 }

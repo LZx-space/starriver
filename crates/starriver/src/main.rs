@@ -11,6 +11,7 @@ use starriver_identity_adapter::port_in::state::IdentityState;
 use tokio::{net::TcpListener, signal};
 use tower::ServiceBuilder;
 use tower_http::{
+    compression::CompressionLayer,
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::{DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
@@ -56,6 +57,7 @@ async fn main() {
 
     let user_service = identity_state.user_service.clone();
     let middleware_service = ServiceBuilder::new()
+        .layer(CompressionLayer::new().gzip(true))
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(
             TraceLayer::new_for_http()

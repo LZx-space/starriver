@@ -13,7 +13,7 @@ jws_secret = "LZx"
 [logging]
 file_enabled = false
 file_directory = "log"
-file_name_prefix = "starriver"
+file_name_prefix = "starriver.log"
 max_files = 30
 
 [uploads]

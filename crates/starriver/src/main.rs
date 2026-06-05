@@ -57,7 +57,7 @@ async fn main() {
 
     let user_service = identity_state.user_service.clone();
     let middleware_service = ServiceBuilder::new()
-        .layer(CompressionLayer::new().gzip(true))
+        .layer(CompressionLayer::new().gzip(true).br(true))
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(
             TraceLayer::new_for_http()

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use sea_orm::{
-    ColumnTrait, Condition, DatabaseConnection, EntityTrait, JoinType, Order, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, sea_query::NullOrdering,
+    ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, JoinType, Order,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, sea_query::NullOrdering,
 };
 use starriver_blogging_application::{
     dto::{
@@ -26,6 +26,7 @@ use uuid::Uuid;
 
 use crate::{
     dto::post_dto::{PostDetailRow, PostExcerptRow},
+    port_in::state::PostPageCache,
     port_out::persistence::po::{
         attachment_po, category_po, post_attachment_po,
         post_po::{Column, Entity, PostStatePo, Relation},
@@ -35,68 +36,75 @@ use crate::{
 pub struct DefaultPostQueryPort {
     conn: DatabaseConnection,
     file_url_builder: Arc<DefaultUploadLocationResolver>,
+    page_cache: PostPageCache,
 }
 
 impl DefaultPostQueryPort {
     pub fn new(
         conn: DatabaseConnection,
         file_url_builder: Arc<DefaultUploadLocationResolver>,
+        page_cache: PostPageCache,
     ) -> Self {
         Self {
             conn,
             file_url_builder,
+            page_cache,
         }
     }
 }
 
 impl PostQueryPort for DefaultPostQueryPort {
     async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, QueryError> {
-        let mut cond = Condition::all();
-        let order;
-        if q.published_only {
-            cond = cond.add(Column::State.eq(PostStatePo::Published));
-            order = Column::PublishedAt;
-        } else {
-            order = Column::UpdatedAt;
-        }
-        if let Some(category_id) = q.category_id {
-            cond = cond.add(Column::CategoryId.eq(category_id));
-        }
-        let posts = Entity::find()
-            .select_only()
-            .columns([
-                Column::Id,
-                Column::Title,
-                Column::Content,
-                Column::State,
-                Column::PublishedAt,
-                Column::CreatedAt,
-                Column::UpdatedAt,
-            ])
-            .join(JoinType::LeftJoin, Relation::Category.def())
-            .column_as(category_po::Column::Name, "category")
-            .filter(cond.clone())
-            .order_by_with_nulls(order, Order::Desc, NullOrdering::Last)
-            .offset(q.page * q.page_size)
-            .limit(q.page_size)
-            .into_model::<PostExcerptRow>()
-            .all(&self.conn)
-            .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?
-            .into_iter()
-            .map(|mut e| {
-                e.excerpt = DefaultExcerptor::excerpt(&e.excerpt, 200);
-                e.into()
+        let q = Arc::new(q);
+        self.page_cache
+            .try_get_with(q.clone(), async {
+                let mut cond = Condition::all();
+                let order;
+                if q.published_only {
+                    cond = cond.add(Column::State.eq(PostStatePo::Published));
+                    order = Column::PublishedAt;
+                } else {
+                    order = Column::UpdatedAt;
+                }
+                if let Some(category_id) = q.category_id {
+                    cond = cond.add(Column::CategoryId.eq(category_id));
+                }
+                let posts = Entity::find()
+                    .select_only()
+                    .columns([
+                        Column::Id,
+                        Column::Title,
+                        Column::Content,
+                        Column::State,
+                        Column::PublishedAt,
+                        Column::CreatedAt,
+                        Column::UpdatedAt,
+                    ])
+                    .join(JoinType::LeftJoin, Relation::Category.def())
+                    .column_as(category_po::Column::Name, "category")
+                    .filter(cond.clone())
+                    .order_by_with_nulls(order, Order::Desc, NullOrdering::Last)
+                    .offset(q.page * q.page_size)
+                    .limit(q.page_size)
+                    .into_model::<PostExcerptRow>()
+                    .all(&self.conn)
+                    .await?
+                    .into_iter()
+                    .map(|mut e| {
+                        e.excerpt = DefaultExcerptor::excerpt(&e.excerpt, 200);
+                        e.into()
+                    })
+                    .collect::<Vec<_>>();
+                let record_total = Entity::find()
+                    .select_only()
+                    .column(Column::Id)
+                    .filter(cond)
+                    .count(&self.conn)
+                    .await?;
+                Ok(PageResult::new(q.page, q.page_size, record_total, posts))
             })
-            .collect::<Vec<_>>();
-        let record_total = Entity::find()
-            .select_only()
-            .column(Column::Id)
-            .filter(cond)
-            .count(&self.conn)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(PageResult::new(q.page, q.page_size, record_total, posts))
+            .map_err(|e: Arc<DbErr>| QueryError::DbError(e.to_string()))
     }
 
     async fn find_detail(&self, id: Uuid) -> Result<Option<PostDetailDto>, QueryError> {

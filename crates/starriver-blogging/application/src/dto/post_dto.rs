@@ -3,7 +3,7 @@ pub mod req {
     use uuid::Uuid;
     use validator::Validate;
 
-    #[derive(Debug, Deserialize, Validate)]
+    #[derive(Debug, Deserialize, PartialEq, Eq, Hash, Validate)]
     pub struct PageQuery {
         #[validate(range(min = 0, max = 10))]
         pub page: u64,
@@ -50,7 +50,7 @@ pub mod res {
         pub updated_at: Option<OffsetDateTime>,
     }
 
-    #[derive(Serialize)]
+    #[derive(Clone, Serialize)]
     pub struct PostExcerptDto {
         pub id: Uuid,
         pub title: String,

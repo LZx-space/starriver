@@ -8,18 +8,22 @@ use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
-use crate::port_out::persistence::po::{
-    post_attachment_po,
-    post_po::{ActiveModel, Entity},
+use crate::{
+    port_in::state::PostPageCache,
+    port_out::persistence::po::{
+        post_attachment_po,
+        post_po::{ActiveModel, Entity},
+    },
 };
 
 pub struct DefaultPostRepository {
     conn: DatabaseConnection,
+    page_cache: PostPageCache,
 }
 
 impl DefaultPostRepository {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
+    pub fn new(conn: DatabaseConnection, page_cache: PostPageCache) -> Self {
+        Self { conn, page_cache }
     }
 }
 
@@ -68,6 +72,8 @@ impl PostRepository for DefaultPostRepository {
         .insert(&self.conn)
         .await
         .map_err(db_2_repo_error)?;
+        // 清除分页查询缓存， todo 添加事务后，由事务结果决定是否清除缓存
+        self.page_cache.invalidate_all();
 
         // 插入附件关联
         if !attachments.is_empty() {
@@ -99,11 +105,14 @@ impl PostRepository for DefaultPostRepository {
     }
 
     async fn delete(&self, id: uuid::Uuid) -> Result<bool, RepositoryError> {
-        Entity::delete_by_id(id)
+        let b = Entity::delete_by_id(id)
             .exec(&self.conn)
             .await
             .map(|r| r.rows_affected != 0)
-            .map_err(db_2_repo_error)
+            .map_err(db_2_repo_error)?;
+        // 清除分页查询缓存
+        self.page_cache.invalidate_all();
+        Ok(b)
     }
 
     async fn update(&self, post: Revision<Post>) -> Result<Post, RepositoryError> {
@@ -140,7 +149,7 @@ impl PostRepository for DefaultPostRepository {
         let mut published_at = Unchanged(published_at);
         published_at.set_if_not_equals(new_published_at);
 
-        let model = ActiveModel {
+        let updated = ActiveModel {
             id: Unchanged(id),
             title,
             content,
@@ -150,9 +159,13 @@ impl PostRepository for DefaultPostRepository {
             published_at,
             created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
-        };
+        }
+        .update(&self.conn)
+        .await
+        .map_err(db_2_repo_error)?;
 
-        let updated = model.update(&self.conn).await.map_err(db_2_repo_error)?;
+        // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
+        self.page_cache.invalidate_all();
 
         // 增量更新附件关联：只删移除的、只插新增的
         let to_insert: Vec<_> = new_attachments

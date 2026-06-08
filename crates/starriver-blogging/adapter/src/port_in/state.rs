@@ -4,13 +4,17 @@ use axum::extract::FromRef;
 use moka::future::Cache;
 use sea_orm::DatabaseConnection;
 use starriver_blogging_application::{
-    dto::category_dto::res::CategoryDetailDto,
+    dto::{
+        category_dto::res::CategoryDetailDto,
+        post_dto::{req::PageQuery, res::PostExcerptDto},
+    },
     service::{
         attachement_service::AttachmentApplication, category_service::CategoryApplication,
         post_service::PostApplication,
     },
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
+use starriver_shared_base::dto::PageResult;
 use starriver_shared_framework::{
     config::{Auth, Uploads},
     upload_file::DefaultUploadLocationResolver,
@@ -54,9 +58,14 @@ impl BloggingState {
         uploads: Arc<Uploads>,
     ) -> Result<Self, String> {
         let upload_file_url_builder = Arc::new(DefaultUploadLocationResolver::new(uploads.clone()));
+        let post_page_cache = post_page_cache();
         let post_service = PostApplication::new(
-            DefaultPostQueryPort::new(conn.clone(), upload_file_url_builder.clone()),
-            DefaultPostRepository::new(conn.clone()),
+            DefaultPostQueryPort::new(
+                conn.clone(),
+                upload_file_url_builder.clone(),
+                post_page_cache.clone(),
+            ),
+            DefaultPostRepository::new(conn.clone(), post_page_cache.clone()),
         )
         .into();
 
@@ -100,6 +109,15 @@ pub type CatagoryListCache = Arc<Cache<u8, Vec<CategoryDetailDto>>>;
 pub const CACHE_KEY_CATEGORY_LIST: u8 = 0;
 
 fn category_list_cache() -> CatagoryListCache {
+    Cache::builder()
+        .time_to_live(Duration::from_hours(24))
+        .build()
+        .into()
+}
+
+pub type PostPageCache = Arc<Cache<Arc<PageQuery>, PageResult<PostExcerptDto>>>;
+
+pub fn post_page_cache() -> PostPageCache {
     Cache::builder()
         .time_to_live(Duration::from_hours(24))
         .build()

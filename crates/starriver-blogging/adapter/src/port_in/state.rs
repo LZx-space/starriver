@@ -1,10 +1,14 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use axum::extract::FromRef;
+use moka::future::Cache;
 use sea_orm::DatabaseConnection;
-use starriver_blogging_application::service::{
-    attachement_service::AttachmentApplication, category_service::CategoryApplication,
-    post_service::PostApplication,
+use starriver_blogging_application::{
+    dto::category_dto::res::CategoryDetailDto,
+    service::{
+        attachement_service::AttachmentApplication, category_service::CategoryApplication,
+        post_service::PostApplication,
+    },
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_framework::{
@@ -55,17 +59,21 @@ impl BloggingState {
             DefaultPostRepository::new(conn.clone()),
         )
         .into();
+
+        let category_list_cache = category_list_cache();
         let category_service = CategoryApplication::new(
-            DefaultCategoryQueryPort::new(conn.clone()),
-            DefaultCategoryRepository::new(conn.clone()),
+            DefaultCategoryQueryPort::new(conn.clone(), category_list_cache.clone()),
+            DefaultCategoryRepository::new(conn.clone(), category_list_cache.clone()),
         )
         .into();
+
         let attachment_service = AttachmentApplication::new(
             DefaultAttachmentRepository::new(conn.clone()),
             AttachmentFactory::new(DefaultFileTypeChecker {}),
             upload_file_url_builder.clone(),
         )
         .into();
+
         Ok(BloggingState {
             auth,
             uploads,
@@ -77,8 +85,23 @@ impl BloggingState {
     }
 }
 
+////////////////////////////////////////////////////////////////////
+
 impl FromRef<BloggingState> for Arc<Auth> {
     fn from_ref(input: &BloggingState) -> Self {
         input.auth.clone()
     }
+}
+
+////////////////////////////////////////////////////////////////////
+
+pub type CatagoryListCache = Arc<Cache<u8, Vec<CategoryDetailDto>>>;
+
+pub const CACHE_KEY_CATEGORY_LIST: u8 = 0;
+
+fn category_list_cache() -> CatagoryListCache {
+    Cache::builder()
+        .time_to_live(Duration::from_hours(24))
+        .build()
+        .into()
 }

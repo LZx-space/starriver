@@ -14,7 +14,7 @@ pub mod res {
     use time::OffsetDateTime;
     use uuid::Uuid;
 
-    #[derive(Serialize)]
+    #[derive(Clone, Serialize)]
     pub struct CategoryDetailDto {
         pub id: Uuid,
         pub name: String,

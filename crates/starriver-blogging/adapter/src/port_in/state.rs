@@ -104,9 +104,9 @@ impl FromRef<BloggingState> for Arc<Auth> {
 
 ////////////////////////////////////////////////////////////////////
 
-pub type CatagoryListCache = Arc<Cache<u8, Vec<CategoryDetailDto>>>;
+pub type CatagoryListCache = Arc<Cache<(), Vec<CategoryDetailDto>>>;
 
-pub const CACHE_KEY_CATEGORY_LIST: u8 = 0;
+pub const CACHE_KEY_CATEGORY_LIST: () = ();
 
 fn category_list_cache() -> CatagoryListCache {
     Cache::builder()

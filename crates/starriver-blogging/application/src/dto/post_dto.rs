@@ -37,7 +37,7 @@ pub mod res {
 
     use crate::dto::attachment_dto::res::AttachmentDto;
 
-    #[derive(Serialize)]
+    #[derive(Clone, Serialize)]
     pub struct PostDetailDto {
         pub id: Uuid,
         pub title: String,

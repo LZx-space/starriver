@@ -6,7 +6,7 @@ use sea_orm::DatabaseConnection;
 use starriver_blogging_application::{
     dto::{
         category_dto::res::CategoryDetailDto,
-        post_dto::{req::PageQuery, res::PostExcerptDto},
+        post_dto::res::{PostDetailDto, PostExcerptDto},
     },
     service::{
         attachement_service::AttachmentApplication, category_service::CategoryApplication,
@@ -19,6 +19,7 @@ use starriver_shared_framework::{
     config::{Auth, Uploads},
     upload_file::DefaultUploadLocationResolver,
 };
+use uuid::Uuid;
 
 use crate::port_out::{
     persistence::{
@@ -58,14 +59,15 @@ impl BloggingState {
         uploads: Arc<Uploads>,
     ) -> Result<Self, String> {
         let upload_file_url_builder = Arc::new(DefaultUploadLocationResolver::new(uploads.clone()));
-        let post_page_cache = post_page_cache();
+        let caches = post_caches();
         let post_service = PostApplication::new(
             DefaultPostQueryPort::new(
                 conn.clone(),
                 upload_file_url_builder.clone(),
-                post_page_cache.clone(),
+                caches.page.clone(),
+                caches.detail.clone(),
             ),
-            DefaultPostRepository::new(conn.clone(), post_page_cache.clone()),
+            DefaultPostRepository::new(conn.clone(), caches),
         )
         .into();
 
@@ -104,7 +106,7 @@ impl FromRef<BloggingState> for Arc<Auth> {
 
 ////////////////////////////////////////////////////////////////////
 
-pub type CatagoryListCache = Arc<Cache<(), Vec<CategoryDetailDto>>>;
+pub type CatagoryListCache = Cache<(), Vec<CategoryDetailDto>>;
 
 pub const CACHE_KEY_CATEGORY_LIST: () = ();
 
@@ -112,14 +114,42 @@ fn category_list_cache() -> CatagoryListCache {
     Cache::builder()
         .time_to_live(Duration::from_hours(24))
         .build()
-        .into()
 }
 
-pub type PostPageCache = Arc<Cache<Arc<PageQuery>, PageResult<PostExcerptDto>>>;
+// -------------------
 
-pub fn post_page_cache() -> PostPageCache {
-    Cache::builder()
-        .time_to_live(Duration::from_hours(24))
-        .build()
-        .into()
+pub struct PostCaches {
+    pub page: PostPageCache,
+    pub detail: PostDetailCache,
+}
+
+impl PostCaches {
+    /// 增删改后统一清除所有帖子相关缓存
+    pub fn invalidate_all(&self) {
+        self.page.invalidate_all();
+        self.detail.invalidate_all();
+    }
+}
+
+pub fn post_caches() -> PostCaches {
+    PostCaches {
+        page: Cache::builder()
+            .time_to_live(Duration::from_hours(1))
+            .build(),
+        detail: Cache::builder()
+            .time_to_live(Duration::from_hours(24))
+            .build(),
+    }
+}
+
+pub type PostPageCache = Cache<PostPageKey, PageResult<PostExcerptDto>>;
+pub type PostDetailCache = Cache<Uuid, Option<PostDetailDto>>;
+
+/// 帖子分页查询缓存键，枚举具体参数而不用请求结构体避免添加额外参数时不适合做缓存而注意不到
+#[derive(Clone, Hash, PartialEq, Eq)]
+pub struct PostPageKey {
+    pub page: u64,
+    pub page_size: u64,
+    pub published_only: bool,
+    pub category_id: Option<Uuid>,
 }

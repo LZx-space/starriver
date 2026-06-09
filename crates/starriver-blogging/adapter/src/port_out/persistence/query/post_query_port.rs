@@ -26,7 +26,7 @@ use uuid::Uuid;
 
 use crate::{
     dto::post_dto::{PostDetailRow, PostExcerptRow},
-    port_in::state::PostPageCache,
+    port_in::state::{PostDetailCache, PostPageCache, PostPageKey},
     port_out::persistence::po::{
         attachment_po, category_po, post_attachment_po,
         post_po::{Column, Entity, PostStatePo, Relation},
@@ -37,6 +37,7 @@ pub struct DefaultPostQueryPort {
     conn: DatabaseConnection,
     file_url_builder: Arc<DefaultUploadLocationResolver>,
     page_cache: PostPageCache,
+    detail_cache: PostDetailCache,
 }
 
 impl DefaultPostQueryPort {
@@ -44,20 +45,27 @@ impl DefaultPostQueryPort {
         conn: DatabaseConnection,
         file_url_builder: Arc<DefaultUploadLocationResolver>,
         page_cache: PostPageCache,
+        detail_cache: PostDetailCache,
     ) -> Self {
         Self {
             conn,
             file_url_builder,
             page_cache,
+            detail_cache,
         }
     }
 }
 
 impl PostQueryPort for DefaultPostQueryPort {
     async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, QueryError> {
-        let q = Arc::new(q);
+        let key = PostPageKey {
+            page: q.page,
+            page_size: q.page_size,
+            published_only: q.published_only,
+            category_id: q.category_id,
+        };
         self.page_cache
-            .try_get_with(q.clone(), async {
+            .try_get_with(key, async {
                 let mut cond = Condition::all();
                 let order;
                 if q.published_only {
@@ -108,58 +116,60 @@ impl PostQueryPort for DefaultPostQueryPort {
     }
 
     async fn find_detail(&self, id: Uuid) -> Result<Option<PostDetailDto>, QueryError> {
-        let post = Entity::find_by_id(id)
-            .select_only()
-            .columns([
-                Column::Id,
-                Column::Title,
-                Column::Content,
-                Column::State,
-                Column::PublishedAt,
-                Column::CreatedAt,
-                Column::UpdatedAt,
-            ])
-            .join(JoinType::LeftJoin, Relation::Category.def())
-            .column_as(category_po::Column::Id, "category_id")
-            .column_as(category_po::Column::Name, "category_name")
-            .into_model::<PostDetailRow>()
-            .one(&self.conn)
-            .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?;
+        self.detail_cache
+            .try_get_with(id, async {
+                let post = Entity::find_by_id(id)
+                    .select_only()
+                    .columns([
+                        Column::Id,
+                        Column::Title,
+                        Column::Content,
+                        Column::State,
+                        Column::PublishedAt,
+                        Column::CreatedAt,
+                        Column::UpdatedAt,
+                    ])
+                    .join(JoinType::LeftJoin, Relation::Category.def())
+                    .column_as(category_po::Column::Id, "category_id")
+                    .column_as(category_po::Column::Name, "category_name")
+                    .into_model::<PostDetailRow>()
+                    .one(&self.conn)
+                    .await?;
 
-        let Some(post) = post else {
-            return Ok(None);
-        };
+                let Some(post) = post else {
+                    return Ok(None);
+                };
 
-        // 2. 附件（零到多行）
-        let attachments: Vec<AttachmentDto> = post_attachment_po::Entity::find()
-            .filter(post_attachment_po::Column::PostId.eq(id))
-            .find_with_related(attachment_po::Entity)
-            .all(&self.conn)
-            .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?
-            .into_iter()
-            .flat_map(|(_, attachments)| attachments)
-            .map(|a| AttachmentDto {
-                id: a.id,
-                url: self.file_url_builder.url(a.file_name.as_str()),
-                file_name: a.file_name,
+                let attachments: Vec<AttachmentDto> = post_attachment_po::Entity::find()
+                    .filter(post_attachment_po::Column::PostId.eq(id))
+                    .find_with_related(attachment_po::Entity)
+                    .all(&self.conn)
+                    .await?
+                    .into_iter()
+                    .flat_map(|(_, attachments)| attachments)
+                    .map(|a| AttachmentDto {
+                        id: a.id,
+                        url: self.file_url_builder.url(a.file_name.as_str()),
+                        file_name: a.file_name,
+                    })
+                    .collect();
+
+                Ok(Some(PostDetailDto {
+                    id,
+                    title: post.title,
+                    content: post.content,
+                    state: PostState::from(post.state).to_string(),
+                    category: IdName {
+                        id: post.category_id,
+                        name: post.category_name,
+                    },
+                    attachments,
+                    published_at: post.published_at,
+                    created_at: post.created_at,
+                    updated_at: post.updated_at,
+                }))
             })
-            .collect();
-
-        Ok(Some(PostDetailDto {
-            id,
-            title: post.title,
-            content: post.content,
-            state: PostState::from(post.state).to_string(),
-            category: IdName {
-                id: post.category_id,
-                name: post.category_name,
-            },
-            attachments,
-            published_at: post.published_at,
-            created_at: post.created_at,
-            updated_at: post.updated_at,
-        }))
+            .await
+            .map_err(|e: Arc<DbErr>| QueryError::DbError(e.to_string()))
     }
 }

@@ -9,7 +9,7 @@ use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
 use crate::{
-    port_in::state::PostPageCache,
+    port_in::state::PostCaches,
     port_out::persistence::po::{
         post_attachment_po,
         post_po::{ActiveModel, Entity},
@@ -18,12 +18,12 @@ use crate::{
 
 pub struct DefaultPostRepository {
     conn: DatabaseConnection,
-    page_cache: PostPageCache,
+    caches: PostCaches,
 }
 
 impl DefaultPostRepository {
-    pub fn new(conn: DatabaseConnection, page_cache: PostPageCache) -> Self {
-        Self { conn, page_cache }
+    pub fn new(conn: DatabaseConnection, caches: PostCaches) -> Self {
+        Self { conn, caches }
     }
 }
 
@@ -73,7 +73,7 @@ impl PostRepository for DefaultPostRepository {
         .await
         .map_err(db_2_repo_error)?;
         // 清除分页查询缓存， todo 添加事务后，由事务结果决定是否清除缓存
-        self.page_cache.invalidate_all();
+        self.caches.invalidate_all();
 
         // 插入附件关联
         if !attachments.is_empty() {
@@ -111,7 +111,7 @@ impl PostRepository for DefaultPostRepository {
             .map(|r| r.rows_affected != 0)
             .map_err(db_2_repo_error)?;
         // 清除分页查询缓存
-        self.page_cache.invalidate_all();
+        self.caches.invalidate_all();
         Ok(b)
     }
 
@@ -165,7 +165,7 @@ impl PostRepository for DefaultPostRepository {
         .map_err(db_2_repo_error)?;
 
         // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
-        self.page_cache.invalidate_all();
+        self.caches.invalidate_all();
 
         // 增量更新附件关联：只删移除的、只插新增的
         let to_insert: Vec<_> = new_attachments

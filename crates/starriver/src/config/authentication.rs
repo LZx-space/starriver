@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use sea_orm::ConnectionTrait;
 use starriver_identity_adapter::{
     UserApplicationService,
     port_out::{
@@ -33,11 +32,11 @@ use starriver_shared_framework::{
 };
 use time::Duration;
 
-pub struct UsernamePasswordAuthenticator<T> {
+pub struct UsernamePasswordAuthenticator {
     pub user_service: Arc<
         UserApplicationService<
             DefaultUserQueryPort,
-            DefaultUserRepository<T>,
+            DefaultUserRepository,
             DefaultSecurityEventRepository,
             SmtpVerificationPort,
             Argon2PasswordEncoder,
@@ -46,10 +45,7 @@ pub struct UsernamePasswordAuthenticator<T> {
     pub cfg: Arc<Auth>,
 }
 
-impl<T> Authenticator for UsernamePasswordAuthenticator<T>
-where
-    T: ConnectionTrait + Send,
-{
+impl Authenticator for UsernamePasswordAuthenticator {
     type Credentials = UsernamePasswordCredentials;
     type Principal = AuthenticatedUser;
 

@@ -43,7 +43,7 @@ pub struct IdentityState {
     pub user_service: Arc<
         UserApplicationService<
             DefaultUserQueryPort,
-            DefaultUserRepository<DatabaseConnection>,
+            DefaultUserRepository,
             DefaultSecurityEventRepository,
             SmtpVerificationPort,
             Argon2PasswordEncoder,

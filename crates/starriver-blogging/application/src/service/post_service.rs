@@ -1,5 +1,8 @@
 use starriver_blogging_domain::post::{
-    entity::Post, params::PostUpdate, repository::PostRepository, value_object::PostState,
+    entity::Post,
+    params::PostUpdate,
+    repository::PostRepository,
+    value_object::{Content, PostState, Title},
 };
 use starriver_shared_base::{
     authentication::PrincipalClaims, dto::PageResult, repository::Revision,
@@ -40,7 +43,6 @@ where
             .find_detail(id)
             .await?
             .ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id)))
-            .map(Ok)?
     }
 
     pub async fn create(
@@ -53,9 +55,10 @@ where
             true => PostState::Published,
             false => PostState::Draft,
         };
+
         let post = Post::new(
-            cmd.title,
-            cmd.content,
+            Title::new(cmd.title)?,
+            Content::new(cmd.content)?,
             state,
             author_id,
             cmd.category_id,
@@ -91,10 +94,8 @@ where
         };
         let original = found.clone();
         found.update(cmd)?;
-        self.repo
-            .update(Revision::new(original, found))
-            .await
-            .map(|_| Ok(()))?
+        self.repo.update(Revision::new(original, found)).await?;
+        Ok(())
     }
 
     pub async fn delete_by_id(
@@ -107,6 +108,6 @@ where
             Post_id = %id,
             "deleting post"
         );
-        self.repo.delete_by_id(id).await.map(Ok)?
+        self.repo.delete(id).await.map(Ok)?
     }
 }

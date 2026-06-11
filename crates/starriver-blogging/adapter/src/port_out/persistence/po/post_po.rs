@@ -73,26 +73,28 @@ pub enum PostStatePo {
     Draft,
     #[sea_orm(num_value = 1)]
     Published,
+    #[sea_orm(num_value = 2)]
+    Archived,
 }
 
 //////////////////////////////////////////////////////////
 
 impl From<PostStatePo> for PostState {
     fn from(value: PostStatePo) -> Self {
-        if value.eq(&PostStatePo::Draft) {
-            PostState::Draft
-        } else {
-            PostState::Published
+        match value {
+            PostStatePo::Draft => PostState::Draft,
+            PostStatePo::Published => PostState::Published,
+            PostStatePo::Archived => PostState::Archived,
         }
     }
 }
 
 impl From<PostState> for PostStatePo {
     fn from(value: PostState) -> Self {
-        if value.eq(&PostState::Draft) {
-            PostStatePo::Draft
-        } else {
-            PostStatePo::Published
+        match value {
+            PostState::Draft => PostStatePo::Draft,
+            PostState::Published => PostStatePo::Published,
+            PostState::Archived => PostStatePo::Archived,
         }
     }
 }

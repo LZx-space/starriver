@@ -10,7 +10,7 @@ use starriver_identity_domain::{
     user::{
         factory::UserFactory,
         policy::BadPasswordPolicy,
-        value_object::{EmailSpec, PasswordSpec, UsernameSpec},
+        specification::{EmailSpec, PasswordSpec, UsernameSpec},
     },
 };
 use starriver_shared_base::regex_patterns::Patterns;
@@ -35,7 +35,7 @@ use crate::{
 /// 应用的各个状态
 #[derive(Clone)]
 pub struct IdentityState {
-    pub auth: Auth,
+    pub auth: Arc<Auth>,
     pub email_spec: Arc<EmailSpec>,
     pub username_spec: Arc<UsernameSpec>,
     pub password_spec: Arc<PasswordSpec>,
@@ -43,7 +43,7 @@ pub struct IdentityState {
     pub user_service: Arc<
         UserApplicationService<
             DefaultUserQueryPort,
-            DefaultUserRepository<DatabaseConnection>,
+            DefaultUserRepository,
             DefaultSecurityEventRepository,
             SmtpVerificationPort,
             Argon2PasswordEncoder,
@@ -54,7 +54,7 @@ pub struct IdentityState {
 impl IdentityState {
     pub async fn new(
         conn: DatabaseConnection,
-        auth: Auth,
+        auth: Arc<Auth>,
         cfg: &IdentityConfig,
     ) -> Result<Self, String> {
         let patterns = Patterns::new(
@@ -116,8 +116,8 @@ impl FromRef<IdentityState> for UserValidateCxt {
     }
 }
 
-impl FromRef<IdentityState> for Auth {
-    fn from_ref(state: &IdentityState) -> Auth {
+impl FromRef<IdentityState> for Arc<Auth> {
+    fn from_ref(state: &IdentityState) -> Arc<Auth> {
         state.auth.clone()
     }
 }

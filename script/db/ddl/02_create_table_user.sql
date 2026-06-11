@@ -7,8 +7,8 @@ CREATE TABLE public."user"
     state      smallint                 NOT NULL DEFAULT 0,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone,
-    CONSTRAINT user_unique UNIQUE (username),
-    CONSTRAINT email_unique UNIQUE (email)
+    CONSTRAINT uq_username UNIQUE (username),
+    CONSTRAINT uq_email UNIQUE (email)
 );
 COMMENT ON TABLE public."user" IS '用户';
 

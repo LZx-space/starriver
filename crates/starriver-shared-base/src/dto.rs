@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct IdName<T> {
     pub id: T,
     pub name: String,
@@ -13,7 +13,7 @@ pub struct IdValue<I, V> {
 }
 
 /// 页数据结果
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PageResult<T: Serialize> {
     page: u64,
 

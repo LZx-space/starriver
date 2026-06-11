@@ -25,8 +25,8 @@ pub struct Post {
 
 impl Post {
     pub fn new(
-        title: String,
-        content: String,
+        title: Title,
+        content: Content,
         state: PostState,
         author_id: Uuid,
         category_id: Uuid,
@@ -35,9 +35,8 @@ impl Post {
         let published_at = match state {
             PostState::Draft => None,
             PostState::Published => Some(OffsetDateTime::now_utc()),
+            PostState::Archived => None,
         };
-        let title = Title::new(title)?;
-        let content = Content::new(content)?;
         Ok(Self {
             id: Uuid::now_v7(),
             title,

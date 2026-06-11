@@ -4,6 +4,8 @@ use serde::{Deserialize, Deserializer};
 
 #[derive(Clone, Deserialize)]
 pub struct Auth {
+    pub jws_exp_hours: u16,
+    pub jws_cookie_name: String,
     pub jws_secret: Arc<String>,
 }
 

@@ -13,7 +13,7 @@ pub mod res {
     use serde::Serialize;
     use uuid::Uuid;
 
-    #[derive(Serialize)]
+    #[derive(Clone, Serialize)]
     pub struct AttachmentDto {
         pub id: Uuid,
         pub file_name: String,

@@ -1,38 +1,43 @@
+use crate::{
+    port_in::state::{CACHE_KEY_CATEGORY_LIST, CatagoryListCache},
+    port_out::persistence::po::category_po::{Column, Entity},
+};
 use sea_orm::{DatabaseConnection, EntityTrait, QueryOrder};
 use starriver_blogging_application::{
     dto::category_dto::res::CategoryDetailDto, port_out::category_query_port::CategoryQueryPort,
 };
 use starriver_shared_base::error::QueryError;
-use starriver_shared_framework::error_mapping::db_2_query_error;
-
-use crate::port_out::persistence::po::category_po::{Column, Entity};
-
 pub struct DefaultCategoryQueryPort {
     conn: DatabaseConnection,
+    cache: CatagoryListCache,
 }
 
 impl DefaultCategoryQueryPort {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
+    pub fn new(conn: DatabaseConnection, cache: CatagoryListCache) -> Self {
+        Self { conn, cache }
     }
 }
 
 impl CategoryQueryPort for DefaultCategoryQueryPort {
     async fn list_all(&self) -> Result<Vec<CategoryDetailDto>, QueryError> {
-        Entity::find()
-            .order_by_asc(Column::CreatedAt)
-            .all(&self.conn)
-            .await
-            .map(|v| {
-                v.into_iter()
-                    .map(|e| CategoryDetailDto {
-                        id: e.id,
-                        name: e.name,
-                        created_at: e.created_at,
-                        updated_at: e.updated_at,
+        self.cache
+            .try_get_with(CACHE_KEY_CATEGORY_LIST, async {
+                Entity::find()
+                    .order_by_asc(Column::CreatedAt)
+                    .all(&self.conn)
+                    .await
+                    .map(|v| {
+                        v.into_iter()
+                            .map(|e| CategoryDetailDto {
+                                id: e.id,
+                                name: e.name,
+                                created_at: e.created_at,
+                                updated_at: e.updated_at,
+                            })
+                            .collect()
                     })
-                    .collect()
             })
-            .map_err(db_2_query_error)
+            .await
+            .map_err(|e| QueryError::DbError(e.to_string()))
     }
 }

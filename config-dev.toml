@@ -6,12 +6,14 @@ port = 8080
 url = "postgresql://postgres:postgres@localhost:5432/starriver"
 
 [auth]
+jws_exp_hours = 8
+jws_cookie_name = "at"
 jws_secret = "LZx"
 
 [logging]
 file_enabled = false
 file_directory = "log"
-file_name_prefix = "starriver"
+file_name_prefix = "starriver.log"
 max_files = 30
 
 [uploads]

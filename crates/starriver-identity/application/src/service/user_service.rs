@@ -44,7 +44,7 @@ where
 {
     /// 新建
     pub fn new(
-        user_query_port: UQP,
+        user_query: UQP,
         user_repo: UREPO,
         security_event_repo: SREPO,
         verification_code_port: VCP,
@@ -52,7 +52,7 @@ where
         auth_service: AuthenticationDomainService<PE>,
     ) -> Self {
         Self {
-            user_query: user_query_port,
+            user_query,
             user_repo,
             security_event_repo,
             verification_code_port,
@@ -131,7 +131,7 @@ where
         cmd: UserActiveCmd,
     ) -> Result<(), CtxError> {
         let email_code = cmd.email_code.as_str();
-        match self.user_repo.find_by_username(username.clone()).await {
+        match self.user_repo.find_by_username(&username).await {
             Ok(found) => {
                 if let Some(mut found) = found {
                     let email = found.email().as_str();
@@ -170,7 +170,7 @@ where
         let password = credentials.password.as_str();
         let user = self
             .user_repo
-            .find_by_username(username.to_string())
+            .find_by_username(username)
             .await
             .map_err(mapping_error())?;
 

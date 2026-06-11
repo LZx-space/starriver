@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use sea_orm::ConnectionTrait;
 use starriver_identity_adapter::{
     UserApplicationService,
     port_out::{
@@ -31,23 +30,22 @@ use starriver_shared_framework::{
         middleware::AuthenticationLayer,
     },
 };
+use time::Duration;
 
-pub struct UsernamePasswordAuthenticator<T> {
+pub struct UsernamePasswordAuthenticator {
     pub user_service: Arc<
         UserApplicationService<
             DefaultUserQueryPort,
-            DefaultUserRepository<T>,
+            DefaultUserRepository,
             DefaultSecurityEventRepository,
             SmtpVerificationPort,
             Argon2PasswordEncoder,
         >,
     >,
+    pub cfg: Arc<Auth>,
 }
 
-impl<T> Authenticator for UsernamePasswordAuthenticator<T>
-where
-    T: ConnectionTrait + Send,
-{
+impl Authenticator for UsernamePasswordAuthenticator {
     type Credentials = UsernamePasswordCredentials;
     type Principal = AuthenticatedUser;
 
@@ -56,7 +54,12 @@ where
         credentials: &Self::Credentials,
     ) -> Result<Self::Principal, AuthenticationError> {
         let detail = self.user_service.authenticate(credentials).await?;
-        let claims = PrincipalClaims::new(detail.id, detail.username, detail.email);
+        let claims = PrincipalClaims::new(
+            Duration::hours(self.cfg.jws_exp_hours as i64),
+            detail.id,
+            detail.username,
+            detail.email,
+        );
         Ok(AuthenticatedUser(claims))
     }
 }
@@ -65,7 +68,7 @@ where
 
 pub fn build_authentication_layer<A>(
     authenticator: A,
-    cfg: Auth,
+    cfg: Arc<Auth>,
 ) -> AuthenticationLayer<
     LoginRequestMatcher,
     DefaultCredentialsExtractor,

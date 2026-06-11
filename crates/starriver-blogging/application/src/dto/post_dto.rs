@@ -3,7 +3,7 @@ pub mod req {
     use uuid::Uuid;
     use validator::Validate;
 
-    #[derive(Debug, Deserialize, Validate)]
+    #[derive(Debug, Deserialize, PartialEq, Eq, Hash, Validate)]
     pub struct PageQuery {
         #[validate(range(min = 0, max = 10))]
         pub page: u64,
@@ -37,12 +37,12 @@ pub mod res {
 
     use crate::dto::attachment_dto::res::AttachmentDto;
 
-    #[derive(Serialize)]
+    #[derive(Clone, Serialize)]
     pub struct PostDetailDto {
         pub id: Uuid,
         pub title: String,
         pub content: String,
-        pub state: i16,
+        pub state: String,
         pub category: IdName<Uuid>,
         pub attachments: Vec<AttachmentDto>,
         pub published_at: Option<OffsetDateTime>,
@@ -50,12 +50,12 @@ pub mod res {
         pub updated_at: Option<OffsetDateTime>,
     }
 
-    #[derive(Serialize)]
+    #[derive(Clone, Serialize)]
     pub struct PostExcerptDto {
         pub id: Uuid,
         pub title: String,
         pub excerpt: String,
-        pub state: i16,
+        pub state: String,
         pub category: String,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,

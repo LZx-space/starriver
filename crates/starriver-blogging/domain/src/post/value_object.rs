@@ -7,6 +7,7 @@ pub enum PostState {
     #[default]
     Draft,
     Published,
+    Archived,
 }
 
 impl Display for PostState {
@@ -14,6 +15,7 @@ impl Display for PostState {
         match self {
             PostState::Draft => f.write_str("draft"),
             PostState::Published => f.write_str("published"),
+            PostState::Archived => f.write_str("archived"),
         }
     }
 }
@@ -50,7 +52,7 @@ impl Content {
     }
 
     pub fn word_count(&self) -> usize {
-        self.0.len()
+        self.0.chars().count()
     }
 }
 

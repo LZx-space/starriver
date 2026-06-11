@@ -8,18 +8,22 @@ use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
-use crate::port_out::persistence::po::{
-    post_attachment_po,
-    post_po::{ActiveModel, Entity},
+use crate::{
+    port_in::state::PostCaches,
+    port_out::persistence::po::{
+        post_attachment_po,
+        post_po::{ActiveModel, Entity},
+    },
 };
 
 pub struct DefaultPostRepository {
     conn: DatabaseConnection,
+    caches: PostCaches,
 }
 
 impl DefaultPostRepository {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
+    pub fn new(conn: DatabaseConnection, caches: PostCaches) -> Self {
+        Self { conn, caches }
     }
 }
 
@@ -68,6 +72,8 @@ impl PostRepository for DefaultPostRepository {
         .insert(&self.conn)
         .await
         .map_err(db_2_repo_error)?;
+        // 清除分页查询缓存， todo 添加事务后，由事务结果决定是否清除缓存
+        self.caches.invalidate_all();
 
         // 插入附件关联
         if !attachments.is_empty() {
@@ -98,19 +104,20 @@ impl PostRepository for DefaultPostRepository {
         Ok(post)
     }
 
-    async fn delete_by_id(&self, id: uuid::Uuid) -> Result<bool, RepositoryError> {
-        let not_zero = Entity::delete_by_id(id)
+    async fn delete(&self, id: uuid::Uuid) -> Result<bool, RepositoryError> {
+        let b = Entity::delete_by_id(id)
             .exec(&self.conn)
             .await
-            .map_err(db_2_repo_error)?
-            .rows_affected
-            != 0;
-        Ok(not_zero)
+            .map(|r| r.rows_affected != 0)
+            .map_err(db_2_repo_error)?;
+        // 清除分页查询缓存
+        self.caches.invalidate_all();
+        Ok(b)
     }
 
     async fn update(&self, post: Revision<Post>) -> Result<Post, RepositoryError> {
         let (original, modified) = post.dissolve();
-        let (id, title, content, state, author_id, category_id, _, published_at) =
+        let (id, title, content, state, author_id, category_id, old_attachments, published_at) =
             original.dissolve();
         let (
             _,
@@ -142,7 +149,7 @@ impl PostRepository for DefaultPostRepository {
         let mut published_at = Unchanged(published_at);
         published_at.set_if_not_equals(new_published_at);
 
-        let model = ActiveModel {
+        let updated = ActiveModel {
             id: Unchanged(id),
             title,
             content,
@@ -152,19 +159,36 @@ impl PostRepository for DefaultPostRepository {
             published_at,
             created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
-        };
+        }
+        .update(&self.conn)
+        .await
+        .map_err(db_2_repo_error)?;
 
-        let updated = model.update(&self.conn).await.map_err(db_2_repo_error)?;
+        // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
+        self.caches.invalidate_all();
 
-        if !new_attachments.is_empty() {
-            // 更新附件关联
+        // 增量更新附件关联：只删移除的、只插新增的
+        let to_insert: Vec<_> = new_attachments
+            .iter()
+            .filter(|a| !old_attachments.contains(a))
+            .copied()
+            .collect();
+        let to_delete: Vec<_> = old_attachments
+            .iter()
+            .filter(|a| !new_attachments.contains(a))
+            .copied()
+            .collect();
+
+        if !to_delete.is_empty() {
             post_attachment_po::Entity::delete_many()
                 .filter(post_attachment_po::Column::PostId.eq(id))
+                .filter(post_attachment_po::Column::AttachmentId.is_in(to_delete))
                 .exec(&self.conn)
                 .await
                 .map_err(db_2_repo_error)?;
-            // 插入新的附件关联
-            post_attachment_po::Entity::insert_many(new_attachments.iter().map(|att_id| {
+        }
+        if !to_insert.is_empty() {
+            post_attachment_po::Entity::insert_many(to_insert.iter().map(|att_id| {
                 post_attachment_po::ActiveModel {
                     post_id: Set(id),
                     attachment_id: Set(*att_id),

@@ -3,7 +3,7 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
 use sea_orm::ActiveValue::Unchanged;
 use sea_orm::ColumnTrait;
-use sea_orm::ConnectionTrait;
+use sea_orm::DatabaseConnection;
 use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
 use starriver_identity_domain::user::entity::User;
@@ -17,21 +17,18 @@ use crate::port_out::persistence::po::user_po::ActiveModel;
 use crate::port_out::persistence::po::user_po::Column;
 use crate::port_out::persistence::po::user_po::Entity;
 
-pub struct DefaultUserRepository<T> {
-    conn: T,
+pub struct DefaultUserRepository {
+    conn: DatabaseConnection,
 }
 
-impl<T> DefaultUserRepository<T> {
-    pub fn new(conn: T) -> Self {
+impl DefaultUserRepository {
+    pub fn new(conn: DatabaseConnection) -> Self {
         Self { conn }
     }
 }
 
-impl<T> UserRepository for DefaultUserRepository<T>
-where
-    T: ConnectionTrait,
-{
-    async fn find_by_username(&self, username: String) -> Result<Option<User>, RepositoryError> {
+impl UserRepository for DefaultUserRepository {
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, RepositoryError> {
         Entity::find()
             .filter(Column::Username.eq(username))
             .one(&self.conn)
@@ -44,7 +41,7 @@ where
 
     async fn insert(&self, user: User) -> Result<User, RepositoryError> {
         let (id, username, password, email, state) = user.dissolve();
-        let model = ActiveModel {
+        ActiveModel {
             id: Set(id),
             username: Set(username.to_string()),
             password: Set(password.as_str().to_string()),
@@ -55,14 +52,8 @@ where
         }
         .insert(&self.conn)
         .await
-        .map_err(db_2_repo_error)?;
-        Ok(User::from_repo(
-            model.id,
-            model.username,
-            model.password,
-            model.email,
-            model.state.into(),
-        ))
+        .map_err(db_2_repo_error)
+        .map(|m| User::from_repo(m.id, m.username, m.password, m.email, m.state.into()))
     }
 
     async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, RepositoryError> {
@@ -77,20 +68,16 @@ where
         let (original, modified) = user.dissolve();
         let (user_id, username, password, email, state) = original.dissolve();
         let (_, new_username, new_password, new_email, new_state) = modified.dissolve();
-        // 更新用户
         let mut username = Unchanged(username.as_str().to_string());
         username.set_if_not_equals(new_username.as_str().to_string());
-
         let mut password = Unchanged(password.as_str().to_string());
         password.set_if_not_equals(new_password.as_str().to_string());
-
         let mut email = Unchanged(email.to_string());
         email.set_if_not_equals(new_email.to_string());
-
         let mut state = Unchanged(state.into());
         state.set_if_not_equals(new_state.into());
 
-        let model = ActiveModel {
+        ActiveModel {
             id: Unchanged(user_id),
             username,
             password,
@@ -101,13 +88,7 @@ where
         }
         .update(&self.conn)
         .await
-        .map_err(db_2_repo_error)?;
-        Ok(User::from_repo(
-            model.id,
-            model.username,
-            model.password,
-            model.email,
-            model.state.into(),
-        ))
+        .map_err(db_2_repo_error)
+        .map(|m| User::from_repo(m.id, m.username, m.password, m.email, m.state.into()))
     }
 }

@@ -2,7 +2,9 @@ use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::security_event::{entity::SecurityEvent, value_object::SecurityEventType};
+use starriver_identity_domain::security_event::{
+    entity::SecurityEvent, value_object::SecurityEventType,
+};
 
 pub trait SecurityEventRepository {
     fn find_by_user_id_since(

@@ -1,6 +1,6 @@
 use crate::error::EmailVerificationError;
 
-pub trait EmailVerificationPort {
+pub trait EmailVerificationService {
     /// 生成验证码、存储（含过期时间）并通过邮件发送给指定地址
     fn send_code(
         &self,

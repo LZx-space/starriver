@@ -1,8 +1,9 @@
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
 };
+use starriver_identity_application::port::security_event_repository::SecurityEventRepository;
 use starriver_identity_domain::security_event::{
-    entity::SecurityEvent, repository::SecurityEventRepository, value_object::SecurityEventType,
+    entity::SecurityEvent, value_object::SecurityEventType,
 };
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use starriver_shared_framework::error_mapping::db_2_repo_error;

@@ -1,7 +1,6 @@
+use starriver_blogging_domain::attachment::entity::Attachment;
 use starriver_shared_base::error::RepositoryError;
 use uuid::Uuid;
-
-use crate::attachment::entity::Attachment;
 
 pub trait AttachmentRepository {
     fn insert(

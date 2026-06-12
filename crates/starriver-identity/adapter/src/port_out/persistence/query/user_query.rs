@@ -1,17 +1,17 @@
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect,
 };
-use starriver_identity_application::port_out::user_query_port::UserQueryPort;
+use starriver_identity_application::port::user_query::UserQuery;
 use starriver_shared_base::error::QueryError;
 use uuid::Uuid;
 
 use crate::port_out::persistence::po::user_po::{self, Entity};
 
-pub struct DefaultUserQueryPort {
+pub struct DefaultUserQuery {
     pub conn: DatabaseConnection,
 }
 
-impl UserQueryPort for DefaultUserQueryPort {
+impl UserQuery for DefaultUserQuery {
     async fn exists_by_email(&self, email: &str) -> Result<bool, QueryError> {
         Entity::find()
             .select_only()

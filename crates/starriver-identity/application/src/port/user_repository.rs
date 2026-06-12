@@ -1,7 +1,6 @@
+use starriver_identity_domain::user::entity::User;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use uuid::Uuid;
-
-use crate::user::entity::User;
 
 pub trait UserRepository {
     fn find_by_username(

@@ -1,5 +1,6 @@
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait};
-use starriver_blogging_domain::attachment::{entity::Attachment, repository::AttachmentRepository};
+use starriver_blogging_application::port::attachment_repository::AttachmentRepository;
+use starriver_blogging_domain::attachment::entity::Attachment;
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;

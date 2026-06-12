@@ -12,7 +12,7 @@ use starriver_blogging_application::{
             res::{PostDetailDto, PostExcerptDto},
         },
     },
-    port_out::post_query_port::PostQueryPort,
+    port::post_query::PostQuery,
 };
 use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
@@ -33,14 +33,14 @@ use crate::{
     },
 };
 
-pub struct DefaultPostQueryPort {
+pub struct DefaultPostQuery {
     conn: DatabaseConnection,
     file_url_builder: Arc<DefaultUploadLocationResolver>,
     page_cache: PostPageCache,
     detail_cache: PostDetailCache,
 }
 
-impl DefaultPostQueryPort {
+impl DefaultPostQuery {
     pub fn new(
         conn: DatabaseConnection,
         file_url_builder: Arc<DefaultUploadLocationResolver>,
@@ -56,7 +56,7 @@ impl DefaultPostQueryPort {
     }
 }
 
-impl PostQueryPort for DefaultPostQueryPort {
+impl PostQuery for DefaultPostQuery {
     async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, QueryError> {
         let key = PostPageKey {
             page: q.page,

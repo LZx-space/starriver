@@ -1,11 +1,12 @@
-use starriver_blogging_domain::category::{entity::Category, repository::CategoryRepository};
+use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{authentication::PrincipalClaims, repository::Revision};
 use tracing::info;
 use uuid::Uuid;
 
 use crate::dto::category_dto::res::CategoryDetailDto;
 use crate::error::CtxError;
-use crate::port_out::category_query_port::CategoryQueryPort;
+use crate::port::category_query::CategoryQuery;
+use crate::port::category_repository::CategoryRepository;
 
 pub struct CategoryApplication<Q, R> {
     query: Q,
@@ -14,7 +15,7 @@ pub struct CategoryApplication<Q, R> {
 
 impl<Q, R> CategoryApplication<Q, R>
 where
-    Q: CategoryQueryPort,
+    Q: CategoryQuery,
     R: CategoryRepository,
 {
     pub fn new(query: Q, repo: R) -> Self {

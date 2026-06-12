@@ -3,7 +3,8 @@ use sea_orm::{
     ActiveValue::{NotSet, Set, Unchanged},
     DatabaseConnection, EntityTrait,
 };
-use starriver_blogging_domain::category::{entity::Category, repository::CategoryRepository};
+use starriver_blogging_application::port::category_repository::CategoryRepository;
+use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;

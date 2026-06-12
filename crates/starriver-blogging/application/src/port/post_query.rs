@@ -6,7 +6,7 @@ use crate::dto::post_dto::{
     res::{PostDetailDto, PostExcerptDto},
 };
 
-pub trait PostQueryPort {
+pub trait PostQuery {
     /// 查询一页数据
     fn paginate(
         &self,

@@ -1,7 +1,6 @@
 use starriver_blogging_domain::post::{
     entity::Post,
     params::PostUpdate,
-    repository::PostRepository,
     value_object::{Content, PostState, Title},
 };
 use starriver_shared_base::{
@@ -16,7 +15,7 @@ use crate::{
         res::{PostDetailDto, PostExcerptDto},
     },
     error::CtxError,
-    port_out::post_query_port::PostQueryPort,
+    port::{post_query::PostQuery, post_repository::PostRepository},
 };
 
 pub struct PostApplication<Q, PR> {
@@ -26,7 +25,7 @@ pub struct PostApplication<Q, PR> {
 
 impl<Q, PR> PostApplication<Q, PR>
 where
-    Q: PostQueryPort,
+    Q: PostQuery,
     PR: PostRepository,
 {
     /// 新建

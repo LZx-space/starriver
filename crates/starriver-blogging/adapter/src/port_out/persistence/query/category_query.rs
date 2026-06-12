@@ -4,21 +4,21 @@ use crate::{
 };
 use sea_orm::{DatabaseConnection, EntityTrait, QueryOrder};
 use starriver_blogging_application::{
-    dto::category_dto::res::CategoryDetailDto, port_out::category_query_port::CategoryQueryPort,
+    dto::category_dto::res::CategoryDetailDto, port::category_query::CategoryQuery,
 };
 use starriver_shared_base::error::QueryError;
-pub struct DefaultCategoryQueryPort {
+pub struct DefaultCategoryQuery {
     conn: DatabaseConnection,
     cache: CatagoryListCache,
 }
 
-impl DefaultCategoryQueryPort {
+impl DefaultCategoryQuery {
     pub fn new(conn: DatabaseConnection, cache: CatagoryListCache) -> Self {
         Self { conn, cache }
     }
 }
 
-impl CategoryQueryPort for DefaultCategoryQueryPort {
+impl CategoryQuery for DefaultCategoryQuery {
     async fn list_all(&self) -> Result<Vec<CategoryDetailDto>, QueryError> {
         self.cache
             .try_get_with(CACHE_KEY_CATEGORY_LIST, async {

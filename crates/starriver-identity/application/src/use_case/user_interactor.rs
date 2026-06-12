@@ -4,10 +4,8 @@ use starriver_identity_domain::{
     authentication_service::AuthenticationDomainService,
     error::DomainError,
     password_encoder::PasswordEncoder,
-    security_event::{
-        entity::SecurityEvent, repository::SecurityEventRepository, value_object::SecurityEventType,
-    },
-    user::{factory::UserFactory, repository::UserRepository, value_object::UserState},
+    security_event::{entity::SecurityEvent, value_object::SecurityEventType},
+    user::{factory::UserFactory, value_object::UserState},
 };
 use starriver_shared_base::{
     authentication::UsernamePasswordCredentials, error::RepositoryError,
@@ -22,23 +20,27 @@ use crate::{
         res::UserDetail,
     },
     error::CtxError,
-    port_out::{email_verification_port::EmailVerificationPort, user_query_port::UserQueryPort},
+    port::{
+        email_verification_service::EmailVerificationService,
+        security_event_repository::SecurityEventRepository, user_query::UserQuery,
+        user_repository::UserRepository,
+    },
 };
 
 pub struct UserApplicationService<UQP, UREPO, SREPO, VCP, PE> {
     user_query: UQP,
     user_repo: UREPO,
     security_event_repo: SREPO,
-    verification_code_port: VCP,
+    verification_code_service: VCP,
     user_factory: UserFactory<PE>,
     auth_service: AuthenticationDomainService<PE>,
 }
 
 impl<UQP, UREPO, SREPO, VCP, PE> UserApplicationService<UQP, UREPO, SREPO, VCP, PE>
 where
-    UQP: UserQueryPort,
+    UQP: UserQuery,
     UREPO: UserRepository,
-    VCP: EmailVerificationPort,
+    VCP: EmailVerificationService,
     PE: PasswordEncoder + Clone,
     SREPO: SecurityEventRepository,
 {
@@ -55,7 +57,7 @@ where
             user_query,
             user_repo,
             security_event_repo,
-            verification_code_port,
+            verification_code_service: verification_code_port,
             user_factory,
             auth_service,
         }
@@ -70,7 +72,7 @@ where
                     warn!(email=%email, "email already registered, skipping verification");
                     return Ok(());
                 }
-                if let Err(e) = self.verification_code_port.send_code(email).await {
+                if let Err(e) = self.verification_code_service.send_code(email).await {
                     error!(email=%email, error=%e, "send verification email failed");
                 }
                 Ok(())
@@ -86,7 +88,7 @@ where
         let email_code = cmd.email_code.as_str();
         let email = cmd.email.as_str();
         let matches = self
-            .verification_code_port
+            .verification_code_service
             .validate_code(email, email_code)
             .await
             .inspect_err(|e| info!(email=%email, error=%e, "rigister user validate code failed"))?;
@@ -113,7 +115,7 @@ where
                     warn!(email=%email, "incorrect email for user");
                     return Ok(());
                 }
-                if let Err(e) = self.verification_code_port.send_code(email).await {
+                if let Err(e) = self.verification_code_service.send_code(email).await {
                     error!(email=%email, error=%e, "send active email failed");
                 }
                 Ok(())
@@ -136,7 +138,7 @@ where
                 if let Some(mut found) = found {
                     let email = found.email().as_str();
                     let matches = self
-                        .verification_code_port
+                        .verification_code_service
                         .validate_code(email, email_code)
                         .await
                         .inspect_err(

@@ -1,7 +1,6 @@
+use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use uuid::Uuid;
-
-use crate::category::entity::Category;
 
 pub trait CategoryRepository {
     fn find_by_id(

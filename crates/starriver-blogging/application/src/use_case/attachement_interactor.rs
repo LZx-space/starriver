@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use starriver_blogging_domain::attachment::{
     factory::AttachmentFactory, file_type_checker::FileTypeChecker,
-    repository::AttachmentRepository,
 };
 use starriver_shared_base::{
     io::{AsyncReader, AsyncWriter},
@@ -10,7 +9,10 @@ use starriver_shared_base::{
 };
 use uuid::Uuid;
 
-use crate::{dto::attachment_dto::res::AttachmentDto, error::CtxError};
+use crate::{
+    dto::attachment_dto::res::AttachmentDto, error::CtxError,
+    port::attachment_repository::AttachmentRepository,
+};
 
 pub struct AttachmentApplication<R, FC, UB> {
     repo: R,

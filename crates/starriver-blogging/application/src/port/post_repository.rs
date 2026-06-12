@@ -1,7 +1,6 @@
+use starriver_blogging_domain::post::entity::Post;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use uuid::Uuid;
-
-use crate::post::entity::Post;
 
 /// 仓库
 pub trait PostRepository {

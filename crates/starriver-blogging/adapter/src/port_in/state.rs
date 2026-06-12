@@ -8,9 +8,9 @@ use starriver_blogging_application::{
         category_dto::res::CategoryDetailDto,
         post_dto::res::{PostDetailDto, PostExcerptDto},
     },
-    service::{
-        attachement_service::AttachmentApplication, category_service::CategoryApplication,
-        post_service::PostApplication,
+    use_case::{
+        attachement_interactor::AttachmentApplication, category_interactor::CategoryApplication,
+        post_interactor::PostApplication,
     },
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
@@ -23,9 +23,7 @@ use uuid::Uuid;
 
 use crate::port_out::{
     persistence::{
-        query::{
-            category_query_port::DefaultCategoryQueryPort, post_query_port::DefaultPostQueryPort,
-        },
+        query::{category_query::DefaultCategoryQuery, post_query::DefaultPostQuery},
         repository::{
             attachment_repository::DefaultAttachmentRepository,
             category_repository::DefaultCategoryRepository, post_repository::DefaultPostRepository,
@@ -40,9 +38,8 @@ pub struct BloggingState {
     pub auth: Arc<Auth>,
     pub uploads: Arc<Uploads>,
     pub upload_file_url_builder: Arc<DefaultUploadLocationResolver>,
-    pub post_service: Arc<PostApplication<DefaultPostQueryPort, DefaultPostRepository>>,
-    pub category_service:
-        Arc<CategoryApplication<DefaultCategoryQueryPort, DefaultCategoryRepository>>,
+    pub post_service: Arc<PostApplication<DefaultPostQuery, DefaultPostRepository>>,
+    pub category_service: Arc<CategoryApplication<DefaultCategoryQuery, DefaultCategoryRepository>>,
     pub attachment_service: Arc<
         AttachmentApplication<
             DefaultAttachmentRepository,
@@ -61,7 +58,7 @@ impl BloggingState {
         let upload_file_url_builder = Arc::new(DefaultUploadLocationResolver::new(uploads.clone()));
         let caches = post_caches();
         let post_service = PostApplication::new(
-            DefaultPostQueryPort::new(
+            DefaultPostQuery::new(
                 conn.clone(),
                 upload_file_url_builder.clone(),
                 caches.page.clone(),
@@ -73,7 +70,7 @@ impl BloggingState {
 
         let category_list_cache = category_list_cache();
         let category_service = CategoryApplication::new(
-            DefaultCategoryQueryPort::new(conn.clone(), category_list_cache.clone()),
+            DefaultCategoryQuery::new(conn.clone(), category_list_cache.clone()),
             DefaultCategoryRepository::new(conn.clone(), category_list_cache.clone()),
         )
         .into();

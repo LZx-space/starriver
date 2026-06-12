@@ -1,3 +1,4 @@
+use sea_orm::ConnectionTrait;
 use starriver_blogging_domain::post::{
     entity::Post,
     params::PostUpdate,
@@ -18,28 +19,33 @@ use crate::{
     port::{post_query::PostQuery, post_repository::PostRepository},
 };
 
-pub struct PostApplication<Q, PR> {
+pub struct PostApplication<Conn, Q, PR> {
+    conn: Conn,
     query: Q,
     repo: PR,
 }
 
-impl<Q, PR> PostApplication<Q, PR>
+impl<Conn, Q, PR> PostApplication<Conn, Q, PR>
 where
+    Conn: ConnectionTrait,
     Q: PostQuery,
     PR: PostRepository,
 {
     /// 新建
-    pub fn new(query: Q, repo: PR) -> Self {
-        Self { query, repo }
+    pub fn new(conn: Conn, query: Q, repo: PR) -> Self {
+        Self { conn, query, repo }
     }
 
     pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, CtxError> {
-        self.query.paginate(q).await.map_err(CtxError::from)
+        self.query
+            .paginate(&self.conn, q)
+            .await
+            .map_err(CtxError::from)
     }
 
     pub async fn find(&self, id: Uuid) -> Result<PostDetailDto, CtxError> {
         self.query
-            .find_detail(id)
+            .find_detail(&self.conn, id)
             .await?
             .ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id)))
     }
@@ -63,7 +69,7 @@ where
             cmd.category_id,
             cmd.attachments,
         )?;
-        let created = self.repo.add(post).await?;
+        let created = self.repo.add(&self.conn, post).await?;
         let post_id = created.id().to_owned();
         self.find(post_id).await
     }
@@ -81,7 +87,7 @@ where
         );
         let mut found = self
             .repo
-            .find_by_id(id)
+            .find_by_id(&self.conn, id)
             .await?
             .ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id)))?;
         let cmd = PostUpdate {
@@ -93,7 +99,9 @@ where
         };
         let original = found.clone();
         found.update(cmd)?;
-        self.repo.update(Revision::new(original, found)).await?;
+        self.repo
+            .update(&self.conn, Revision::new(original, found))
+            .await?;
         Ok(())
     }
 
@@ -107,6 +115,6 @@ where
             Post_id = %id,
             "deleting post"
         );
-        self.repo.delete(id).await.map(Ok)?
+        self.repo.delete(&self.conn, id).await.map(Ok)?
     }
 }

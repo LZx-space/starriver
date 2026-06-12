@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 
+use sea_orm::ConnectionTrait;
 use starriver_identity_domain::{
     authentication_service::AuthenticationDomainService,
     error::DomainError,
@@ -27,7 +28,8 @@ use crate::{
     },
 };
 
-pub struct UserApplicationService<UQP, UREPO, SREPO, VCP, PE> {
+pub struct UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE> {
+    conn: Conn,
     user_query: UQP,
     user_repo: UREPO,
     security_event_repo: SREPO,
@@ -36,8 +38,9 @@ pub struct UserApplicationService<UQP, UREPO, SREPO, VCP, PE> {
     auth_service: AuthenticationDomainService<PE>,
 }
 
-impl<UQP, UREPO, SREPO, VCP, PE> UserApplicationService<UQP, UREPO, SREPO, VCP, PE>
+impl<Conn, UQP, UREPO, SREPO, VCP, PE> UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE>
 where
+    Conn: ConnectionTrait,
     UQP: UserQuery,
     UREPO: UserRepository,
     VCP: EmailVerificationService,
@@ -46,6 +49,7 @@ where
 {
     /// 新建
     pub fn new(
+        conn: Conn,
         user_query: UQP,
         user_repo: UREPO,
         security_event_repo: SREPO,
@@ -54,6 +58,7 @@ where
         auth_service: AuthenticationDomainService<PE>,
     ) -> Self {
         Self {
+            conn,
             user_query,
             user_repo,
             security_event_repo,
@@ -66,7 +71,7 @@ where
     /// 发送邮箱验证邮件，永远不返回失败以防暴力核验邮箱
     pub async fn send_register_email(&self, cmd: EmailVerifyCmd) -> Result<(), Infallible> {
         let email = cmd.email.as_str();
-        match self.user_query.exists_by_email(email).await {
+        match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(found) => {
                 if found {
                     warn!(email=%email, "email already registered, skipping verification");
@@ -100,7 +105,7 @@ where
             .create_user(cmd.username.as_str(), cmd.password.as_str(), email)
             .inspect_err(|e| info!(email=%email, error=%e, "rigister user create user failed"))?;
         self.user_repo
-            .insert(user)
+            .insert(&self.conn, user)
             .await
             .inspect_err(|e| error!(email=%email, error=%e, "repository insert user failed"))?;
         Ok(())
@@ -109,7 +114,11 @@ where
     /// 发送用户激活邮件，永远不返回失败以防暴力核验邮箱
     pub async fn send_active_email(&self, cmd: EmailActiveCmd) -> Result<(), Infallible> {
         let email = cmd.email.as_str();
-        match self.user_query.find_email_by_user_id(cmd.user_id).await {
+        match self
+            .user_query
+            .find_email_by_user_id(&self.conn, cmd.user_id)
+            .await
+        {
             Ok(found) => {
                 if found.is_some_and(|e| e != email) {
                     warn!(email=%email, "incorrect email for user");
@@ -133,7 +142,7 @@ where
         cmd: UserActiveCmd,
     ) -> Result<(), CtxError> {
         let email_code = cmd.email_code.as_str();
-        match self.user_repo.find_by_username(&username).await {
+        match self.user_repo.find_by_username(&self.conn, &username).await {
             Ok(found) => {
                 if let Some(mut found) = found {
                     let email = found.email().as_str();
@@ -150,7 +159,7 @@ where
                     let original = found.clone();
                     found.activate();
                     self.user_repo
-                        .update(Revision::new(original, found))
+                        .update(&self.conn, Revision::new(original, found))
                         .await?;
                 } else {
                     warn!(username=%username, "user not found");
@@ -172,7 +181,7 @@ where
         let password = credentials.password.as_str();
         let user = self
             .user_repo
-            .find_by_username(username)
+            .find_by_username(&self.conn, username)
             .await
             .map_err(mapping_error())?;
 
@@ -203,7 +212,7 @@ where
                         "bad password attempt",
                     );
                     self.security_event_repo
-                        .insert(event)
+                        .insert(&self.conn, event)
                         .await
                         .map_err(mapping_error())?;
 
@@ -213,6 +222,7 @@ where
                     let events = self
                         .security_event_repo
                         .find_by_user_id_since(
+                            &self.conn,
                             *user.id(),
                             SecurityEventType::TryLoginWithBadPwd,
                             since,
@@ -226,7 +236,7 @@ where
                     if matches!(user.state(), UserState::Locked) {
                         info!(user_id=%user.id(), "user locked");
                         self.user_repo
-                            .update(Revision::new(original, user))
+                            .update(&self.conn, Revision::new(original, user))
                             .await
                             .map_err(mapping_error())?;
                     }

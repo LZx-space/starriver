@@ -1,3 +1,4 @@
+use sea_orm::ConnectionTrait;
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{authentication::PrincipalClaims, repository::Revision};
 use tracing::info;
@@ -8,27 +9,29 @@ use crate::error::CtxError;
 use crate::port::category_query::CategoryQuery;
 use crate::port::category_repository::CategoryRepository;
 
-pub struct CategoryApplication<Q, R> {
+pub struct CategoryApplication<Conn, Q, R> {
+    conn: Conn,
     query: Q,
     repo: R,
 }
 
-impl<Q, R> CategoryApplication<Q, R>
+impl<Conn, Q, R> CategoryApplication<Conn, Q, R>
 where
+    Conn: ConnectionTrait,
     Q: CategoryQuery,
     R: CategoryRepository,
 {
-    pub fn new(query: Q, repo: R) -> Self {
-        Self { query, repo }
+    pub fn new(conn: Conn, query: Q, repo: R) -> Self {
+        Self { conn, query, repo }
     }
 
     pub async fn list_all(&self) -> Result<Vec<CategoryDetailDto>, CtxError> {
-        self.query.list_all().await.map(Ok)?
+        self.query.list_all(&self.conn).await.map(Ok)?
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Category, CtxError> {
         self.repo
-            .find_by_id(id)
+            .find_by_id(&self.conn, id)
             .await?
             .ok_or_else(|| CtxError::NotFound(format!("category[{}]not exist", id)))
     }
@@ -44,7 +47,7 @@ where
             "creating category"
         );
         let category = Category::new(name)?;
-        self.repo.insert(category).await.map(Ok)?
+        self.repo.insert(&self.conn, category).await.map(Ok)?
     }
 
     pub async fn update(
@@ -58,7 +61,7 @@ where
             category_id = %id,
             "updating category"
         );
-        let category = self.repo.find_by_id(id).await?;
+        let category = self.repo.find_by_id(&self.conn, id).await?;
         let mut category = match category {
             Some(category) => category,
             None => return Err(CtxError::NotFound(format!("category[{}]not exist", id))),
@@ -66,7 +69,7 @@ where
         let original = category.clone();
         category.update(name)?;
         self.repo
-            .update(Revision::new(original, category))
+            .update(&self.conn, Revision::new(original, category))
             .await
             .map(Ok)?
     }
@@ -77,7 +80,7 @@ where
             category_id = %id,
             "deleting category"
         );
-        self.repo.delete(id).await?;
+        self.repo.delete(&self.conn, id).await?;
         Ok(())
     }
 }

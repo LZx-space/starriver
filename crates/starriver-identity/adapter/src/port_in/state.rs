@@ -43,6 +43,7 @@ pub struct IdentityState {
     //////////////////////////////////////////
     pub user_service: Arc<
         UserApplicationService<
+            DatabaseConnection,
             DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventRepository,
@@ -71,9 +72,6 @@ impl IdentityState {
         let password_encoder: Arc<Argon2PasswordEncoder> = Argon2PasswordEncoder::default().into();
         ////////////////////////////////////////////////////////
 
-        let user_query = DefaultUserQuery { conn: conn.clone() };
-        let user_repo = DefaultUserRepository::new(conn.clone());
-        let security_event_repo = DefaultSecurityEventRepository::new(conn.clone());
         let verification_code_port =
             SmtpVerificationService::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
 
@@ -90,9 +88,10 @@ impl IdentityState {
 
         let auth_service = AuthenticationDomainService::new(bad_password_policy, password_encoder);
         let user_service = UserApplicationService::new(
-            user_query,
-            user_repo,
-            security_event_repo,
+            conn.clone(),
+            DefaultUserQuery,
+            DefaultUserRepository,
+            DefaultSecurityEventRepository,
             verification_code_port,
             user_factory,
             auth_service,

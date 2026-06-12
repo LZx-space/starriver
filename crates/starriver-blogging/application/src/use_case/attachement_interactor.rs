@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use sea_orm::ConnectionTrait;
 use starriver_blogging_domain::attachment::{
     factory::AttachmentFactory, file_type_checker::FileTypeChecker,
 };
@@ -14,20 +15,28 @@ use crate::{
     port::attachment_repository::AttachmentRepository,
 };
 
-pub struct AttachmentApplication<R, FC, UB> {
+pub struct AttachmentApplication<Conn, R, FC, UB> {
+    conn: Conn,
     repo: R,
     factory: AttachmentFactory<FC>,
     upload_location_resolver: Arc<UB>,
 }
 
-impl<R, FC, UB> AttachmentApplication<R, FC, UB>
+impl<Conn, R, FC, UB> AttachmentApplication<Conn, R, FC, UB>
 where
+    Conn: ConnectionTrait,
     R: AttachmentRepository,
     FC: FileTypeChecker,
     UB: UploadLocationResolver,
 {
-    pub fn new(repo: R, factory: AttachmentFactory<FC>, upload_location_resolver: Arc<UB>) -> Self {
+    pub fn new(
+        conn: Conn,
+        repo: R,
+        factory: AttachmentFactory<FC>,
+        upload_location_resolver: Arc<UB>,
+    ) -> Self {
         Self {
+            conn,
             repo,
             factory,
             upload_location_resolver,
@@ -66,7 +75,7 @@ where
         let attachment =
             self.factory
                 .create_attachment(attachment_id, &magic_checker_buf, claimed_extension)?;
-        let attachment = self.repo.insert(attachment).await?;
+        let attachment = self.repo.insert(&self.conn, attachment).await?;
         let file_name = attachment.file_name();
         let url = self.upload_location_resolver.url(&file_name);
         let fields = attachment.dissolve();

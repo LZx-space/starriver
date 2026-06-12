@@ -2,29 +2,31 @@ use crate::{
     port_in::state::{CACHE_KEY_CATEGORY_LIST, CatagoryListCache},
     port_out::persistence::po::category_po::{Column, Entity},
 };
-use sea_orm::{DatabaseConnection, EntityTrait, QueryOrder};
+use sea_orm::{ConnectionTrait, EntityTrait, QueryOrder};
 use starriver_blogging_application::{
     dto::category_dto::res::CategoryDetailDto, port::category_query::CategoryQuery,
 };
 use starriver_shared_base::error::QueryError;
 pub struct DefaultCategoryQuery {
-    conn: DatabaseConnection,
     cache: CatagoryListCache,
 }
 
 impl DefaultCategoryQuery {
-    pub fn new(conn: DatabaseConnection, cache: CatagoryListCache) -> Self {
-        Self { conn, cache }
+    pub fn new(cache: CatagoryListCache) -> Self {
+        Self { cache }
     }
 }
 
 impl CategoryQuery for DefaultCategoryQuery {
-    async fn list_all(&self) -> Result<Vec<CategoryDetailDto>, QueryError> {
+    async fn list_all<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+    ) -> Result<Vec<CategoryDetailDto>, QueryError> {
         self.cache
             .try_get_with(CACHE_KEY_CATEGORY_LIST, async {
                 Entity::find()
                     .order_by_asc(Column::CreatedAt)
-                    .all(&self.conn)
+                    .all(conn)
                     .await
                     .map(|v| {
                         v.into_iter()

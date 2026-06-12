@@ -1,4 +1,4 @@
-use sea_orm::ConnectionTrait;
+use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_blogging_domain::post::{
     entity::Post,
     params::PostUpdate,
@@ -7,7 +7,7 @@ use starriver_blogging_domain::post::{
 use starriver_shared_base::{
     authentication::PrincipalClaims, dto::PageResult, repository::Revision,
 };
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::{
@@ -27,7 +27,7 @@ pub struct PostApplication<Conn, Q, PR> {
 
 impl<Conn, Q, PR> PostApplication<Conn, Q, PR>
 where
-    Conn: ConnectionTrait,
+    Conn: ConnectionTrait + TransactionTrait,
     Q: PostQuery,
     PR: PostRepository,
 {
@@ -85,24 +85,47 @@ where
             post_id = %id,
             "updating post"
         );
-        let mut found = self
-            .repo
-            .find_by_id(&self.conn, id)
-            .await?
-            .ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id)))?;
-        let cmd = PostUpdate {
-            title: cmd.title,
-            content: cmd.content,
-            category_id: cmd.category_id,
-            attachments: cmd.attachments,
-            published: cmd.publish,
-        };
-        let original = found.clone();
-        found.update(cmd)?;
-        self.repo
-            .update(&self.conn, Revision::new(original, found))
-            .await?;
-        Ok(())
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+        let result = async {
+            let post = self.repo.find_by_id(&self.conn, id).await?;
+            let Some(mut found) = post else {
+                return Err(CtxError::NotFound(format!("post [{}] not exist", id)));
+            };
+            let cmd = PostUpdate {
+                title: cmd.title,
+                content: cmd.content,
+                category_id: cmd.category_id,
+                attachments: cmd.attachments,
+                published: cmd.publish,
+            };
+            let original = found.clone();
+            found.update(cmd)?;
+            self.repo
+                .update(&self.conn, Revision::new(original, found))
+                .await
+                .map_err(CtxError::from)
+        }
+        .await;
+
+        match result {
+            Ok(_) => {
+                tx.commit().await.map_err(|e| {
+                    error!(user_id=%operator.sub, error=%e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                Ok(())
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(user_id=%operator.sub, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
+        }
     }
 
     pub async fn delete_by_id(

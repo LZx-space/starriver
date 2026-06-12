@@ -1,7 +1,7 @@
-use sea_orm::ConnectionTrait;
+use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{authentication::PrincipalClaims, repository::Revision};
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::dto::category_dto::res::CategoryDetailDto;
@@ -17,7 +17,7 @@ pub struct CategoryApplication<Conn, Q, R> {
 
 impl<Conn, Q, R> CategoryApplication<Conn, Q, R>
 where
-    Conn: ConnectionTrait,
+    Conn: ConnectionTrait + TransactionTrait,
     Q: CategoryQuery,
     R: CategoryRepository,
 {
@@ -61,17 +61,43 @@ where
             category_id = %id,
             "updating category"
         );
-        let category = self.repo.find_by_id(&self.conn, id).await?;
-        let mut category = match category {
-            Some(category) => category,
-            None => return Err(CtxError::NotFound(format!("category[{}]not exist", id))),
-        };
-        let original = category.clone();
-        category.update(name)?;
-        self.repo
-            .update(&self.conn, Revision::new(original, category))
-            .await
-            .map(Ok)?
+
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+
+        let result = async {
+            let category = self.repo.find_by_id(&tx, id).await?;
+            let mut category = match category {
+                Some(category) => category,
+                None => return Err(CtxError::NotFound(format!("category[{}]not exist", id))),
+            };
+            let original = category.clone();
+            category.update(name)?;
+            self.repo
+                .update(&tx, Revision::new(original, category))
+                .await
+                .map(Ok)?
+        }
+        .await;
+
+        match result {
+            Ok(val) => {
+                tx.commit().await.map_err(|e| {
+                    error!(user_id=%operator.sub, error=%e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                Ok(val)
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(user_id=%operator.sub, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
+        }
     }
 
     pub async fn delete(&self, operator: PrincipalClaims, id: Uuid) -> Result<(), CtxError> {

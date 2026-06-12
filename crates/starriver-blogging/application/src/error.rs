@@ -1,3 +1,4 @@
+use sea_orm::DbErr;
 use starriver_blogging_domain::shared_error::DomainError;
 use starriver_shared_base::{
     error::{QueryError, RepositoryError},
@@ -76,4 +77,9 @@ impl From<AsyncWriterError> for CtxError {
         error!(error=%value, "IO error");
         CtxError::Internal
     }
+}
+
+pub fn db_2_ctx_error(e: DbErr) -> CtxError {
+    error!(error=%e, "database error");
+    CtxError::Internal
 }

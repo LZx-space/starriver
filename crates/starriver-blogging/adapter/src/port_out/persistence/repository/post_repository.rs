@@ -176,9 +176,6 @@ impl PostRepository for DefaultPostRepository {
         .await
         .map_err(db_2_repo_error)?;
 
-        // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
-        self.caches.invalidate_all();
-
         // 增量更新附件关联：只删移除的、只插新增的
         let to_insert: Vec<_> = new_attachments
             .iter()
@@ -223,6 +220,8 @@ impl PostRepository for DefaultPostRepository {
             new_attachments,
             updated.published_at,
         );
+        // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
+        self.caches.invalidate_all();
         Ok(updated)
     }
 }

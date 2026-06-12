@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use sea_orm::ConnectionTrait;
+use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_identity_domain::{
     authentication_service::AuthenticationDomainService,
     error::DomainError,
@@ -40,12 +40,12 @@ pub struct UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE> {
 
 impl<Conn, UQP, UREPO, SREPO, VCP, PE> UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE>
 where
-    Conn: ConnectionTrait,
-    UQP: UserQuery,
-    UREPO: UserRepository,
-    VCP: EmailVerificationService,
-    PE: PasswordEncoder + Clone,
-    SREPO: SecurityEventRepository,
+    Conn: ConnectionTrait + TransactionTrait,
+    UQP: UserQuery + Sync,
+    UREPO: UserRepository + Sync,
+    VCP: EmailVerificationService + Send + Sync,
+    PE: PasswordEncoder + Send + Sync,
+    SREPO: SecurityEventRepository + Sync,
 {
     /// 新建
     pub fn new(
@@ -142,7 +142,12 @@ where
         cmd: UserActiveCmd,
     ) -> Result<(), CtxError> {
         let email_code = cmd.email_code.as_str();
-        match self.user_repo.find_by_username(&self.conn, &username).await {
+
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+        let result = match self.user_repo.find_by_username(&tx, &username).await {
             Ok(found) => {
                 if let Some(mut found) = found {
                     let email = found.email().as_str();
@@ -170,6 +175,22 @@ where
                 error!(user_id=%username, error=%e, "find user by id failed");
                 Err(CtxError::Internal)
             }
+        };
+        match result {
+            Ok(val) => {
+                tx.commit().await.map_err(|e| {
+                    error!(user_id=%username, error=%e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                Ok(val)
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(user_id=%username, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
         }
     }
 
@@ -179,79 +200,113 @@ where
     ) -> Result<UserDetail, AuthenticationError> {
         let username = credentials.username.as_str();
         let password = credentials.password.as_str();
-        let user = self
-            .user_repo
-            .find_by_username(&self.conn, username)
-            .await
-            .map_err(mapping_error())?;
 
-        let Some(mut user) = user else {
-            info!(username=%username, "user not found");
-            return Err(AuthenticationError::BadPassword); // 避免刻意查询账户是否存在
-        };
-
-        let result = self.auth_service.authenticate(&user, password);
-
-        match result {
-            Ok(()) => {
-                let fields = user.dissolve();
-                Ok(UserDetail {
-                    id: fields.0,
-                    username: fields.1.to_string(),
-                    email: fields.3.to_string(),
-                })
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            AuthenticationError::InnerError {
+                message: e.to_string(),
+                source: Box::new(e),
             }
-            Err(domain_err) => {
-                info!(error=%domain_err, "authentication failed");
-                // BadPassword 时：记录事件 + 判断锁定
-                if matches!(domain_err, DomainError::BadPassword) {
-                    info!("handle bad password event");
-                    let event = SecurityEvent::new(
-                        *user.id(),
-                        SecurityEventType::TryLoginWithBadPwd,
-                        "bad password attempt",
-                    );
-                    self.security_event_repo
-                        .insert(&self.conn, event)
-                        .await
-                        .map_err(mapping_error())?;
+        })?;
+        let result = async {
+            let user = self
+                .user_repo
+                .find_by_username(&self.conn, username)
+                .await
+                .map_err(mapping_error())?;
 
-                    let since = OffsetDateTime::now_utc().saturating_sub(Duration::minutes(
-                        self.auth_service.policy().window_minutes as i64,
-                    ));
-                    let events = self
-                        .security_event_repo
-                        .find_by_user_id_since(
-                            &self.conn,
+            let Some(mut user) = user else {
+                info!(username=%username, "user not found");
+                return Err(AuthenticationError::BadPassword); // 避免刻意查询账户是否存在
+            };
+
+            let result = self.auth_service.authenticate(&user, password);
+
+            match result {
+                Ok(()) => {
+                    let fields = user.dissolve();
+                    Ok(UserDetail {
+                        id: fields.0,
+                        username: fields.1.to_string(),
+                        email: fields.3.to_string(),
+                    })
+                }
+                Err(domain_err) => {
+                    info!(error=%domain_err, "authentication failed");
+                    // BadPassword 时：记录事件 + 判断锁定
+                    if matches!(domain_err, DomainError::BadPassword) {
+                        info!("handle bad password event");
+                        let event = SecurityEvent::new(
                             *user.id(),
                             SecurityEventType::TryLoginWithBadPwd,
-                            since,
-                        )
-                        .await
-                        .map_err(mapping_error())?;
-
-                    let original = user.clone();
-                    self.auth_service.check_and_lock_user(&mut user, &events);
-
-                    if matches!(user.state(), UserState::Locked) {
-                        info!(user_id=%user.id(), "user locked");
-                        self.user_repo
-                            .update(&self.conn, Revision::new(original, user))
+                            "bad password attempt",
+                        );
+                        self.security_event_repo
+                            .insert(&self.conn, event)
                             .await
                             .map_err(mapping_error())?;
-                    }
-                }
 
-                // 统一转换
-                Err(match domain_err {
-                    DomainError::UserLocked => AuthenticationError::UserLocked,
-                    DomainError::UserDisabled => AuthenticationError::UserDisabled,
-                    DomainError::BadPassword => AuthenticationError::BadPassword,
-                    _ => AuthenticationError::InnerError {
-                        message: domain_err.to_string(),
-                        source: Box::new(domain_err),
-                    },
-                })
+                        let since = OffsetDateTime::now_utc().saturating_sub(Duration::minutes(
+                            self.auth_service.policy().window_minutes as i64,
+                        ));
+                        let events = self
+                            .security_event_repo
+                            .find_by_user_id_since(
+                                &self.conn,
+                                *user.id(),
+                                SecurityEventType::TryLoginWithBadPwd,
+                                since,
+                            )
+                            .await
+                            .map_err(mapping_error())?;
+
+                        let original = user.clone();
+                        self.auth_service.check_and_lock_user(&mut user, &events);
+
+                        if matches!(user.state(), UserState::Locked) {
+                            info!(user_id=%user.id(), "user locked");
+                            self.user_repo
+                                .update(&self.conn, Revision::new(original, user))
+                                .await
+                                .map_err(mapping_error())?;
+                        }
+                    }
+
+                    // 统一转换
+                    Err(match domain_err {
+                        DomainError::UserLocked => AuthenticationError::UserLocked,
+                        DomainError::UserDisabled => AuthenticationError::UserDisabled,
+                        DomainError::BadPassword => AuthenticationError::BadPassword,
+                        _ => AuthenticationError::InnerError {
+                            message: domain_err.to_string(),
+                            source: Box::new(domain_err),
+                        },
+                    })
+                }
+            }
+        }
+        .await;
+
+        match result {
+            Ok(ok) => {
+                tx.commit().await.map_err(|e| {
+                    error!(user_id=%username, error=%e, "commit transaction failed");
+                    AuthenticationError::InnerError {
+                        message: e.to_string(),
+                        source: Box::new(e),
+                    }
+                })?;
+                Ok(ok)
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(user_id=%username, error=%e, "rollback transaction failed");
+                    AuthenticationError::InnerError {
+                        message: e.to_string(),
+                        source: Box::new(e),
+                    }
+                })?;
+                Err(e)
             }
         }
     }

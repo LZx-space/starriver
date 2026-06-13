@@ -15,25 +15,25 @@ use crate::{
     port::attachment_repository::AttachmentRepository,
 };
 
-pub struct AttachmentApplication<Conn, R, FC, UB> {
+pub struct AttachmentApplication<Conn, R, FC, UR> {
     conn: Conn,
     repo: R,
     factory: AttachmentFactory<FC>,
-    upload_location_resolver: Arc<UB>,
+    upload_location_resolver: Arc<UR>,
 }
 
-impl<Conn, R, FC, UB> AttachmentApplication<Conn, R, FC, UB>
+impl<Conn, R, FC, UR> AttachmentApplication<Conn, R, FC, UR>
 where
     Conn: ConnectionTrait + TransactionTrait,
     R: AttachmentRepository,
     FC: FileTypeChecker,
-    UB: UploadLocationResolver,
+    UR: UploadLocationResolver,
 {
     pub fn new(
         conn: Conn,
         repo: R,
         factory: AttachmentFactory<FC>,
-        upload_location_resolver: Arc<UB>,
+        upload_location_resolver: Arc<UR>,
     ) -> Self {
         Self {
             conn,

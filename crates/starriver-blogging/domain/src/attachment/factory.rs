@@ -9,6 +9,8 @@ use crate::{
     shared_error::DomainError,
 };
 
+/// # Type Parameters
+/// - `T`: file type checker.
 pub struct AttachmentFactory<T> {
     file_type_checker: T,
 }

@@ -28,32 +28,32 @@ use crate::{
     },
 };
 
-pub struct UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE> {
+pub struct UserApplicationService<Conn, UQ, UR, SER, VCS, PE> {
     conn: Conn,
-    user_query: UQP,
-    user_repo: UREPO,
-    security_event_repo: SREPO,
-    verification_code_service: VCP,
+    user_query: UQ,
+    user_repo: UR,
     user_factory: UserFactory<PE>,
+    security_event_repo: SER,
+    verification_code_service: VCS,
     auth_service: AuthenticationDomainService<PE>,
 }
 
-impl<Conn, UQP, UREPO, SREPO, VCP, PE> UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE>
+impl<Conn, UQ, UP, SER, VCS, PE> UserApplicationService<Conn, UQ, UP, SER, VCS, PE>
 where
     Conn: ConnectionTrait + TransactionTrait,
-    UQP: UserQuery + Sync,
-    UREPO: UserRepository + Sync,
-    VCP: EmailVerificationService + Send + Sync,
+    UQ: UserQuery + Sync,
+    UP: UserRepository + Sync,
+    SER: SecurityEventRepository + Sync,
+    VCS: EmailVerificationService + Send + Sync,
     PE: PasswordEncoder + Send + Sync,
-    SREPO: SecurityEventRepository + Sync,
 {
     /// 新建
     pub fn new(
         conn: Conn,
-        user_query: UQP,
-        user_repo: UREPO,
-        security_event_repo: SREPO,
-        verification_code_port: VCP,
+        user_query: UQ,
+        user_repo: UP,
+        security_event_repo: SER,
+        verification_code_port: VCS,
         user_factory: UserFactory<PE>,
         auth_service: AuthenticationDomainService<PE>,
     ) -> Self {

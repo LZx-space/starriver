@@ -19,20 +19,20 @@ use crate::{
     port::{post_query::PostQuery, post_repository::PostRepository},
 };
 
-pub struct PostApplication<Conn, Q, PR> {
+pub struct PostApplication<Conn, Q, R> {
     conn: Conn,
     query: Q,
-    repo: PR,
+    repo: R,
 }
 
-impl<Conn, Q, PR> PostApplication<Conn, Q, PR>
+impl<Conn, Q, R> PostApplication<Conn, Q, R>
 where
     Conn: ConnectionTrait + TransactionTrait,
     Q: PostQuery,
-    PR: PostRepository,
+    R: PostRepository,
 {
     /// 新建
-    pub fn new(conn: Conn, query: Q, repo: PR) -> Self {
+    pub fn new(conn: Conn, query: Q, repo: R) -> Self {
         Self { conn, query, repo }
     }
 

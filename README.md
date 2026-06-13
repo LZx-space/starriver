@@ -1,8 +1,8 @@
-# StarRiver
+# starriver
 
 ## Intro
 
-StarRiver is a practice project for learning Rust, with a focus on Domain-Driven Design (DDD).
+starriver is a practice project for learning Rust, with a focus on Domain-Driven Design (DDD).
 
 - Rust-lang practice: Hands-on use of Rust's safety, concurrency, and performance features.
 - DDD: Structuring the project using DDD concepts to build a scalable application.
@@ -28,9 +28,9 @@ adapter → application → domain
 
 | Layer | Ability | Depends on |
 |---|---|---|
-| **Domain**      | Aggregates, value objects, domain services, repository traits | Nothing |
-| **Application** | Use cases, DTOs, port interfaces, error mapping               | Domain |
-| **Adapter**     | HTTP handlers, Domain & Application IDP Traits Impl           | Application + Domain |
+| **Domain**      | aggregates, value objects, domain services, repository traits | Nothing |
+| **Application** | use cases, DTOs, port interfaces, error mapping               | Domain  |
+| **Adapter**     | HTTP handlers, IDP traits impl, framework                     | Application + Domain |
 
 All ports are traits defined in domain or application. All implementations live in adapter. Dependency only points inward.
 
@@ -38,8 +38,8 @@ All ports are traits defined in domain or application. All implementations live 
 
 | Crate | What it holds |
 |---|---|
-| `shared-base`      | `Patterns`, IO traits... — zero external deps |
-| `shared-framework` | `ApiError`, `AuthenticatedUser`, middleware, extractors... |
+| `shared-base`      | `Patterns`, `IO traits`... — zero external deps |
+| `shared-framework` | `ApiError`, `middleware`, `extractors`...       |
 
 ### Bounded Contexts
 
@@ -68,6 +68,6 @@ cargo run
 RUST_LOG=debug cargo run
 ```
 
-Output destination is configured in `config.toml` under `[file_logging]`:
+Output destination is configured in `config-dev.toml` under `[file_logging]`:
 - **`file_enabled = true`** — JSON lines written to daily-rotated files in `file_directory`
 - **`file_enabled = false`** (default) — colored text printed to stdout

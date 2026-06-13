@@ -1,8 +1,9 @@
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter,
 };
+use starriver_identity_application::port::security_event_repository::SecurityEventRepository;
 use starriver_identity_domain::security_event::{
-    entity::SecurityEvent, repository::SecurityEventRepository, value_object::SecurityEventType,
+    entity::SecurityEvent, value_object::SecurityEventType,
 };
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use starriver_shared_framework::error_mapping::db_2_repo_error;
@@ -13,19 +14,12 @@ use crate::port_out::persistence::po::security_event_po::{
     ActiveModel, Column, Entity, SecurityEventTypePo,
 };
 
-pub struct DefaultSecurityEventRepository {
-    conn: DatabaseConnection,
-}
-
-impl DefaultSecurityEventRepository {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
-    }
-}
+pub struct DefaultSecurityEventRepository;
 
 impl SecurityEventRepository for DefaultSecurityEventRepository {
-    async fn find_by_user_id_since(
+    async fn find_by_user_id_since<C: ConnectionTrait>(
         &self,
+        conn: &C,
         user_id: Uuid,
         event_type: SecurityEventType,
         since: OffsetDateTime,
@@ -35,7 +29,7 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
             .filter(Column::UserId.eq(user_id))
             .filter(Column::EventType.eq(event_type))
             .filter(Column::CreatedAt.gte(since))
-            .all(&self.conn)
+            .all(conn)
             .await
             .map_err(db_2_repo_error)?
             .into_iter()
@@ -52,7 +46,11 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
         Ok(security_events)
     }
 
-    async fn insert(&self, event: SecurityEvent) -> Result<SecurityEvent, RepositoryError> {
+    async fn insert<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        event: SecurityEvent,
+    ) -> Result<SecurityEvent, RepositoryError> {
         let fields = event.dissolve();
         ActiveModel {
             id: Set(fields.0),
@@ -62,7 +60,7 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
             user_id: Set(fields.4),
             updated_at: Set(None),
         }
-        .insert(&self.conn)
+        .insert(conn)
         .await
         .map(|e| {
             SecurityEvent::from_repo(
@@ -76,8 +74,9 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
         .map_err(db_2_repo_error)
     }
 
-    async fn update(
+    async fn update<C: ConnectionTrait>(
         &self,
+        conn: &C,
         event: Revision<SecurityEvent>,
     ) -> Result<SecurityEvent, RepositoryError> {
         let (original, modified) = event.dissolve();
@@ -91,7 +90,7 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
             user_id: Set(modified_fields.4),
             updated_at: Set(None),
         }
-        .update(&self.conn)
+        .update(conn)
         .await
         .map(|e| {
             SecurityEvent::from_repo(
@@ -105,9 +104,13 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
         .map_err(db_2_repo_error)
     }
 
-    async fn delete(&self, event_id: Uuid) -> Result<bool, RepositoryError> {
+    async fn delete<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        event_id: Uuid,
+    ) -> Result<bool, RepositoryError> {
         Entity::delete_by_id(event_id)
-            .exec(&self.conn)
+            .exec(conn)
             .await
             .map(|e| e.rows_affected > 0)
             .map_err(db_2_repo_error)

@@ -1,9 +1,10 @@
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{NotSet, Set, Unchanged},
-    ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
+    ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter,
 };
-use starriver_blogging_domain::post::{entity::Post, repository::PostRepository};
+use starriver_blogging_application::port::post_repository::PostRepository;
+use starriver_blogging_domain::post::entity::Post;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
 use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
@@ -17,21 +18,24 @@ use crate::{
 };
 
 pub struct DefaultPostRepository {
-    conn: DatabaseConnection,
     caches: PostCaches,
 }
 
 impl DefaultPostRepository {
-    pub fn new(conn: DatabaseConnection, caches: PostCaches) -> Self {
-        Self { conn, caches }
+    pub fn new(caches: PostCaches) -> Self {
+        Self { caches }
     }
 }
 
 impl PostRepository for DefaultPostRepository {
-    async fn find_by_id(&self, id: uuid::Uuid) -> Result<Option<Post>, RepositoryError> {
+    async fn find_by_id<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        id: uuid::Uuid,
+    ) -> Result<Option<Post>, RepositoryError> {
         let results = Entity::find_by_id(id)
             .find_with_related(post_attachment_po::Entity)
-            .all(&self.conn)
+            .all(conn)
             .await
             .map_err(db_2_repo_error)?;
         let Some((post, attachments)) = results.into_iter().next() else {
@@ -54,7 +58,7 @@ impl PostRepository for DefaultPostRepository {
         Ok(Some(post))
     }
 
-    async fn add(&self, post: Post) -> Result<Post, RepositoryError> {
+    async fn add<C: ConnectionTrait>(&self, conn: &C, post: Post) -> Result<Post, RepositoryError> {
         let (id, title, content, state, author_id, category_id, attachments, published_at) =
             post.dissolve();
         // 插入 Post 实体
@@ -69,7 +73,7 @@ impl PostRepository for DefaultPostRepository {
             created_at: Set(OffsetDateTime::now_utc()),
             updated_at: NotSet,
         }
-        .insert(&self.conn)
+        .insert(conn)
         .await
         .map_err(db_2_repo_error)?;
         // 清除分页查询缓存， todo 添加事务后，由事务结果决定是否清除缓存
@@ -85,7 +89,7 @@ impl PostRepository for DefaultPostRepository {
                     updated_at: Set(None),
                 }
             }))
-            .exec(&self.conn)
+            .exec(conn)
             .await
             .map_err(db_2_repo_error)?;
         }
@@ -104,9 +108,13 @@ impl PostRepository for DefaultPostRepository {
         Ok(post)
     }
 
-    async fn delete(&self, id: uuid::Uuid) -> Result<bool, RepositoryError> {
+    async fn delete<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        id: uuid::Uuid,
+    ) -> Result<bool, RepositoryError> {
         let b = Entity::delete_by_id(id)
-            .exec(&self.conn)
+            .exec(conn)
             .await
             .map(|r| r.rows_affected != 0)
             .map_err(db_2_repo_error)?;
@@ -115,7 +123,11 @@ impl PostRepository for DefaultPostRepository {
         Ok(b)
     }
 
-    async fn update(&self, post: Revision<Post>) -> Result<Post, RepositoryError> {
+    async fn update<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        post: Revision<Post>,
+    ) -> Result<Post, RepositoryError> {
         let (original, modified) = post.dissolve();
         let (id, title, content, state, author_id, category_id, old_attachments, published_at) =
             original.dissolve();
@@ -160,12 +172,9 @@ impl PostRepository for DefaultPostRepository {
             created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         }
-        .update(&self.conn)
+        .update(conn)
         .await
         .map_err(db_2_repo_error)?;
-
-        // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
-        self.caches.invalidate_all();
 
         // 增量更新附件关联：只删移除的、只插新增的
         let to_insert: Vec<_> = new_attachments
@@ -183,7 +192,7 @@ impl PostRepository for DefaultPostRepository {
             post_attachment_po::Entity::delete_many()
                 .filter(post_attachment_po::Column::PostId.eq(id))
                 .filter(post_attachment_po::Column::AttachmentId.is_in(to_delete))
-                .exec(&self.conn)
+                .exec(conn)
                 .await
                 .map_err(db_2_repo_error)?;
         }
@@ -196,7 +205,7 @@ impl PostRepository for DefaultPostRepository {
                     updated_at: Set(None),
                 }
             }))
-            .exec(&self.conn)
+            .exec(conn)
             .await
             .map_err(db_2_repo_error)?;
         }
@@ -211,6 +220,8 @@ impl PostRepository for DefaultPostRepository {
             new_attachments,
             updated.published_at,
         );
+        // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
+        self.caches.invalidate_all();
         Ok(updated)
     }
 }

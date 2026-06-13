@@ -3,11 +3,11 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::ActiveValue::Set;
 use sea_orm::ActiveValue::Unchanged;
 use sea_orm::ColumnTrait;
-use sea_orm::DatabaseConnection;
+use sea_orm::ConnectionTrait;
 use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
+use starriver_identity_application::port::user_repository::UserRepository;
 use starriver_identity_domain::user::entity::User;
-use starriver_identity_domain::user::repository::UserRepository;
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_base::repository::Revision;
 use starriver_shared_framework::error_mapping::db_2_repo_error;
@@ -17,21 +17,17 @@ use crate::port_out::persistence::po::user_po::ActiveModel;
 use crate::port_out::persistence::po::user_po::Column;
 use crate::port_out::persistence::po::user_po::Entity;
 
-pub struct DefaultUserRepository {
-    conn: DatabaseConnection,
-}
-
-impl DefaultUserRepository {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
-    }
-}
+pub struct DefaultUserRepository;
 
 impl UserRepository for DefaultUserRepository {
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, RepositoryError> {
+    async fn find_by_username<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        username: &str,
+    ) -> Result<Option<User>, RepositoryError> {
         Entity::find()
             .filter(Column::Username.eq(username))
-            .one(&self.conn)
+            .one(conn)
             .await
             .map(|e| {
                 e.map(|e| User::from_repo(e.id, e.username, e.password, e.email, e.state.into()))
@@ -39,7 +35,11 @@ impl UserRepository for DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn insert(&self, user: User) -> Result<User, RepositoryError> {
+    async fn insert<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        user: User,
+    ) -> Result<User, RepositoryError> {
         let (id, username, password, email, state) = user.dissolve();
         ActiveModel {
             id: Set(id),
@@ -50,21 +50,29 @@ impl UserRepository for DefaultUserRepository {
             created_at: Set(OffsetDateTime::now_utc()),
             updated_at: NotSet,
         }
-        .insert(&self.conn)
+        .insert(conn)
         .await
         .map_err(db_2_repo_error)
         .map(|m| User::from_repo(m.id, m.username, m.password, m.email, m.state.into()))
     }
 
-    async fn delete(&self, user_id: uuid::Uuid) -> Result<bool, RepositoryError> {
+    async fn delete<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        user_id: uuid::Uuid,
+    ) -> Result<bool, RepositoryError> {
         Entity::delete_by_id(user_id)
-            .exec(&self.conn)
+            .exec(conn)
             .await
             .map(|e| e.rows_affected > 0)
             .map_err(db_2_repo_error)
     }
 
-    async fn update(&self, user: Revision<User>) -> Result<User, RepositoryError> {
+    async fn update<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        user: Revision<User>,
+    ) -> Result<User, RepositoryError> {
         let (original, modified) = user.dissolve();
         let (user_id, username, password, email, state) = original.dissolve();
         let (_, new_username, new_password, new_email, new_state) = modified.dissolve();
@@ -86,7 +94,7 @@ impl UserRepository for DefaultUserRepository {
             created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         }
-        .update(&self.conn)
+        .update(conn)
         .await
         .map_err(db_2_repo_error)
         .map(|m| User::from_repo(m.id, m.username, m.password, m.email, m.state.into()))

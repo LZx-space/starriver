@@ -1,17 +1,19 @@
 use std::sync::Arc;
 
+use sea_orm::DatabaseConnection;
 use starriver_identity_adapter::{
     UserApplicationService,
     port_out::{
         persistence::{
-            query::user_query_port::DefaultUserQueryPort,
+            query::user_query::DefaultUserQuery,
             repository::{
                 security_event_repository::DefaultSecurityEventRepository,
                 user_repository::DefaultUserRepository,
             },
         },
         service::{
-            email_verification_port::SmtpVerificationPort, password_encoder::Argon2PasswordEncoder,
+            email_verification_service::SmtpVerificationService,
+            password_encoder::Argon2PasswordEncoder,
         },
     },
 };
@@ -35,10 +37,11 @@ use time::Duration;
 pub struct UsernamePasswordAuthenticator {
     pub user_service: Arc<
         UserApplicationService<
-            DefaultUserQueryPort,
+            DatabaseConnection,
+            DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventRepository,
-            SmtpVerificationPort,
+            SmtpVerificationService,
             Argon2PasswordEncoder,
         >,
     >,

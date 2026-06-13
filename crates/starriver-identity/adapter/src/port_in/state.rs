@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
 use starriver_identity_application::{
-    dto::user_dto::req::UserValidateCxt, service::user_service::UserApplicationService,
+    dto::user_dto::req::UserValidateCxt, use_case::user_interactor::UserApplicationService,
 };
 use starriver_identity_domain::{
     authentication_service::AuthenticationDomainService,
@@ -20,14 +20,15 @@ use crate::{
     config::IdentityConfig,
     port_out::{
         persistence::{
-            query::user_query_port::DefaultUserQueryPort,
+            query::user_query::DefaultUserQuery,
             repository::{
                 security_event_repository::DefaultSecurityEventRepository,
                 user_repository::DefaultUserRepository,
             },
         },
         service::{
-            email_verification_port::SmtpVerificationPort, password_encoder::Argon2PasswordEncoder,
+            email_verification_service::SmtpVerificationService,
+            password_encoder::Argon2PasswordEncoder,
         },
     },
 };
@@ -42,10 +43,11 @@ pub struct IdentityState {
     //////////////////////////////////////////
     pub user_service: Arc<
         UserApplicationService<
-            DefaultUserQueryPort,
+            DatabaseConnection,
+            DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventRepository,
-            SmtpVerificationPort,
+            SmtpVerificationService,
             Argon2PasswordEncoder,
         >,
     >,
@@ -70,11 +72,8 @@ impl IdentityState {
         let password_encoder: Arc<Argon2PasswordEncoder> = Argon2PasswordEncoder::default().into();
         ////////////////////////////////////////////////////////
 
-        let user_query = DefaultUserQueryPort { conn: conn.clone() };
-        let user_repo = DefaultUserRepository::new(conn.clone());
-        let security_event_repo = DefaultSecurityEventRepository::new(conn.clone());
         let verification_code_port =
-            SmtpVerificationPort::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
+            SmtpVerificationService::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
 
         let user_factory = UserFactory::new(
             email_spec.clone(),
@@ -89,9 +88,10 @@ impl IdentityState {
 
         let auth_service = AuthenticationDomainService::new(bad_password_policy, password_encoder);
         let user_service = UserApplicationService::new(
-            user_query,
-            user_repo,
-            security_event_repo,
+            conn.clone(),
+            DefaultUserQuery,
+            DefaultUserRepository,
+            DefaultSecurityEventRepository,
             verification_code_port,
             user_factory,
             auth_service,

@@ -1,4 +1,4 @@
 pub mod dto;
 pub mod error;
-pub mod port_out;
-pub mod service;
+pub mod port;
+pub mod use_case;

@@ -1,2 +1,2 @@
-pub mod category_query_port;
-pub mod post_query_port;
+pub mod category_query;
+pub mod post_query;

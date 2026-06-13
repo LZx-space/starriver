@@ -6,18 +6,18 @@ use lettre::{
 };
 use moka::future::Cache;
 use starriver_identity_application::{
-    error::EmailVerificationError, port_out::email_verification_port::EmailVerificationPort,
+    error::EmailVerificationError, port::email_verification_service::EmailVerificationService,
 };
 
 use crate::config::SmtpVerification;
 
-pub struct SmtpVerificationPort {
+pub struct SmtpVerificationService {
     smtp_client: AsyncSmtpTransport<Tokio1Executor>,
     smtp_username: String,
     code_cache: Cache<String, String>,
 }
 
-impl SmtpVerificationPort {
+impl SmtpVerificationService {
     pub fn new(cfg: &SmtpVerification) -> Result<Self, EmailVerificationError> {
         let creds = Credentials::new(cfg.smtp_username.clone(), cfg.smtp_password.clone());
         let smtp_client = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&cfg.smtp_host)
@@ -38,7 +38,7 @@ impl SmtpVerificationPort {
     }
 }
 
-impl EmailVerificationPort for SmtpVerificationPort {
+impl EmailVerificationService for SmtpVerificationService {
     async fn send_code(&self, email: &str) -> Result<(), EmailVerificationError> {
         let to = email
             .parse::<Mailbox>()

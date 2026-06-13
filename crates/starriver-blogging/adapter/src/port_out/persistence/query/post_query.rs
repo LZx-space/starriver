@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use sea_orm::{
-    ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, JoinType, Order,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, sea_query::NullOrdering,
+    ColumnTrait, Condition, ConnectionTrait, DbErr, EntityTrait, JoinType, Order, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, sea_query::NullOrdering,
 };
 use starriver_blogging_application::{
     dto::{
@@ -12,7 +12,7 @@ use starriver_blogging_application::{
             res::{PostDetailDto, PostExcerptDto},
         },
     },
-    port_out::post_query_port::PostQueryPort,
+    port::post_query::PostQuery,
 };
 use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
@@ -26,45 +26,41 @@ use uuid::Uuid;
 
 use crate::{
     dto::post_dto::{PostDetailRow, PostExcerptRow},
-    port_in::state::{PostDetailCache, PostPageCache, PostPageKey},
+    port_in::state::{PostCaches, PostPageKey},
     port_out::persistence::po::{
         attachment_po, category_po, post_attachment_po,
         post_po::{Column, Entity, PostStatePo, Relation},
     },
 };
 
-pub struct DefaultPostQueryPort {
-    conn: DatabaseConnection,
+pub struct DefaultPostQuery {
     file_url_builder: Arc<DefaultUploadLocationResolver>,
-    page_cache: PostPageCache,
-    detail_cache: PostDetailCache,
+    caches: PostCaches,
 }
 
-impl DefaultPostQueryPort {
-    pub fn new(
-        conn: DatabaseConnection,
-        file_url_builder: Arc<DefaultUploadLocationResolver>,
-        page_cache: PostPageCache,
-        detail_cache: PostDetailCache,
-    ) -> Self {
+impl DefaultPostQuery {
+    pub fn new(file_url_builder: Arc<DefaultUploadLocationResolver>, caches: PostCaches) -> Self {
         Self {
-            conn,
             file_url_builder,
-            page_cache,
-            detail_cache,
+            caches,
         }
     }
 }
 
-impl PostQueryPort for DefaultPostQueryPort {
-    async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, QueryError> {
+impl PostQuery for DefaultPostQuery {
+    async fn paginate<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        q: PageQuery,
+    ) -> Result<PageResult<PostExcerptDto>, QueryError> {
         let key = PostPageKey {
             page: q.page,
             page_size: q.page_size,
             published_only: q.published_only,
             category_id: q.category_id,
         };
-        self.page_cache
+        self.caches
+            .page
             .try_get_with(key, async {
                 let mut cond = Condition::all();
                 let order;
@@ -95,7 +91,7 @@ impl PostQueryPort for DefaultPostQueryPort {
                     .offset(q.page * q.page_size)
                     .limit(q.page_size)
                     .into_model::<PostExcerptRow>()
-                    .all(&self.conn)
+                    .all(conn)
                     .await?
                     .into_iter()
                     .map(|mut e| {
@@ -107,7 +103,7 @@ impl PostQueryPort for DefaultPostQueryPort {
                     .select_only()
                     .column(Column::Id)
                     .filter(cond)
-                    .count(&self.conn)
+                    .count(conn)
                     .await?;
                 Ok(PageResult::new(q.page, q.page_size, record_total, posts))
             })
@@ -115,8 +111,13 @@ impl PostQueryPort for DefaultPostQueryPort {
             .map_err(|e: Arc<DbErr>| QueryError::DbError(e.to_string()))
     }
 
-    async fn find_detail(&self, id: Uuid) -> Result<Option<PostDetailDto>, QueryError> {
-        self.detail_cache
+    async fn find_detail<C: ConnectionTrait>(
+        &self,
+        conn: &C,
+        id: Uuid,
+    ) -> Result<Option<PostDetailDto>, QueryError> {
+        self.caches
+            .detail
             .try_get_with(id, async {
                 let post = Entity::find_by_id(id)
                     .select_only()
@@ -133,7 +134,7 @@ impl PostQueryPort for DefaultPostQueryPort {
                     .column_as(category_po::Column::Id, "category_id")
                     .column_as(category_po::Column::Name, "category_name")
                     .into_model::<PostDetailRow>()
-                    .one(&self.conn)
+                    .one(conn)
                     .await?;
 
                 let Some(post) = post else {
@@ -143,7 +144,7 @@ impl PostQueryPort for DefaultPostQueryPort {
                 let attachments: Vec<AttachmentDto> = post_attachment_po::Entity::find()
                     .filter(post_attachment_po::Column::PostId.eq(id))
                     .find_with_related(attachment_po::Entity)
-                    .all(&self.conn)
+                    .all(conn)
                     .await?
                     .into_iter()
                     .flat_map(|(_, attachments)| attachments)

@@ -8,6 +8,7 @@ rust-version.workspace = true
 starriver-shared-base = { workspace = true }
 starriver-blogging-domain = {path = "../domain"}
 
+moka = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }

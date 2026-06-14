@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_blogging_domain::attachment::{
     factory::AttachmentFactory, file_type_checker::FileTypeChecker,
@@ -19,7 +17,7 @@ pub struct AttachmentApplication<Conn, R, FC, UR> {
     conn: Conn,
     repo: R,
     factory: AttachmentFactory<FC>,
-    upload_location_resolver: Arc<UR>,
+    upload_location_resolver: UR,
 }
 
 impl<Conn, R, FC, UR> AttachmentApplication<Conn, R, FC, UR>
@@ -33,7 +31,7 @@ where
         conn: Conn,
         repo: R,
         factory: AttachmentFactory<FC>,
-        upload_location_resolver: Arc<UR>,
+        upload_location_resolver: UR,
     ) -> Self {
         Self {
             conn,

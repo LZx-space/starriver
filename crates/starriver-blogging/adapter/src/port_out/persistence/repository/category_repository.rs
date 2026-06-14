@@ -10,20 +10,9 @@ use starriver_shared_framework::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    port_in::state::{CACHE_KEY_CATEGORY_LIST, CatagoryListCache},
-    port_out::persistence::po::category_po::{ActiveModel, Entity},
-};
+use crate::port_out::persistence::po::category_po::{ActiveModel, Entity};
 
-pub struct DefaultCategoryRepository {
-    cache: CatagoryListCache,
-}
-
-impl DefaultCategoryRepository {
-    pub fn new(cache: CatagoryListCache) -> Self {
-        Self { cache }
-    }
-}
+pub struct DefaultCategoryRepository;
 
 impl CategoryRepository for DefaultCategoryRepository {
     async fn find_by_id<C: ConnectionTrait>(
@@ -34,8 +23,8 @@ impl CategoryRepository for DefaultCategoryRepository {
         Entity::find_by_id(id)
             .one(conn)
             .await
-            .map(|e| e.map(|e| Category::from_repo(e.id, e.name)))
             .map_err(db_2_repo_error)
+            .map(|e| e.map(|e| Category::from_repo(e.id, e.name)))
     }
 
     async fn insert<C: ConnectionTrait>(
@@ -44,7 +33,7 @@ impl CategoryRepository for DefaultCategoryRepository {
         category: Category,
     ) -> Result<Category, RepositoryError> {
         let (id, name) = category.dissolve();
-        let category = ActiveModel {
+        ActiveModel {
             id: Set(id),
             name: Set(name),
             created_at: Set(OffsetDateTime::now_utc()),
@@ -52,11 +41,8 @@ impl CategoryRepository for DefaultCategoryRepository {
         }
         .insert(conn)
         .await
+        .map_err(db_2_repo_error)
         .map(|e| Category::from_repo(e.id, e.name))
-        .map_err(db_2_repo_error)?;
-
-        self.cache.invalidate(&CACHE_KEY_CATEGORY_LIST).await;
-        Ok(category)
     }
 
     async fn update<C: ConnectionTrait>(
@@ -65,7 +51,7 @@ impl CategoryRepository for DefaultCategoryRepository {
         category: Revision<Category>,
     ) -> Result<Category, RepositoryError> {
         let (id, name) = category.dissolve().1.dissolve();
-        let category = ActiveModel {
+        ActiveModel {
             id: Unchanged(id),
             name: Set(name),
             created_at: NotSet,
@@ -73,11 +59,8 @@ impl CategoryRepository for DefaultCategoryRepository {
         }
         .update(conn)
         .await
+        .map_err(db_2_repo_error)
         .map(|e| Category::from_repo(e.id, e.name))
-        .map_err(db_2_repo_error)?;
-
-        self.cache.invalidate(&CACHE_KEY_CATEGORY_LIST).await;
-        Ok(category)
     }
 
     async fn delete<C: ConnectionTrait>(
@@ -85,13 +68,10 @@ impl CategoryRepository for DefaultCategoryRepository {
         conn: &C,
         id: Uuid,
     ) -> Result<bool, RepositoryError> {
-        let result = Entity::delete_by_id(id)
+        Entity::delete_by_id(id)
             .exec(conn)
             .await
+            .map_err(db_2_repo_error)
             .map(|r| r.rows_affected > 0)
-            .map_err(db_2_repo_error)?;
-
-        self.cache.invalidate(&CACHE_KEY_CATEGORY_LIST).await;
-        Ok(result)
     }
 }

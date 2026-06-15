@@ -12,7 +12,6 @@ use starriver_blogging_application::{
     },
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
-use starriver_shared_base::dto::PageResult;
 use starriver_shared_framework::{
     cache::DefaultCache,
     config::{Auth, Uploads},

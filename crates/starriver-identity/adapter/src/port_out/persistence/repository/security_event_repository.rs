@@ -6,7 +6,10 @@ use starriver_identity_domain::security_event::{
     entity::SecurityEvent, value_object::SecurityEventType,
 };
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
-use starriver_shared_framework::error_mapping::db_2_repo_error;
+use starriver_shared_framework::{
+    error_mapping::db_2_repo_error,
+    repository::{DefaultConnection, DefaultTransaction},
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -16,10 +19,10 @@ use crate::port_out::persistence::po::security_event_po::{
 
 pub struct DefaultSecurityEventRepository;
 
-impl SecurityEventRepository for DefaultSecurityEventRepository {
-    async fn find_by_user_id_since<C: ConnectionTrait>(
+impl DefaultSecurityEventRepository {
+    async fn find_by_user_id_since(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         user_id: Uuid,
         event_type: SecurityEventType,
         since: OffsetDateTime,
@@ -46,9 +49,9 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
         Ok(security_events)
     }
 
-    async fn insert<C: ConnectionTrait>(
+    async fn insert(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         event: SecurityEvent,
     ) -> Result<SecurityEvent, RepositoryError> {
         let fields = event.dissolve();
@@ -74,9 +77,9 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
         .map_err(db_2_repo_error)
     }
 
-    async fn update<C: ConnectionTrait>(
+    async fn update(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         event: Revision<SecurityEvent>,
     ) -> Result<SecurityEvent, RepositoryError> {
         let (original, modified) = event.dissolve();
@@ -104,9 +107,9 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
         .map_err(db_2_repo_error)
     }
 
-    async fn delete<C: ConnectionTrait>(
+    async fn delete(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         event_id: Uuid,
     ) -> Result<bool, RepositoryError> {
         Entity::delete_by_id(event_id)
@@ -114,5 +117,75 @@ impl SecurityEventRepository for DefaultSecurityEventRepository {
             .await
             .map(|e| e.rows_affected > 0)
             .map_err(db_2_repo_error)
+    }
+}
+
+impl SecurityEventRepository<DefaultConnection> for DefaultSecurityEventRepository {
+    async fn find_by_user_id_since(
+        &self,
+        c: &DefaultConnection,
+        user_id: Uuid,
+        event_type: SecurityEventType,
+        since: OffsetDateTime,
+    ) -> Result<Vec<SecurityEvent>, RepositoryError> {
+        self.find_by_user_id_since(c, user_id, event_type, since)
+            .await
+    }
+
+    async fn insert(
+        &self,
+        c: &DefaultConnection,
+        event: SecurityEvent,
+    ) -> Result<SecurityEvent, RepositoryError> {
+        self.insert(c, event).await
+    }
+
+    async fn update(
+        &self,
+        c: &DefaultConnection,
+        event: Revision<SecurityEvent>,
+    ) -> Result<SecurityEvent, RepositoryError> {
+        self.update(c, event).await
+    }
+
+    async fn delete(&self, c: &DefaultConnection, event_id: Uuid) -> Result<bool, RepositoryError> {
+        self.delete(c, event_id).await
+    }
+}
+
+impl SecurityEventRepository<DefaultTransaction> for DefaultSecurityEventRepository {
+    async fn find_by_user_id_since(
+        &self,
+        c: &DefaultTransaction,
+        user_id: Uuid,
+        event_type: SecurityEventType,
+        since: OffsetDateTime,
+    ) -> Result<Vec<SecurityEvent>, RepositoryError> {
+        self.find_by_user_id_since(c, user_id, event_type, since)
+            .await
+    }
+
+    async fn insert(
+        &self,
+        c: &DefaultTransaction,
+        event: SecurityEvent,
+    ) -> Result<SecurityEvent, RepositoryError> {
+        self.insert(c, event).await
+    }
+
+    async fn update(
+        &self,
+        c: &DefaultTransaction,
+        event: Revision<SecurityEvent>,
+    ) -> Result<SecurityEvent, RepositoryError> {
+        self.update(c, event).await
+    }
+
+    async fn delete(
+        &self,
+        c: &DefaultTransaction,
+        event_id: Uuid,
+    ) -> Result<bool, RepositoryError> {
+        self.delete(c, event_id).await
     }
 }

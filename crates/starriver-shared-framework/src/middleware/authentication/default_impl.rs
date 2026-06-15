@@ -187,8 +187,8 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
                 StatusCode::BAD_REQUEST,
                 "username or password incorrect".to_string(),
             ),
-            AuthenticationError::InnerError { message, source } => {
-                error!(error=%source, "authentication failed inner error");
+            AuthenticationError::InnerError { message } => {
+                error!(error=%message, "authentication failed inner error");
                 (StatusCode::INTERNAL_SERVER_ERROR, message)
             }
             _ => (
@@ -221,7 +221,6 @@ impl CredentialsExtractor for DefaultCredentialsExtractor {
             .await
             .map_err(|e| AuthenticationError::InnerError {
                 message: e.to_string(),
-                source: Box::new(e),
             })?;
         info!(username = %form.0.username, "login credentials received");
         // 创建凭证

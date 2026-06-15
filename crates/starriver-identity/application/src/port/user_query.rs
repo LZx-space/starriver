@@ -1,15 +1,14 @@
-use sea_orm::ConnectionTrait;
-use starriver_shared_base::error::QueryError;
+use starriver_shared_base::{error::QueryError, repository::Executor};
 use uuid::Uuid;
 
-pub trait UserQuery {
-    fn exists_by_email<C: ConnectionTrait>(
+pub trait UserQuery<C: Executor> {
+    fn exists_by_email(
         &self,
         conn: &C,
         email: &str,
     ) -> impl Future<Output = Result<bool, QueryError>>;
 
-    fn find_email_by_user_id<C: ConnectionTrait>(
+    fn find_email_by_user_id(
         &self,
         conn: &C,
         user_id: Uuid,

@@ -1,5 +1,7 @@
-use sea_orm::ConnectionTrait;
-use starriver_shared_base::{error::RepositoryError, repository::Revision};
+use starriver_shared_base::{
+    error::RepositoryError,
+    repository::{Executor, Revision},
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -7,30 +9,30 @@ use starriver_identity_domain::security_event::{
     entity::SecurityEvent, value_object::SecurityEventType,
 };
 
-pub trait SecurityEventRepository {
-    fn find_by_user_id_since<C: ConnectionTrait>(
+pub trait SecurityEventRepository<C: Executor> {
+    fn find_by_user_id_since(
         &self,
-        c: &C,
+        conn: &C,
         user_id: Uuid,
         event_type: SecurityEventType,
         since: OffsetDateTime,
     ) -> impl Future<Output = Result<Vec<SecurityEvent>, RepositoryError>> + Send;
 
-    fn insert<C: ConnectionTrait>(
+    fn insert(
         &self,
-        c: &C,
+        conn: &C,
         event: SecurityEvent,
     ) -> impl Future<Output = Result<SecurityEvent, RepositoryError>> + Send;
 
-    fn update<C: ConnectionTrait>(
+    fn update(
         &self,
-        c: &C,
+        conn: &C,
         event: Revision<SecurityEvent>,
     ) -> impl Future<Output = Result<SecurityEvent, RepositoryError>> + Send;
 
-    fn delete<C: ConnectionTrait>(
+    fn delete(
         &self,
-        c: &C,
+        conn: &C,
         event_id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

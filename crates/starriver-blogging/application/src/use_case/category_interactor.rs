@@ -1,4 +1,5 @@
 use starriver_blogging_domain::category::entity::Category;
+use starriver_shared_base::cache::Cache;
 use starriver_shared_base::repository::{Connection, Transaction};
 use starriver_shared_base::{authentication::PrincipalClaims, repository::Revision};
 use tracing::{error, info};
@@ -6,27 +7,43 @@ use uuid::Uuid;
 
 use crate::dto::category_dto::res::CategoryDetailDto;
 use crate::error::CtxError;
+use crate::port::category_cache::CACHE_KEY_CATEGORY_LIST;
 use crate::port::category_query::CategoryQuery;
 use crate::port::category_repository::CategoryRepository;
 
-pub struct CategoryApplication<Conn, Q, R> {
+pub struct CategoryApplication<Conn, Q, R, C> {
     conn: Conn,
     query: Q,
     repo: R,
+    cache: C,
 }
 
-impl<Conn, Q, R> CategoryApplication<Conn, Q, R>
+impl<Conn, Q, R, C> CategoryApplication<Conn, Q, R, C>
 where
     Conn: Connection,
     Q: CategoryQuery<Conn>,
     R: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
+    C: Cache<(), Vec<CategoryDetailDto>>,
 {
-    pub fn new(conn: Conn, query: Q, repo: R) -> Self {
-        Self { conn, query, repo }
+    pub fn new(conn: Conn, query: Q, repo: R, cache: C) -> Self {
+        Self {
+            conn,
+            query,
+            repo,
+            cache,
+        }
     }
 
     pub async fn list_all(&self) -> Result<Vec<CategoryDetailDto>, CtxError> {
-        self.query.list_all(&self.conn).await.map(Ok)?
+        self.cache
+            .try_get_with(CACHE_KEY_CATEGORY_LIST, async {
+                self.query.list_all(&self.conn).await
+            })
+            .await
+            .map_err(|e| {
+                error!(error=%e, "database error");
+                CtxError::Internal
+            })
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Category, CtxError> {
@@ -47,7 +64,14 @@ where
             "creating category"
         );
         let category = Category::new(name)?;
-        self.repo.insert(&self.conn, category).await.map(Ok)?
+        self.repo
+            .insert(&self.conn, category)
+            .await
+            .map(Ok)
+            .inspect(|_| {
+                // 插入成功后，缓存需要失效
+                self.cache.invalidate_all();
+            })?
     }
 
     pub async fn update(
@@ -88,6 +112,8 @@ where
                     error!(user_id=%operator.sub, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
+                // 提交成功后，缓存需要失效
+                self.cache.invalidate_all();
                 Ok(val)
             }
             Err(e) => {
@@ -107,6 +133,8 @@ where
             "deleting category"
         );
         self.repo.delete(&self.conn, id).await?;
+        // 删除成功后，缓存需要失效
+        self.cache.invalidate_all();
         Ok(())
     }
 }

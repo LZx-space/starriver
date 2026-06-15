@@ -1,7 +1,7 @@
 use starriver_identity_domain::{
-    authentication_service::AuthenticationDomainService,
     error::DomainError,
     password_encoder::PasswordEncoder,
+    password_service::PasswordDomainService,
     security_event::{entity::SecurityEvent, value_object::SecurityEventType},
     user::{factory::UserFactory, value_object::UserState},
 };
@@ -17,7 +17,7 @@ use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd},
+        req::{ChangePasswordCmd, EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd},
         res::UserDetail,
     },
     error::CtxError,
@@ -35,7 +35,7 @@ pub struct UserApplicationService<Conn, UQ, UR, SER, VCS, PE> {
     user_factory: UserFactory<PE>,
     security_event_repo: SER,
     verification_code_service: VCS,
-    auth_service: AuthenticationDomainService<PE>,
+    pwd_service: PasswordDomainService<PE>,
 }
 
 impl<Conn, UQ, UR, SER, VCS, PE> UserApplicationService<Conn, UQ, UR, SER, VCS, PE>
@@ -55,7 +55,7 @@ where
         security_event_repo: SER,
         verification_code_service: VCS,
         user_factory: UserFactory<PE>,
-        auth_service: AuthenticationDomainService<PE>,
+        pwd_service: PasswordDomainService<PE>,
     ) -> Self {
         Self {
             conn,
@@ -64,7 +64,7 @@ where
             security_event_repo,
             verification_code_service,
             user_factory,
-            auth_service,
+            pwd_service,
         }
     }
 
@@ -220,7 +220,7 @@ where
                 return Err(AuthenticationError::BadPassword); // 避免刻意查询账户是否存在
             };
 
-            let result = self.auth_service.authenticate(&user, password);
+            let result = self.pwd_service.authenticate(&user, password);
 
             match result {
                 Ok(()) => {
@@ -247,7 +247,7 @@ where
                             .map_err(mapping_error())?;
 
                         let since = OffsetDateTime::now_utc().saturating_sub(Duration::minutes(
-                            self.auth_service.policy().window_minutes as i64,
+                            self.pwd_service.policy().window_minutes as i64,
                         ));
                         let events = self
                             .security_event_repo
@@ -261,7 +261,7 @@ where
                             .map_err(mapping_error())?;
 
                         let original = user.clone();
-                        self.auth_service.check_and_lock_user(&mut user, &events);
+                        self.pwd_service.check_and_lock_user(&mut user, &events);
 
                         if matches!(user.state(), UserState::Locked) {
                             info!(user_id=%user.id(), "user locked");
@@ -304,6 +304,58 @@ where
                     }
                 })?;
                 Err(e)
+            }
+        }
+    }
+
+    pub async fn change_password(
+        &self,
+        username: String,
+        cmd: ChangePasswordCmd,
+    ) -> Result<(), CtxError> {
+        if cmd.cur_password != cmd.cur_password_confirm {
+            return Err(CtxError::InvalidInput(
+                "current password and confirm password do not match".to_string(),
+            ));
+        }
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+
+        let mut user = self
+            .user_repo
+            .find_by_username(&tx, &username)
+            .await?
+            .ok_or(CtxError::NotFound("user not found".to_string()))?;
+
+        let original = user.clone();
+
+        self.pwd_service.change_password(
+            &mut user,
+            cmd.cur_password.as_str(),
+            cmd.new_password.as_str(),
+        )?;
+
+        match self
+            .user_repo
+            .update(&tx, Revision::new(original, user))
+            .await
+        {
+            Ok(_) => {
+                tx.commit().await.map_err(|e| {
+                    error!(error=%e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                Ok(())
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(username=%username, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                error!(username=%username, error=%e, "update user failed");
+                Err(CtxError::Internal)
             }
         }
     }

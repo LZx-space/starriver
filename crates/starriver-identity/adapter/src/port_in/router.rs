@@ -11,6 +11,10 @@ pub fn create_router(state: IdentityState) -> impl Into<Router> {
         .route("/users", post(user_handler::register_user))
         .route("/users/{username}/state", put(user_handler::activate_user))
         .route(
+            "/users/{username}/password",
+            put(user_handler::change_password),
+        )
+        .route(
             "/email-verifications",
             post(user_handler::send_register_email),
         )

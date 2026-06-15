@@ -2,7 +2,7 @@ use axum::extract::State;
 use axum::response::IntoResponse;
 
 use starriver_identity_application::dto::user_dto::req::{
-    EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd,
+    ChangePasswordCmd, EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd,
 };
 use starriver_shared_framework::extract::{Json, JsonEx, Path};
 use starriver_shared_framework::middleware::authentication::default_impl::AuthenticatedUser;
@@ -62,6 +62,18 @@ pub async fn activate_user(
     state
         .user_service
         .activate_user(username.0, cmd.0)
+        .await
+        .map_err(map_error)
+}
+
+pub async fn change_password(
+    state: State<IdentityState>,
+    username: Path<String>,
+    cmd: JsonEx<ChangePasswordCmd>,
+) -> Result<impl IntoResponse, ApiError> {
+    state
+        .user_service
+        .change_password(username.0, cmd.0)
         .await
         .map_err(map_error)
 }

@@ -9,6 +9,6 @@ pub trait PasswordEncoder {
     fn verify(
         &self,
         raw_password: &str,
-        encode_password: &str,
+        encoded_password: &str,
     ) -> Result<bool, PasswordEncoderError>;
 }

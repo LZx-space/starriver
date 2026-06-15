@@ -6,7 +6,7 @@ use starriver_identity_application::{
     dto::user_dto::req::UserValidateCxt, use_case::user_interactor::UserApplicationService,
 };
 use starriver_identity_domain::{
-    authentication_service::AuthenticationDomainService,
+    password_service::PasswordDomainService,
     user::{
         factory::UserFactory,
         policy::BadPasswordPolicy,
@@ -86,7 +86,11 @@ impl IdentityState {
             max_attempts: cfg.bad_password.max_attempts as usize,
         };
 
-        let auth_service = AuthenticationDomainService::new(bad_password_policy, password_encoder);
+        let pwd_service = PasswordDomainService::new(
+            bad_password_policy,
+            password_encoder,
+            password_spec.clone(),
+        );
         let user_service = UserApplicationService::new(
             DefaultConnection::new(conn),
             DefaultUserQuery,
@@ -94,7 +98,7 @@ impl IdentityState {
             DefaultSecurityEventRepository,
             verification_code_service,
             user_factory,
-            auth_service,
+            pwd_service,
         )
         .into();
         Ok(IdentityState {

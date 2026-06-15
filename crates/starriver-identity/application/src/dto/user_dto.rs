@@ -38,6 +38,16 @@ pub mod req {
         pub email_code: String,
     }
 
+    #[derive(Debug, Deserialize, Validate)]
+    #[validate(context = UserValidateCxt)]
+    pub struct ChangePasswordCmd {
+        pub cur_password: String,
+        #[validate(custom(function = "validate_password", use_context))]
+        pub new_password: String,
+        #[validate(custom(function = "validate_password", use_context))]
+        pub new_password_confirm: String,
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////
 
     #[derive(Clone)]

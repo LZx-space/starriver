@@ -58,4 +58,8 @@ impl User {
     pub fn activate(&mut self) {
         self.state = UserState::Active;
     }
+
+    pub fn change_password(&mut self, new_pwd: HashedPassword) {
+        self.password = new_pwd;
+    }
 }

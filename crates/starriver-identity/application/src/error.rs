@@ -51,7 +51,8 @@ impl From<DomainError> for CtxError {
             DomainError::InvalidUsernameFormat
             | DomainError::InvalidEmailFormat
             | DomainError::InvalidPasswordFormat
-            | DomainError::InvalidPasswordHash => CtxError::InvalidInput(e.to_string()),
+            | DomainError::InvalidPasswordHash
+            | DomainError::SamePassword => CtxError::InvalidInput(e.to_string()),
 
             // 认证类 → AuthenticationFailed
             DomainError::BadPassword | DomainError::UserLocked | DomainError::UserDisabled => {

@@ -1,4 +1,5 @@
 pub mod authentication;
+pub mod cache;
 pub mod dto;
 pub mod error;
 pub mod html_utils;

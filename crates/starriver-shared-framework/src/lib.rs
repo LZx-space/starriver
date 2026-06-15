@@ -1,5 +1,6 @@
 #![allow(clippy::disallowed_types)]
 
+pub mod cache;
 pub mod config;
 pub mod error_mapping;
 pub mod extract;

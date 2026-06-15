@@ -1,7 +1,7 @@
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{
+    db::{Executor, Revision},
     error::RepositoryError,
-    repository::{Executor, Revision},
 };
 use uuid::Uuid;
 

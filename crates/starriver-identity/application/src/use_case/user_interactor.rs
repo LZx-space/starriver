@@ -7,9 +7,9 @@ use starriver_identity_domain::{
 };
 use starriver_shared_base::{
     authentication::UsernamePasswordCredentials,
+    db::{Connection, Revision, Transaction},
     error::RepositoryError,
     middleware::authentication::core::error::AuthenticationError,
-    repository::{Connection, Revision, Transaction},
 };
 use std::convert::Infallible;
 use time::{Duration, OffsetDateTime};

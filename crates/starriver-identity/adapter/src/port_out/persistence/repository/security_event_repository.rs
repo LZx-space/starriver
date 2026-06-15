@@ -5,10 +5,10 @@ use starriver_identity_application::port::security_event_repository::SecurityEve
 use starriver_identity_domain::security_event::{
     entity::SecurityEvent, value_object::SecurityEventType,
 };
-use starriver_shared_base::{error::RepositoryError, repository::Revision};
+use starriver_shared_base::{db::Revision, error::RepositoryError};
 use starriver_shared_framework::{
+    db::{DefaultConnection, DefaultTransaction},
     error_mapping::db_2_repo_error,
-    repository::{DefaultConnection, DefaultTransaction},
 };
 use time::OffsetDateTime;
 use uuid::Uuid;

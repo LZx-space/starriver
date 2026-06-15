@@ -1,7 +1,7 @@
 use starriver_identity_domain::user::entity::User;
 use starriver_shared_base::{
+    db::{Executor, Revision},
     error::RepositoryError,
-    repository::{Executor, Revision},
 };
 use uuid::Uuid;
 

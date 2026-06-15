@@ -5,10 +5,10 @@ use sea_orm::{
 };
 use starriver_blogging_application::port::post_repository::PostRepository;
 use starriver_blogging_domain::post::entity::Post;
-use starriver_shared_base::{error::RepositoryError, repository::Revision};
+use starriver_shared_base::{db::Revision, error::RepositoryError};
 use starriver_shared_framework::{
+    db::{DefaultConnection, DefaultTransaction},
     error_mapping::db_2_repo_error,
-    repository::{DefaultConnection, DefaultTransaction},
 };
 use time::OffsetDateTime;
 

@@ -3,8 +3,8 @@ use starriver_blogging_application::port::attachment_repository::AttachmentRepos
 use starriver_blogging_domain::attachment::entity::Attachment;
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_framework::{
+    db::{DefaultConnection, DefaultTransaction},
     error_mapping::db_2_repo_error,
-    repository::{DefaultConnection, DefaultTransaction},
 };
 use time::OffsetDateTime;
 use uuid::Uuid;

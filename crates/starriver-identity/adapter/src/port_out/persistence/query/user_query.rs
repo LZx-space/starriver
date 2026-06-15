@@ -1,7 +1,7 @@
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect};
 use starriver_identity_application::port::user_query::UserQuery;
 use starriver_shared_base::error::QueryError;
-use starriver_shared_framework::repository::DefaultConnection;
+use starriver_shared_framework::db::DefaultConnection;
 use uuid::Uuid;
 
 use crate::port_out::persistence::po::user_po::{self, Entity};

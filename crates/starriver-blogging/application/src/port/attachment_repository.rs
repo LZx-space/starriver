@@ -1,5 +1,5 @@
 use starriver_blogging_domain::attachment::entity::Attachment;
-use starriver_shared_base::{error::RepositoryError, repository::Executor};
+use starriver_shared_base::{db::Executor, error::RepositoryError};
 use uuid::Uuid;
 
 pub trait AttachmentRepository<T: Executor> {

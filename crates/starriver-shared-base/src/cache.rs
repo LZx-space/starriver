@@ -6,8 +6,7 @@ pub trait Cache<K, V, S = RandomState> {
     fn try_get_with<F, E>(&self, key: K, init: F) -> impl Future<Output = Result<V, Arc<E>>>
     where
         F: Future<Output = Result<V, E>>,
-        E: Send + Sync + 'static,
-        Self: Sized;
+        E: Send + Sync + 'static;
 
     fn invalidate_all(&self);
 }

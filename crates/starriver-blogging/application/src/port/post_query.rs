@@ -1,4 +1,4 @@
-use starriver_shared_base::{dto::PageResult, error::QueryError, repository::Executor};
+use starriver_shared_base::{db::Executor, dto::PageResult, error::QueryError};
 use uuid::Uuid;
 
 use crate::dto::post_dto::{

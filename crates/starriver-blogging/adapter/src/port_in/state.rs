@@ -12,25 +12,29 @@ use starriver_blogging_application::{
     },
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
-use starriver_shared_base::dto::PageResult;
+use starriver_shared_base::{dto::PageResult, random::duration_with_jitter};
 use starriver_shared_framework::{
     cache::DefaultCache,
     config::{Auth, Uploads},
-    repository::DefaultConnection,
+    db::DefaultConnection,
     upload_file::DefaultUploadLocationResolver,
 };
 use std::{sync::Arc, time::Duration};
 use uuid::Uuid;
 
-use crate::port_out::{
-    persistence::{
-        query::{category_query::DefaultCategoryQuery, post_query::DefaultPostQuery},
-        repository::{
-            attachment_repository::DefaultAttachmentRepository,
-            category_repository::DefaultCategoryRepository, post_repository::DefaultPostRepository,
+use crate::{
+    config::{BloggingConfig, Cache},
+    port_out::{
+        persistence::{
+            query::{category_query::DefaultCategoryQuery, post_query::DefaultPostQuery},
+            repository::{
+                attachment_repository::DefaultAttachmentRepository,
+                category_repository::DefaultCategoryRepository,
+                post_repository::DefaultPostRepository,
+            },
         },
+        service::file_type_checker::DefaultFileTypeChecker,
     },
-    service::file_type_checker::DefaultFileTypeChecker,
 };
 
 type PostService = PostApplication<
@@ -71,28 +75,28 @@ impl BloggingState {
         conn: DatabaseConnection,
         auth: Arc<Auth>,
         uploads: Arc<Uploads>,
+        cfg: &BloggingConfig,
     ) -> Result<Self, String> {
         let upload_file_url_builder = DefaultUploadLocationResolver::new(uploads.clone());
         let conn = DefaultConnection::new(conn);
 
-        let post_cache = PostCaches::new(
-            DefaultCache::new(1, Duration::from_hours(1)),
-            DefaultCache::new(100, Duration::from_hours(1)),
-        );
+        let cache_cfg = &cfg.cache;
         let post_service = PostApplication::new(
             conn.clone(),
             DefaultPostQuery::new(upload_file_url_builder.clone()),
             DefaultPostRepository,
-            post_cache,
+            PostCaches::new(
+                DefaultCache::new(1, cache_jitter_ttl(cache_cfg)),
+                DefaultCache::new(100, cache_jitter_ttl(cache_cfg)),
+            ),
         )
         .into();
 
-        let category_cache = DefaultCache::new(100, Duration::from_hours(1));
         let category_service = CategoryApplication::new(
             conn.clone(),
             DefaultCategoryQuery,
             DefaultCategoryRepository,
-            category_cache,
+            DefaultCache::new(1, cache_jitter_ttl(cache_cfg)),
         )
         .into();
 
@@ -121,4 +125,11 @@ impl FromRef<BloggingState> for Arc<Auth> {
     fn from_ref(input: &BloggingState) -> Self {
         input.auth.clone()
     }
+}
+
+fn cache_jitter_ttl(cache_cfg: &Cache) -> Duration {
+    duration_with_jitter(
+        cache_cfg.base_cache_ttl_sec,
+        cache_cfg.base_cache_jitter_sec_range,
+    )
 }

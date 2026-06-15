@@ -313,9 +313,9 @@ where
         username: &str,
         cmd: ChangePasswordCmd,
     ) -> Result<(), CtxError> {
-        if cmd.cur_password != cmd.cur_password_confirm {
+        if cmd.new_password != cmd.new_password_confirm {
             return Err(CtxError::InvalidInput(
-                "current password and confirm password do not match".to_string(),
+                "new password and confirm password do not match".to_string(),
             ));
         }
         let tx = self.conn.begin().await.map_err(|e| {

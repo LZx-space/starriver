@@ -1,6 +1,6 @@
 use sea_orm::{
-    ColumnTrait, Condition, ConnectionTrait, EntityTrait, JoinType, Order, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, sea_query::NullOrdering,
+    ColumnTrait, Condition, EntityTrait, JoinType, Order, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, RelationTrait, sea_query::NullOrdering,
 };
 use starriver_blogging_application::{
     dto::{
@@ -19,7 +19,9 @@ use starriver_shared_base::{
     html_utils::{DefaultExcerptor, Excerptor},
     upload_file::UploadLocationResolver,
 };
-use starriver_shared_framework::upload_file::DefaultUploadLocationResolver;
+use starriver_shared_framework::{
+    repository::DefaultConnection, upload_file::DefaultUploadLocationResolver,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -40,10 +42,10 @@ impl DefaultPostQuery {
     }
 }
 
-impl PostQuery for DefaultPostQuery {
-    async fn paginate<C: ConnectionTrait>(
+impl PostQuery<DefaultConnection> for DefaultPostQuery {
+    async fn paginate(
         &self,
-        conn: &C,
+        conn: &DefaultConnection,
         q: PageQuery,
     ) -> Result<PageResult<PostExcerptDto>, QueryError> {
         let mut cond = Condition::all();
@@ -94,9 +96,9 @@ impl PostQuery for DefaultPostQuery {
         Ok(PageResult::new(q.page, q.page_size, record_total, posts))
     }
 
-    async fn find_detail<C: ConnectionTrait>(
+    async fn find_detail(
         &self,
-        conn: &C,
+        conn: &DefaultConnection,
         id: Uuid,
     ) -> Result<Option<PostDetailDto>, QueryError> {
         let post = Entity::find_by_id(id)

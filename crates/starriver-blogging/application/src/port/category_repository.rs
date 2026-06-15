@@ -1,30 +1,32 @@
-use sea_orm::ConnectionTrait;
 use starriver_blogging_domain::category::entity::Category;
-use starriver_shared_base::{error::RepositoryError, repository::Revision};
+use starriver_shared_base::{
+    error::RepositoryError,
+    repository::{Executor, Revision},
+};
 use uuid::Uuid;
 
-pub trait CategoryRepository {
-    fn find_by_id<C: ConnectionTrait>(
+pub trait CategoryRepository<T: Executor> {
+    fn find_by_id(
         &self,
-        conn: &C,
+        conn: &T,
         id: Uuid,
     ) -> impl Future<Output = Result<Option<Category>, RepositoryError>> + Send;
 
-    fn insert<C: ConnectionTrait>(
+    fn insert(
         &self,
-        conn: &C,
+        conn: &T,
         category: Category,
     ) -> impl Future<Output = Result<Category, RepositoryError>> + Send;
 
-    fn update<C: ConnectionTrait>(
+    fn update(
         &self,
-        conn: &C,
+        conn: &T,
         category: Revision<Category>,
     ) -> impl Future<Output = Result<Category, RepositoryError>> + Send;
 
-    fn delete<C: ConnectionTrait>(
+    fn delete(
         &self,
-        conn: &C,
+        conn: &T,
         id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

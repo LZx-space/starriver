@@ -6,7 +6,10 @@ use sea_orm::{
 use starriver_blogging_application::port::post_repository::PostRepository;
 use starriver_blogging_domain::post::entity::Post;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
-use starriver_shared_framework::error_mapping::db_2_repo_error;
+use starriver_shared_framework::{
+    error_mapping::db_2_repo_error,
+    repository::{DefaultConnection, DefaultTransaction},
+};
 use time::OffsetDateTime;
 
 use crate::port_out::persistence::po::{
@@ -16,10 +19,10 @@ use crate::port_out::persistence::po::{
 
 pub struct DefaultPostRepository;
 
-impl PostRepository for DefaultPostRepository {
-    async fn find_by_id<C: ConnectionTrait>(
+impl DefaultPostRepository {
+    async fn find_by_id(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         id: uuid::Uuid,
     ) -> Result<Option<Post>, RepositoryError> {
         let results = Entity::find_by_id(id)
@@ -46,7 +49,7 @@ impl PostRepository for DefaultPostRepository {
         )))
     }
 
-    async fn add<C: ConnectionTrait>(&self, conn: &C, post: Post) -> Result<Post, RepositoryError> {
+    async fn add(&self, conn: &impl ConnectionTrait, post: Post) -> Result<Post, RepositoryError> {
         let (id, title, content, state, author_id, category_id, attachments, published_at) =
             post.dissolve();
         // 插入 Post 实体
@@ -93,9 +96,9 @@ impl PostRepository for DefaultPostRepository {
         ))
     }
 
-    async fn delete<C: ConnectionTrait>(
+    async fn delete(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         id: uuid::Uuid,
     ) -> Result<bool, RepositoryError> {
         Entity::delete_by_id(id)
@@ -105,9 +108,9 @@ impl PostRepository for DefaultPostRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn update<C: ConnectionTrait>(
+    async fn update(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         post: Revision<Post>,
     ) -> Result<Post, RepositoryError> {
         let (original, modified) = post.dissolve();
@@ -202,5 +205,65 @@ impl PostRepository for DefaultPostRepository {
             new_attachments,
             updated.published_at,
         ))
+    }
+}
+
+impl PostRepository<DefaultConnection> for DefaultPostRepository {
+    async fn find_by_id(
+        &self,
+        conn: &DefaultConnection,
+        id: uuid::Uuid,
+    ) -> Result<Option<Post>, RepositoryError> {
+        self.find_by_id(conn, id).await
+    }
+
+    async fn add(&self, conn: &DefaultConnection, post: Post) -> Result<Post, RepositoryError> {
+        self.add(conn, post).await
+    }
+
+    async fn delete(
+        &self,
+        conn: &DefaultConnection,
+        id: uuid::Uuid,
+    ) -> Result<bool, RepositoryError> {
+        self.delete(conn, id).await
+    }
+
+    async fn update(
+        &self,
+        conn: &DefaultConnection,
+        post: Revision<Post>,
+    ) -> Result<Post, RepositoryError> {
+        self.update(conn, post).await
+    }
+}
+
+impl PostRepository<DefaultTransaction> for DefaultPostRepository {
+    async fn find_by_id(
+        &self,
+        conn: &DefaultTransaction,
+        id: uuid::Uuid,
+    ) -> Result<Option<Post>, RepositoryError> {
+        self.find_by_id(conn, id).await
+    }
+
+    async fn add(&self, conn: &DefaultTransaction, post: Post) -> Result<Post, RepositoryError> {
+        self.add(conn, post).await
+    }
+
+    async fn delete(
+        &self,
+        conn: &DefaultTransaction,
+        id: uuid::Uuid,
+    ) -> Result<bool, RepositoryError> {
+        self.delete(conn, id).await
+    }
+
+    async fn update(
+        &self,
+        conn: &DefaultTransaction,
+        post: Revision<Post>,
+    ) -> Result<Post, RepositoryError> {
+        self.update(conn, post).await
     }
 }

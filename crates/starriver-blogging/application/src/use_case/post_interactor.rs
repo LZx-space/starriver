@@ -1,11 +1,12 @@
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_blogging_domain::post::{
     entity::Post,
     params::PostUpdate,
     value_object::{Content, PostState, Title},
 };
 use starriver_shared_base::{
-    authentication::PrincipalClaims, dto::PageResult, repository::Revision,
+    authentication::PrincipalClaims,
+    dto::PageResult,
+    repository::{Connection, Revision, Transaction},
 };
 use tracing::{error, info};
 use uuid::Uuid;
@@ -27,9 +28,9 @@ pub struct PostApplication<Conn, Q, R> {
 
 impl<Conn, Q, R> PostApplication<Conn, Q, R>
 where
-    Conn: ConnectionTrait + TransactionTrait,
-    Q: PostQuery,
-    R: PostRepository,
+    Conn: Connection,
+    Q: PostQuery<Conn>,
+    R: PostRepository<Conn> + PostRepository<<Conn as Connection>::Transaction>,
 {
     /// 新建
     pub fn new(conn: Conn, query: Q, repo: R) -> Self {

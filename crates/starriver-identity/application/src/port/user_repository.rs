@@ -5,28 +5,28 @@ use starriver_shared_base::{
 };
 use uuid::Uuid;
 
-pub trait UserRepository<C: Executor> {
+pub trait UserRepository<T: Executor> {
     fn find_by_username(
         &self,
-        conn: &C,
+        conn: &T,
         username: &str,
     ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
 
     fn insert(
         &self,
-        conn: &C,
+        conn: &T,
         user: User,
     ) -> impl Future<Output = Result<User, RepositoryError>> + Send;
 
     fn update(
         &self,
-        conn: &C,
+        conn: &T,
         user: Revision<User>,
     ) -> impl Future<Output = Result<User, RepositoryError>> + Send;
 
     fn delete(
         &self,
-        conn: &C,
+        conn: &T,
         user_id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

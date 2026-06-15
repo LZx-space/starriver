@@ -7,6 +7,7 @@ use starriver_blogging_application::use_case::{
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_framework::{
     config::{Auth, Uploads},
+    repository::DefaultConnection,
     upload_file::DefaultUploadLocationResolver,
 };
 use std::sync::Arc;
@@ -29,13 +30,13 @@ pub struct BloggingState {
     pub uploads: Arc<Uploads>,
     pub upload_file_url_builder: DefaultUploadLocationResolver,
     pub post_service:
-        Arc<PostApplication<DatabaseConnection, DefaultPostQuery, DefaultPostRepository>>,
+        Arc<PostApplication<DefaultConnection, DefaultPostQuery, DefaultPostRepository>>,
     pub category_service: Arc<
-        CategoryApplication<DatabaseConnection, DefaultCategoryQuery, DefaultCategoryRepository>,
+        CategoryApplication<DefaultConnection, DefaultCategoryQuery, DefaultCategoryRepository>,
     >,
     pub attachment_service: Arc<
         AttachmentApplication<
-            DatabaseConnection,
+            DefaultConnection,
             DefaultAttachmentRepository,
             DefaultFileTypeChecker,
             DefaultUploadLocationResolver,
@@ -50,6 +51,8 @@ impl BloggingState {
         uploads: Arc<Uploads>,
     ) -> Result<Self, String> {
         let upload_file_url_builder = DefaultUploadLocationResolver::new(uploads.clone());
+        let conn = DefaultConnection::new(conn);
+
         let post_service = PostApplication::new(
             conn.clone(),
             DefaultPostQuery::new(upload_file_url_builder.clone()),

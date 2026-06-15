@@ -1,5 +1,5 @@
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_blogging_domain::category::entity::Category;
+use starriver_shared_base::repository::{Connection, Transaction};
 use starriver_shared_base::{authentication::PrincipalClaims, repository::Revision};
 use tracing::{error, info};
 use uuid::Uuid;
@@ -17,9 +17,9 @@ pub struct CategoryApplication<Conn, Q, R> {
 
 impl<Conn, Q, R> CategoryApplication<Conn, Q, R>
 where
-    Conn: ConnectionTrait + TransactionTrait,
-    Q: CategoryQuery,
-    R: CategoryRepository,
+    Conn: Connection,
+    Q: CategoryQuery<Conn>,
+    R: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
 {
     pub fn new(conn: Conn, query: Q, repo: R) -> Self {
         Self { conn, query, repo }

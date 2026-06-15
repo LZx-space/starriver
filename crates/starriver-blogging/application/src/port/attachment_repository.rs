@@ -1,18 +1,17 @@
-use sea_orm::ConnectionTrait;
 use starriver_blogging_domain::attachment::entity::Attachment;
-use starriver_shared_base::error::RepositoryError;
+use starriver_shared_base::{error::RepositoryError, repository::Executor};
 use uuid::Uuid;
 
-pub trait AttachmentRepository {
-    fn insert<C: ConnectionTrait>(
+pub trait AttachmentRepository<T: Executor> {
+    fn insert(
         &self,
-        conn: &C,
+        conn: &T,
         attachment: Attachment,
     ) -> impl Future<Output = Result<Attachment, RepositoryError>> + Send;
 
-    fn delete<C: ConnectionTrait>(
+    fn delete(
         &self,
-        conn: &C,
+        conn: &T,
         id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

@@ -1,11 +1,10 @@
-use sea_orm::ConnectionTrait;
-use starriver_shared_base::error::QueryError;
+use starriver_shared_base::{error::QueryError, repository::Executor};
 
 use crate::dto::category_dto::res::CategoryDetailDto;
 
-pub trait CategoryQuery {
-    fn list_all<C: ConnectionTrait>(
+pub trait CategoryQuery<T: Executor> {
+    fn list_all(
         &self,
-        conn: &C,
+        conn: &T,
     ) -> impl Future<Output = Result<Vec<CategoryDetailDto>, QueryError>> + Send;
 }

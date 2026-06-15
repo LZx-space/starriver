@@ -9,10 +9,10 @@ use starriver_identity_domain::security_event::{
     entity::SecurityEvent, value_object::SecurityEventType,
 };
 
-pub trait SecurityEventRepository<C: Executor> {
+pub trait SecurityEventRepository<T: Executor> {
     fn find_by_user_id_since(
         &self,
-        conn: &C,
+        conn: &T,
         user_id: Uuid,
         event_type: SecurityEventType,
         since: OffsetDateTime,
@@ -20,19 +20,19 @@ pub trait SecurityEventRepository<C: Executor> {
 
     fn insert(
         &self,
-        conn: &C,
+        conn: &T,
         event: SecurityEvent,
     ) -> impl Future<Output = Result<SecurityEvent, RepositoryError>> + Send;
 
     fn update(
         &self,
-        conn: &C,
+        conn: &T,
         event: Revision<SecurityEvent>,
     ) -> impl Future<Output = Result<SecurityEvent, RepositoryError>> + Send;
 
     fn delete(
         &self,
-        conn: &C,
+        conn: &T,
         event_id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

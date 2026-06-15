@@ -6,8 +6,8 @@ use starriver_blogging_domain::post::{
 use starriver_shared_base::{
     authentication::PrincipalClaims,
     cache::Cache,
+    db::{Connection, Revision, Transaction},
     dto::PageResult,
-    repository::{Connection, Revision, Transaction},
 };
 use tracing::{error, info};
 use uuid::Uuid;

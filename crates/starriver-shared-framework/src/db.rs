@@ -2,7 +2,7 @@ use sea_orm::{
     ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr, ExecResult,
     QueryResult, Statement, TransactionTrait,
 };
-use starriver_shared_base::repository::{Connection, Executor, Transaction};
+use starriver_shared_base::db::{Connection, Executor, Transaction};
 
 #[derive(Debug, Clone)]
 pub struct DefaultConnection {

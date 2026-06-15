@@ -20,7 +20,7 @@ use starriver_shared_base::{
     upload_file::UploadLocationResolver,
 };
 use starriver_shared_framework::{
-    repository::DefaultConnection, upload_file::DefaultUploadLocationResolver,
+    db::DefaultConnection, upload_file::DefaultUploadLocationResolver,
 };
 use uuid::Uuid;
 

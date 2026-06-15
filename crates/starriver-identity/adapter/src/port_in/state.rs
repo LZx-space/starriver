@@ -14,7 +14,7 @@ use starriver_identity_domain::{
     },
 };
 use starriver_shared_base::regex_patterns::Patterns;
-use starriver_shared_framework::{config::Auth, repository::DefaultConnection};
+use starriver_shared_framework::{config::Auth, db::DefaultConnection};
 
 use crate::{
     config::IdentityConfig,

@@ -22,6 +22,7 @@ use starriver_shared_base::{
 };
 use starriver_shared_framework::{
     config::Auth,
+    db::DefaultConnection,
     middleware::authentication::{
         default_impl::{
             AuthenticatedUser, DefaultAuthenticationFailureHandler,
@@ -30,7 +31,6 @@ use starriver_shared_framework::{
         },
         middleware::AuthenticationLayer,
     },
-    repository::DefaultConnection,
 };
 use time::Duration;
 

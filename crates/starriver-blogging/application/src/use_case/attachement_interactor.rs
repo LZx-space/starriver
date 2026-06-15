@@ -2,8 +2,8 @@ use starriver_blogging_domain::attachment::{
     factory::AttachmentFactory, file_type_checker::FileTypeChecker,
 };
 use starriver_shared_base::{
+    db::Connection,
     io::{AsyncReader, AsyncWriter},
-    repository::Connection,
     upload_file::UploadLocationResolver,
 };
 use uuid::Uuid;

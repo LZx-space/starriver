@@ -48,12 +48,17 @@ async fn main() {
             error!(error = %e, "create identity state");
             panic!("failed to create identity state: {}", e);
         });
-    let blogging_state = BloggingState::new(conn.clone(), auth.clone(), uploads.clone())
-        .await
-        .unwrap_or_else(|e| {
-            error!(error = %e, "create blogging state");
-            panic!("failed to create blogging state: {}", e);
-        });
+    let blogging_state = BloggingState::new(
+        conn.clone(),
+        auth.clone(),
+        uploads.clone(),
+        &app_cfg.ctx_blogging,
+    )
+    .await
+    .unwrap_or_else(|e| {
+        error!(error = %e, "create blogging state");
+        panic!("failed to create blogging state: {}", e);
+    });
 
     let user_service = identity_state.user_service.clone();
     let middleware_service = ServiceBuilder::new()

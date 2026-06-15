@@ -1,5 +1,6 @@
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
+use starriver_blogging_adapter::config::BloggingConfig;
 use starriver_identity_adapter::config::IdentityConfig;
 use starriver_shared_framework::config::{Auth, Uploads};
 
@@ -21,6 +22,7 @@ pub struct AppConfig {
     pub auth: Auth,
     pub uploads: Uploads,
     pub ctx_identity: IdentityConfig,
+    pub ctx_blogging: BloggingConfig,
 }
 
 #[derive(Deserialize)]

@@ -1,6 +1,6 @@
 use starriver_shared_base::{
+    db::{Executor, Revision},
     error::RepositoryError,
-    repository::{Executor, Revision},
 };
 use time::OffsetDateTime;
 use uuid::Uuid;

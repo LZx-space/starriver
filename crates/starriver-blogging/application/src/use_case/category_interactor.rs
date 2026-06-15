@@ -1,7 +1,7 @@
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::cache::Cache;
-use starriver_shared_base::repository::{Connection, Transaction};
-use starriver_shared_base::{authentication::PrincipalClaims, repository::Revision};
+use starriver_shared_base::db::{Connection, Transaction};
+use starriver_shared_base::{authentication::PrincipalClaims, db::Revision};
 use tracing::{error, info};
 use uuid::Uuid;
 

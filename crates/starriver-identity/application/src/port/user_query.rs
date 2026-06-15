@@ -1,4 +1,4 @@
-use starriver_shared_base::{error::QueryError, repository::Executor};
+use starriver_shared_base::{db::Executor, error::QueryError};
 use uuid::Uuid;
 
 pub trait UserQuery<T: Executor> {

@@ -39,4 +39,6 @@ code_cache_max_capacity = 1000
 code_cache_ttl_hours = 1
 ################################################################
 
-[ctx_blogging]
+[ctx_blogging.cache]
+base_cache_ttl_sec = 3600
+base_cache_jitter_sec_range = 600

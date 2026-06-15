@@ -4,7 +4,7 @@ use starriver_blogging_application::{
     dto::category_dto::res::CategoryDetailDto, port::category_query::CategoryQuery,
 };
 use starriver_shared_base::error::QueryError;
-use starriver_shared_framework::repository::DefaultConnection;
+use starriver_shared_framework::db::DefaultConnection;
 
 pub struct DefaultCategoryQuery;
 

@@ -8,10 +8,10 @@ rust-version.workspace = true
 starriver-shared-base = { workspace = true }
 starriver-blogging-domain = {path = "../domain"}
 
+moka = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
-sea-orm = { workspace = true }  # 为了同时支持连接和事务不得已，其它方案更复杂和难以维护
 uuid = { workspace = true }
 validator = { workspace = true }

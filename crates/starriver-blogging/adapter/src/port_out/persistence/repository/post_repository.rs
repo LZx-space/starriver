@@ -6,31 +6,23 @@ use sea_orm::{
 use starriver_blogging_application::port::post_repository::PostRepository;
 use starriver_blogging_domain::post::entity::Post;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
-use starriver_shared_framework::error_mapping::db_2_repo_error;
+use starriver_shared_framework::{
+    error_mapping::db_2_repo_error,
+    repository::{DefaultConnection, DefaultTransaction},
+};
 use time::OffsetDateTime;
 
-use crate::{
-    port_in::state::PostCaches,
-    port_out::persistence::po::{
-        post_attachment_po,
-        post_po::{ActiveModel, Entity},
-    },
+use crate::port_out::persistence::po::{
+    post_attachment_po,
+    post_po::{ActiveModel, Entity},
 };
 
-pub struct DefaultPostRepository {
-    caches: PostCaches,
-}
+pub struct DefaultPostRepository;
 
 impl DefaultPostRepository {
-    pub fn new(caches: PostCaches) -> Self {
-        Self { caches }
-    }
-}
-
-impl PostRepository for DefaultPostRepository {
-    async fn find_by_id<C: ConnectionTrait>(
+    async fn find_by_id(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         id: uuid::Uuid,
     ) -> Result<Option<Post>, RepositoryError> {
         let results = Entity::find_by_id(id)
@@ -45,7 +37,7 @@ impl PostRepository for DefaultPostRepository {
             .into_iter()
             .map(|e| e.attachment_id)
             .collect::<Vec<_>>();
-        let post = Post::from_repo(
+        Ok(Some(Post::from_repo(
             id,
             post.title,
             post.content,
@@ -54,11 +46,10 @@ impl PostRepository for DefaultPostRepository {
             post.category_id,
             attachments,
             post.published_at,
-        );
-        Ok(Some(post))
+        )))
     }
 
-    async fn add<C: ConnectionTrait>(&self, conn: &C, post: Post) -> Result<Post, RepositoryError> {
+    async fn add(&self, conn: &impl ConnectionTrait, post: Post) -> Result<Post, RepositoryError> {
         let (id, title, content, state, author_id, category_id, attachments, published_at) =
             post.dissolve();
         // 插入 Post 实体
@@ -76,8 +67,6 @@ impl PostRepository for DefaultPostRepository {
         .insert(conn)
         .await
         .map_err(db_2_repo_error)?;
-        // 清除分页查询缓存， todo 添加事务后，由事务结果决定是否清除缓存
-        self.caches.invalidate_all();
 
         // 插入附件关联
         if !attachments.is_empty() {
@@ -95,7 +84,7 @@ impl PostRepository for DefaultPostRepository {
         }
 
         // 构建 Post 实体
-        let post = Post::from_repo(
+        Ok(Post::from_repo(
             model.id,
             model.title,
             model.content,
@@ -104,28 +93,24 @@ impl PostRepository for DefaultPostRepository {
             model.category_id,
             attachments,
             model.published_at,
-        );
-        Ok(post)
+        ))
     }
 
-    async fn delete<C: ConnectionTrait>(
+    async fn delete(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         id: uuid::Uuid,
     ) -> Result<bool, RepositoryError> {
-        let b = Entity::delete_by_id(id)
+        Entity::delete_by_id(id)
             .exec(conn)
             .await
             .map(|r| r.rows_affected != 0)
-            .map_err(db_2_repo_error)?;
-        // 清除分页查询缓存
-        self.caches.invalidate_all();
-        Ok(b)
+            .map_err(db_2_repo_error)
     }
 
-    async fn update<C: ConnectionTrait>(
+    async fn update(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         post: Revision<Post>,
     ) -> Result<Post, RepositoryError> {
         let (original, modified) = post.dissolve();
@@ -210,7 +195,7 @@ impl PostRepository for DefaultPostRepository {
             .map_err(db_2_repo_error)?;
         }
 
-        let updated = Post::from_repo(
+        Ok(Post::from_repo(
             updated.id,
             updated.title,
             updated.content,
@@ -219,9 +204,66 @@ impl PostRepository for DefaultPostRepository {
             updated.category_id,
             new_attachments,
             updated.published_at,
-        );
-        // 清除分页查询缓存, todo 添加事务后，由事务结果决定是否清除缓存
-        self.caches.invalidate_all();
-        Ok(updated)
+        ))
+    }
+}
+
+impl PostRepository<DefaultConnection> for DefaultPostRepository {
+    async fn find_by_id(
+        &self,
+        conn: &DefaultConnection,
+        id: uuid::Uuid,
+    ) -> Result<Option<Post>, RepositoryError> {
+        self.find_by_id(conn, id).await
+    }
+
+    async fn add(&self, conn: &DefaultConnection, post: Post) -> Result<Post, RepositoryError> {
+        self.add(conn, post).await
+    }
+
+    async fn delete(
+        &self,
+        conn: &DefaultConnection,
+        id: uuid::Uuid,
+    ) -> Result<bool, RepositoryError> {
+        self.delete(conn, id).await
+    }
+
+    async fn update(
+        &self,
+        conn: &DefaultConnection,
+        post: Revision<Post>,
+    ) -> Result<Post, RepositoryError> {
+        self.update(conn, post).await
+    }
+}
+
+impl PostRepository<DefaultTransaction> for DefaultPostRepository {
+    async fn find_by_id(
+        &self,
+        conn: &DefaultTransaction,
+        id: uuid::Uuid,
+    ) -> Result<Option<Post>, RepositoryError> {
+        self.find_by_id(conn, id).await
+    }
+
+    async fn add(&self, conn: &DefaultTransaction, post: Post) -> Result<Post, RepositoryError> {
+        self.add(conn, post).await
+    }
+
+    async fn delete(
+        &self,
+        conn: &DefaultTransaction,
+        id: uuid::Uuid,
+    ) -> Result<bool, RepositoryError> {
+        self.delete(conn, id).await
+    }
+
+    async fn update(
+        &self,
+        conn: &DefaultTransaction,
+        post: Revision<Post>,
+    ) -> Result<Post, RepositoryError> {
+        self.update(conn, post).await
     }
 }

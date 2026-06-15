@@ -14,7 +14,7 @@ use starriver_identity_domain::{
     },
 };
 use starriver_shared_base::regex_patterns::Patterns;
-use starriver_shared_framework::config::Auth;
+use starriver_shared_framework::{config::Auth, repository::DefaultConnection};
 
 use crate::{
     config::IdentityConfig,
@@ -43,7 +43,7 @@ pub struct IdentityState {
     //////////////////////////////////////////
     pub user_service: Arc<
         UserApplicationService<
-            DatabaseConnection,
+            DefaultConnection,
             DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventRepository,
@@ -72,7 +72,7 @@ impl IdentityState {
         let password_encoder: Arc<Argon2PasswordEncoder> = Argon2PasswordEncoder::default().into();
         ////////////////////////////////////////////////////////
 
-        let verification_code_port =
+        let verification_code_service =
             SmtpVerificationService::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
 
         let user_factory = UserFactory::new(
@@ -88,11 +88,11 @@ impl IdentityState {
 
         let auth_service = AuthenticationDomainService::new(bad_password_policy, password_encoder);
         let user_service = UserApplicationService::new(
-            conn.clone(),
+            DefaultConnection::new(conn),
             DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventRepository,
-            verification_code_port,
+            verification_code_service,
             user_factory,
             auth_service,
         )

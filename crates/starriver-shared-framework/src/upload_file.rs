@@ -4,6 +4,7 @@ use starriver_shared_base::upload_file::UploadLocationResolver;
 
 use crate::config::Uploads;
 
+#[derive(Clone)]
 pub struct DefaultUploadLocationResolver {
     uploads: Arc<Uploads>,
 }

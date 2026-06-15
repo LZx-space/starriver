@@ -1,30 +1,32 @@
-use sea_orm::ConnectionTrait;
 use starriver_identity_domain::user::entity::User;
-use starriver_shared_base::{error::RepositoryError, repository::Revision};
+use starriver_shared_base::{
+    error::RepositoryError,
+    repository::{Executor, Revision},
+};
 use uuid::Uuid;
 
-pub trait UserRepository {
-    fn find_by_username<C: ConnectionTrait>(
+pub trait UserRepository<T: Executor> {
+    fn find_by_username(
         &self,
-        conn: &C,
+        conn: &T,
         username: &str,
     ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
 
-    fn insert<C: ConnectionTrait>(
+    fn insert(
         &self,
-        conn: &C,
+        conn: &T,
         user: User,
     ) -> impl Future<Output = Result<User, RepositoryError>> + Send;
 
-    fn update<C: ConnectionTrait>(
+    fn update(
         &self,
-        conn: &C,
+        conn: &T,
         user: Revision<User>,
     ) -> impl Future<Output = Result<User, RepositoryError>> + Send;
 
-    fn delete<C: ConnectionTrait>(
+    fn delete(
         &self,
-        conn: &C,
+        conn: &T,
         user_id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 }

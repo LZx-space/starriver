@@ -1,35 +1,37 @@
-use sea_orm::ConnectionTrait;
 use starriver_blogging_domain::post::entity::Post;
-use starriver_shared_base::{error::RepositoryError, repository::Revision};
+use starriver_shared_base::{
+    error::RepositoryError,
+    repository::{Executor, Revision},
+};
 use uuid::Uuid;
 
 /// 仓库
-pub trait PostRepository {
+pub trait PostRepository<T: Executor> {
     /// 按ID查找
-    fn find_by_id<C: ConnectionTrait>(
+    fn find_by_id(
         &self,
-        conn: &C,
+        conn: &T,
         id: Uuid,
     ) -> impl Future<Output = Result<Option<Post>, RepositoryError>> + Send;
 
     /// 新增
-    fn add<C: ConnectionTrait>(
+    fn add(
         &self,
-        conn: &C,
+        conn: &T,
         post: Post,
     ) -> impl Future<Output = Result<Post, RepositoryError>> + Send;
 
     /// 删除
-    fn delete<C: ConnectionTrait>(
+    fn delete(
         &self,
-        conn: &C,
+        conn: &T,
         id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 
     /// 修改
-    fn update<C: ConnectionTrait>(
+    fn update(
         &self,
-        conn: &C,
+        conn: &T,
         post: Revision<Post>,
     ) -> impl Future<Output = Result<Post, RepositoryError>> + Send;
 }

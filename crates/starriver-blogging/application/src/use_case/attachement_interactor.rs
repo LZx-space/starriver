@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_blogging_domain::attachment::{
     factory::AttachmentFactory, file_type_checker::FileTypeChecker,
 };
 use starriver_shared_base::{
     io::{AsyncReader, AsyncWriter},
+    repository::Connection,
     upload_file::UploadLocationResolver,
 };
 use uuid::Uuid;
@@ -15,25 +13,25 @@ use crate::{
     port::attachment_repository::AttachmentRepository,
 };
 
-pub struct AttachmentApplication<Conn, R, FC, UB> {
+pub struct AttachmentApplication<Conn, R, FC, ULR> {
     conn: Conn,
     repo: R,
     factory: AttachmentFactory<FC>,
-    upload_location_resolver: Arc<UB>,
+    upload_location_resolver: ULR,
 }
 
-impl<Conn, R, FC, UB> AttachmentApplication<Conn, R, FC, UB>
+impl<Conn, R, FC, ULR> AttachmentApplication<Conn, R, FC, ULR>
 where
-    Conn: ConnectionTrait + TransactionTrait,
-    R: AttachmentRepository,
+    Conn: Connection,
+    R: AttachmentRepository<Conn> + AttachmentRepository<<Conn as Connection>::Transaction>,
     FC: FileTypeChecker,
-    UB: UploadLocationResolver,
+    ULR: UploadLocationResolver,
 {
     pub fn new(
         conn: Conn,
         repo: R,
         factory: AttachmentFactory<FC>,
-        upload_location_resolver: Arc<UB>,
+        upload_location_resolver: ULR,
     ) -> Self {
         Self {
             conn,

@@ -26,9 +26,5 @@ pub enum AuthenticationError {
 
     /////////////////////////
     #[error("inner error: {message}")]
-    InnerError {
-        message: String,
-        #[source]
-        source: Box<dyn std::error::Error + Send + Sync>,
-    },
+    InnerError { message: String },
 }

@@ -6,45 +6,37 @@ use sea_orm::{
 use starriver_blogging_application::port::category_repository::CategoryRepository;
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{error::RepositoryError, repository::Revision};
-use starriver_shared_framework::error_mapping::db_2_repo_error;
+use starriver_shared_framework::{
+    error_mapping::db_2_repo_error,
+    repository::{DefaultConnection, DefaultTransaction},
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    port_in::state::{CACHE_KEY_CATEGORY_LIST, CatagoryListCache},
-    port_out::persistence::po::category_po::{ActiveModel, Entity},
-};
+use crate::port_out::persistence::po::category_po::{ActiveModel, Entity};
 
-pub struct DefaultCategoryRepository {
-    cache: CatagoryListCache,
-}
+pub struct DefaultCategoryRepository;
 
 impl DefaultCategoryRepository {
-    pub fn new(cache: CatagoryListCache) -> Self {
-        Self { cache }
-    }
-}
-
-impl CategoryRepository for DefaultCategoryRepository {
-    async fn find_by_id<C: ConnectionTrait>(
+    async fn find_by_id(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         id: Uuid,
     ) -> Result<Option<Category>, RepositoryError> {
         Entity::find_by_id(id)
             .one(conn)
             .await
-            .map(|e| e.map(|e| Category::from_repo(e.id, e.name)))
             .map_err(db_2_repo_error)
+            .map(|e| e.map(|e| Category::from_repo(e.id, e.name)))
     }
 
-    async fn insert<C: ConnectionTrait>(
+    async fn insert(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         category: Category,
     ) -> Result<Category, RepositoryError> {
         let (id, name) = category.dissolve();
-        let category = ActiveModel {
+        ActiveModel {
             id: Set(id),
             name: Set(name),
             created_at: Set(OffsetDateTime::now_utc()),
@@ -52,20 +44,17 @@ impl CategoryRepository for DefaultCategoryRepository {
         }
         .insert(conn)
         .await
+        .map_err(db_2_repo_error)
         .map(|e| Category::from_repo(e.id, e.name))
-        .map_err(db_2_repo_error)?;
-
-        self.cache.invalidate(&CACHE_KEY_CATEGORY_LIST).await;
-        Ok(category)
     }
 
-    async fn update<C: ConnectionTrait>(
+    async fn update(
         &self,
-        conn: &C,
+        conn: &impl ConnectionTrait,
         category: Revision<Category>,
     ) -> Result<Category, RepositoryError> {
         let (id, name) = category.dissolve().1.dissolve();
-        let category = ActiveModel {
+        ActiveModel {
             id: Unchanged(id),
             name: Set(name),
             created_at: NotSet,
@@ -73,25 +62,75 @@ impl CategoryRepository for DefaultCategoryRepository {
         }
         .update(conn)
         .await
+        .map_err(db_2_repo_error)
         .map(|e| Category::from_repo(e.id, e.name))
-        .map_err(db_2_repo_error)?;
-
-        self.cache.invalidate(&CACHE_KEY_CATEGORY_LIST).await;
-        Ok(category)
     }
 
-    async fn delete<C: ConnectionTrait>(
-        &self,
-        conn: &C,
-        id: Uuid,
-    ) -> Result<bool, RepositoryError> {
-        let result = Entity::delete_by_id(id)
+    async fn delete(&self, conn: &impl ConnectionTrait, id: Uuid) -> Result<bool, RepositoryError> {
+        Entity::delete_by_id(id)
             .exec(conn)
             .await
+            .map_err(db_2_repo_error)
             .map(|r| r.rows_affected > 0)
-            .map_err(db_2_repo_error)?;
+    }
+}
 
-        self.cache.invalidate(&CACHE_KEY_CATEGORY_LIST).await;
-        Ok(result)
+impl CategoryRepository<DefaultConnection> for DefaultCategoryRepository {
+    async fn find_by_id(
+        &self,
+        conn: &DefaultConnection,
+        id: Uuid,
+    ) -> Result<Option<Category>, RepositoryError> {
+        self.find_by_id(conn, id).await
+    }
+
+    async fn insert(
+        &self,
+        conn: &DefaultConnection,
+        category: Category,
+    ) -> Result<Category, RepositoryError> {
+        self.insert(conn, category).await
+    }
+
+    async fn update(
+        &self,
+        conn: &DefaultConnection,
+        category: Revision<Category>,
+    ) -> Result<Category, RepositoryError> {
+        self.update(conn, category).await
+    }
+
+    async fn delete(&self, conn: &DefaultConnection, id: Uuid) -> Result<bool, RepositoryError> {
+        self.delete(conn, id).await
+    }
+}
+
+impl CategoryRepository<DefaultTransaction> for DefaultCategoryRepository {
+    async fn find_by_id(
+        &self,
+        conn: &DefaultTransaction,
+        id: Uuid,
+    ) -> Result<Option<Category>, RepositoryError> {
+        self.find_by_id(conn, id).await
+    }
+
+    async fn insert(
+        &self,
+        conn: &DefaultTransaction,
+        category: Category,
+    ) -> Result<Category, RepositoryError> {
+        self.insert(conn, category).await
+    }
+
+    async fn update(
+        &self,
+        conn: &DefaultTransaction,
+        category: Revision<Category>,
+    ) -> Result<Category, RepositoryError> {
+        self.update(conn, category).await
+    }
+
+    async fn delete(&self, conn: &DefaultTransaction, id: Uuid) -> Result<bool, RepositoryError> {
+        self.delete(conn, id).await
     }
 }

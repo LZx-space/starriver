@@ -1,6 +1,3 @@
-use std::convert::Infallible;
-
-use sea_orm::{ConnectionTrait, TransactionTrait};
 use starriver_identity_domain::{
     authentication_service::AuthenticationDomainService,
     error::DomainError,
@@ -9,9 +6,12 @@ use starriver_identity_domain::{
     user::{factory::UserFactory, value_object::UserState},
 };
 use starriver_shared_base::{
-    authentication::UsernamePasswordCredentials, error::RepositoryError,
-    middleware::authentication::core::error::AuthenticationError, repository::Revision,
+    authentication::UsernamePasswordCredentials,
+    error::RepositoryError,
+    middleware::authentication::core::error::AuthenticationError,
+    repository::{Connection, Revision, Transaction},
 };
+use std::convert::Infallible;
 use time::{Duration, OffsetDateTime};
 use tracing::{error, info, warn};
 
@@ -28,32 +28,32 @@ use crate::{
     },
 };
 
-pub struct UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE> {
+pub struct UserApplicationService<Conn, UQ, UR, SER, VCS, PE> {
     conn: Conn,
-    user_query: UQP,
-    user_repo: UREPO,
-    security_event_repo: SREPO,
-    verification_code_service: VCP,
+    user_query: UQ,
+    user_repo: UR,
     user_factory: UserFactory<PE>,
+    security_event_repo: SER,
+    verification_code_service: VCS,
     auth_service: AuthenticationDomainService<PE>,
 }
 
-impl<Conn, UQP, UREPO, SREPO, VCP, PE> UserApplicationService<Conn, UQP, UREPO, SREPO, VCP, PE>
+impl<Conn, UQ, UR, SER, VCS, PE> UserApplicationService<Conn, UQ, UR, SER, VCS, PE>
 where
-    Conn: ConnectionTrait + TransactionTrait,
-    UQP: UserQuery + Sync,
-    UREPO: UserRepository + Sync,
-    VCP: EmailVerificationService + Send + Sync,
+    Conn: Connection,
+    UQ: UserQuery<Conn> + Sync,
+    UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
+    SER: SecurityEventRepository<Conn> + Sync,
+    VCS: EmailVerificationService + Send + Sync,
     PE: PasswordEncoder + Send + Sync,
-    SREPO: SecurityEventRepository + Sync,
 {
     /// 新建
     pub fn new(
         conn: Conn,
-        user_query: UQP,
-        user_repo: UREPO,
-        security_event_repo: SREPO,
-        verification_code_port: VCP,
+        user_query: UQ,
+        user_repo: UR,
+        security_event_repo: SER,
+        verification_code_service: VCS,
         user_factory: UserFactory<PE>,
         auth_service: AuthenticationDomainService<PE>,
     ) -> Self {
@@ -62,7 +62,7 @@ where
             user_query,
             user_repo,
             security_event_repo,
-            verification_code_service: verification_code_port,
+            verification_code_service,
             user_factory,
             auth_service,
         }
@@ -104,6 +104,7 @@ where
             .user_factory
             .create_user(cmd.username.as_str(), cmd.password.as_str(), email)
             .inspect_err(|e| info!(email=%email, error=%e, "rigister user create user failed"))?;
+
         self.user_repo
             .insert(&self.conn, user)
             .await
@@ -205,7 +206,6 @@ where
             error!(error = %e, "begin transaction failed");
             AuthenticationError::InnerError {
                 message: e.to_string(),
-                source: Box::new(e),
             }
         })?;
         let result = async {
@@ -279,7 +279,6 @@ where
                         DomainError::BadPassword => AuthenticationError::BadPassword,
                         _ => AuthenticationError::InnerError {
                             message: domain_err.to_string(),
-                            source: Box::new(domain_err),
                         },
                     })
                 }
@@ -293,7 +292,6 @@ where
                     error!(user_id=%username, error=%e, "commit transaction failed");
                     AuthenticationError::InnerError {
                         message: e.to_string(),
-                        source: Box::new(e),
                     }
                 })?;
                 Ok(ok)
@@ -303,7 +301,6 @@ where
                     error!(user_id=%username, error=%e, "rollback transaction failed");
                     AuthenticationError::InnerError {
                         message: e.to_string(),
-                        source: Box::new(e),
                     }
                 })?;
                 Err(e)
@@ -317,7 +314,6 @@ fn mapping_error() -> impl FnOnce(RepositoryError) -> AuthenticationError {
         error!(error=%e, "handle bad password event failed");
         AuthenticationError::InnerError {
             message: e.to_string(),
-            source: Box::new(e),
         }
     }
 }

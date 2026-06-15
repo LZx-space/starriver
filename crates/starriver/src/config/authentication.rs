@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use sea_orm::DatabaseConnection;
 use starriver_identity_adapter::{
     UserApplicationService,
     port_out::{
@@ -31,13 +30,14 @@ use starriver_shared_framework::{
         },
         middleware::AuthenticationLayer,
     },
+    repository::DefaultConnection,
 };
 use time::Duration;
 
 pub struct UsernamePasswordAuthenticator {
     pub user_service: Arc<
         UserApplicationService<
-            DatabaseConnection,
+            DefaultConnection,
             DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventRepository,

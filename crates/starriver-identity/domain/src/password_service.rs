@@ -84,6 +84,9 @@ where
         cur_pwd: &str,
         new_pwd: &str,
     ) -> Result<(), DomainError> {
+        if cur_pwd == new_pwd {
+            return Err(DomainError::SamePassword);
+        }
         let matches = self.pwd_encoder.verify(cur_pwd, user.password().as_str())?;
         if !matches {
             return Err(DomainError::BadPassword);

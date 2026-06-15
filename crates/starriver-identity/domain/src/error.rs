@@ -20,6 +20,9 @@ pub enum DomainError {
     #[error("密码哈希无效")]
     InvalidPasswordHash,
 
+    #[error("当前密码与新密码相同")]
+    SamePassword,
+
     #[error("密码错误")]
     BadPassword,
 

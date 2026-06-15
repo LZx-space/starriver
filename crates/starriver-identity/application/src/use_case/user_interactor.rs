@@ -310,7 +310,7 @@ where
 
     pub async fn change_password(
         &self,
-        username: String,
+        username: &str,
         cmd: ChangePasswordCmd,
     ) -> Result<(), CtxError> {
         if cmd.cur_password != cmd.cur_password_confirm {
@@ -325,7 +325,7 @@ where
 
         let mut user = self
             .user_repo
-            .find_by_username(&tx, &username)
+            .find_by_username(&tx, username)
             .await?
             .ok_or(CtxError::NotFound("user not found".to_string()))?;
 

@@ -1,11 +1,9 @@
-use rand::Rng;
 use std::{ops::Add, range::Range, time::Duration};
 
 /// Returns a random value within the given range using the thread-local RNG.
 /// Includes the range endpoints.
 pub fn jitter(range: &Range<u64>) -> u64 {
-    let mut rng = rand::thread_rng();
-    rng.gen_range(range.start..=range.end)
+    rand::random_range(range.start..=range.end)
 }
 
 pub fn duration_add_jitter(duration: &Duration, jitter_sec_range: &Range<u64>) -> Duration {

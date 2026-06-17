@@ -19,6 +19,7 @@ pub struct AppConfig {
     pub http_server: HttpServer,
     pub database: Database,
     pub logging: Logging,
+    pub csrf: Csrf,
     pub auth: Auth,
     pub uploads: Uploads,
     pub ctx_identity: IdentityConfig,
@@ -43,4 +44,9 @@ pub struct Logging {
     pub file_directory: String,
     pub file_name_prefix: String,
     pub max_files: usize,
+}
+
+#[derive(Deserialize)]
+pub struct Csrf {
+    pub trusted_origins: Vec<String>,
 }

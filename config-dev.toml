@@ -5,16 +5,20 @@ port = 8080
 [database]
 url = "postgresql://postgres:postgres@localhost:5432/starriver"
 
-[auth]
-jws_exp_hours = 8
-jws_cookie_name = "at"
-jws_secret = "LZx"
-
 [logging]
 file_enabled = false
 file_directory = "log"
 file_name_prefix = "starriver.log"
 max_files = 30
+
+[csrf]
+# no need for localhost
+trusted_origins = ["https://example.com"]
+
+[auth]
+jws_exp_hours = 8
+jws_cookie_name = "at"
+jws_secret = "LZx"
 
 [uploads]
 storage_dir = "../../portable software/nginx-1.29.8/html/uploads"

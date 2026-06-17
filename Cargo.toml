@@ -47,7 +47,7 @@ tracing = "^0"
 tracing-subscriber = { version = "^0", features = ["env-filter", "json", "local-time"] }
 tracing-appender = "^0"
 tower = { version = "^0" }
-tower-http = { version = "^0", features = ["compression-br", "compression-gzip", "fs", "request-id", "trace"] }
+tower-http = { version = "^0", features = ["compression-br", "compression-gzip", "csrf", "fs", "request-id", "trace"] }
 uuid = { version = "^1", default-features = false, features = [ "std", "v7", "fast-rng", "serde", "macro-diagnostics"] }
 validator = { version = "^0", features = ["derive"] }
 

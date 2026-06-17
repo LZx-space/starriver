@@ -12,6 +12,7 @@ use tokio::{net::TcpListener, signal};
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer,
+    csrf::CsrfLayer,
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::{DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
@@ -40,6 +41,8 @@ async fn main() {
             error!(error = %e, "connect to database");
             panic!("failed to connect to database: {}", e);
         });
+
+    // configure each bounded ctx state
     let auth = Arc::new(app_cfg.auth);
     let uploads = Arc::new(app_cfg.uploads);
     let identity_state = IdentityState::new(conn.clone(), auth.clone(), &app_cfg.ctx_identity)
@@ -60,7 +63,16 @@ async fn main() {
         panic!("failed to create blogging state: {}", e);
     });
 
-    let user_service = identity_state.user_service.clone();
+    // configure csrf layer
+    let mut csrf_layer = CsrfLayer::new();
+    for origin in &app_cfg.csrf.trusted_origins {
+        info!("adding csrf trusted origin: {}", origin);
+        csrf_layer = csrf_layer.add_trusted_origin(origin).unwrap_or_else(|e| {
+            error!(error = %e, "configure csrf layer");
+            panic!("failed to config csrf layer with origin: {}", e);
+        });
+    }
+
     let middleware_service = ServiceBuilder::new()
         .layer(CompressionLayer::new().gzip(true).br(true))
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
@@ -71,9 +83,10 @@ async fn main() {
                 .on_response(DefaultOnResponse::default().level(tracing::Level::INFO))
                 .on_failure(DefaultOnFailure::default().level(tracing::Level::INFO)),
         )
+        .layer(csrf_layer)
         .layer(build_authentication_layer(
             UsernamePasswordAuthenticator {
-                user_service,
+                user_service: identity_state.user_service.clone(),
                 cfg: auth.clone(),
             },
             auth,

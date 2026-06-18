@@ -25,7 +25,6 @@ starriver-shared-framework = { path = "crates/starriver-shared-framework" }
 axum = { version = "^0", features = ["macros", "multipart"] }
 axum-extra = { version = "^0", features = ["cookie", "form"] }
 axum-valid = "^0"
-anyhow = "^1"
 argon2 = "^0"
 chrono = "^0"
 config = "^0"

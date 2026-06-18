@@ -63,15 +63,20 @@ async fn main() {
         panic!("failed to create blogging state: {}", e);
     });
 
-    // configure csrf layer
-    let mut csrf_layer = CsrfLayer::new();
-    for origin in &app_cfg.csrf.trusted_origins {
-        info!("adding csrf trusted origin: {}", origin);
-        csrf_layer = csrf_layer.add_trusted_origin(origin).unwrap_or_else(|e| {
-            error!(error = %e, "configure csrf layer");
-            panic!("failed to config csrf layer with origin: {}", e);
-        });
-    }
+    // configure middleware
+    let csrf_layer = if !app_cfg.csrf.enabled {
+        None
+    } else {
+        let mut csrf_layer = CsrfLayer::new();
+        for origin in &app_cfg.csrf.trusted_origins {
+            info!("adding csrf trusted origin: {}", origin);
+            csrf_layer = csrf_layer.add_trusted_origin(origin).unwrap_or_else(|e| {
+                error!(error = %e, "configure csrf layer");
+                panic!("failed to config csrf layer with origin: {}", e);
+            });
+        }
+        Some(csrf_layer)
+    };
 
     let middleware_service = ServiceBuilder::new()
         .layer(CompressionLayer::new().gzip(true).br(true))
@@ -83,7 +88,7 @@ async fn main() {
                 .on_response(DefaultOnResponse::default().level(tracing::Level::INFO))
                 .on_failure(DefaultOnFailure::default().level(tracing::Level::INFO)),
         )
-        .layer(csrf_layer)
+        .option_layer(csrf_layer)
         .layer(build_authentication_layer(
             UsernamePasswordAuthenticator {
                 user_service: identity_state.user_service.clone(),
@@ -92,11 +97,13 @@ async fn main() {
             auth,
         ));
 
+    // configure router
     let router = Router::new()
         .merge(identity_router::create_router(identity_state))
         .merge(blogging_router::create_router(blogging_state))
         .layer(middleware_service);
 
+    // configure server
     let listener = TcpListener::bind(addrs).await.unwrap_or_else(|e| {
         error!(error = %e, "listener bind addr");
         panic!("failed to bind local address");

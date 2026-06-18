@@ -48,5 +48,6 @@ pub struct Logging {
 
 #[derive(Deserialize)]
 pub struct Csrf {
+    pub enabled: bool,
     pub trusted_origins: Vec<String>,
 }

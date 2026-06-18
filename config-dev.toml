@@ -12,8 +12,12 @@ file_name_prefix = "starriver.log"
 max_files = 30
 
 [csrf]
+enabled = false
 # no need for localhost
-trusted_origins = ["https://example.com"]
+trusted_origins = [
+    "https://www.example.com",
+    "https://example.com",
+]
 
 [auth]
 jws_exp_hours = 8

@@ -5,7 +5,10 @@ use axum::{
     http::{Method, Request, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use axum_extra::extract::{CookieJar, cookie::Cookie};
+use axum_extra::extract::{
+    CookieJar,
+    cookie::{Cookie, SameSite},
+};
 use http::request::Parts;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
@@ -154,6 +157,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
         let cookie = Cookie::build((&self.cfg.jws_cookie_name, jws))
             .http_only(true)
             .secure(true)
+            .same_site(SameSite::Lax)
             .path("/")
             .build();
 

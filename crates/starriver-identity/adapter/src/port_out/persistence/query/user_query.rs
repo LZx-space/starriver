@@ -1,14 +1,59 @@
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect};
-use starriver_identity_application::port::user_query::UserQuery;
-use starriver_shared_base::error::QueryError;
+use sea_orm::{
+    ColumnTrait, EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
+    sea_query::NullOrdering,
+};
+use starriver_identity_application::{
+    dto::user_dto::res::UserDetailDto, port::user_query::UserQuery,
+};
+use starriver_shared_base::{
+    dto::{PageQuery, PageResult},
+    error::QueryError,
+};
 use starriver_shared_framework::db::DefaultConnection;
 use uuid::Uuid;
 
-use crate::port_out::persistence::po::user_po::{self, Entity};
+use crate::port_out::persistence::po::user_po::{self, Column, Entity};
 
 pub struct DefaultUserQuery;
 
 impl UserQuery<DefaultConnection> for DefaultUserQuery {
+    async fn paginate(
+        &self,
+        conn: &DefaultConnection,
+        q: PageQuery,
+    ) -> Result<PageResult<UserDetailDto>, QueryError> {
+        let users = Entity::find()
+            .select_only()
+            .columns([
+                Column::Id,
+                Column::Username,
+                Column::Email,
+                Column::State,
+                Column::CreatedAt,
+                Column::UpdatedAt,
+            ])
+            .order_by_with_nulls(Column::UpdatedAt, Order::Desc, NullOrdering::Last)
+            .offset(q.page * q.page_size)
+            .limit(q.page_size)
+            .all(conn)
+            .await
+            .map_err(|e| QueryError::DbError(e.to_string()))?
+            .into_iter()
+            .map(|e| UserDetailDto {
+                id: e.id,
+                username: e.username,
+                email: e.email,
+            })
+            .collect::<Vec<_>>();
+        let record_total = Entity::find()
+            .select_only()
+            .column(Column::Id)
+            .count(conn)
+            .await
+            .map_err(|e| QueryError::DbError(e.to_string()))?;
+        Ok(PageResult::new(q.page, q.page_size, record_total, users))
+    }
+
     async fn exists_by_email(
         &self,
         conn: &DefaultConnection,

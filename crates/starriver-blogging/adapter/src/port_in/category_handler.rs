@@ -1,4 +1,5 @@
 use axum::{extract::State, response::IntoResponse};
+use starriver_blogging_application::dto::category_dto::req::CreateOrUpdateCategoryCmd;
 use starriver_shared_framework::{
     extract::{Json, Path},
     middleware::authentication::default_impl::AuthenticatedUser,
@@ -6,10 +7,7 @@ use starriver_shared_framework::{
 };
 use uuid::Uuid;
 
-use crate::{
-    dto::category_dto::req::CreateOrUpdateCategoryCmd, error_mapping::map_error,
-    port_in::state::BloggingState,
-};
+use crate::{error_mapping::map_error, port_in::state::BloggingState};
 
 pub async fn list_all(state: State<BloggingState>) -> Result<impl IntoResponse, ApiError> {
     state

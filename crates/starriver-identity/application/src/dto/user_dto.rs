@@ -81,4 +81,11 @@ pub mod res {
         pub username: String,
         pub email: String,
     }
+
+    #[derive(Serialize)]
+    pub struct UserDetailDto {
+        pub id: Uuid,
+        pub username: String,
+        pub email: String,
+    }
 }

@@ -3,7 +3,7 @@ pub mod req {
     use uuid::Uuid;
     use validator::Validate;
 
-    #[derive(Debug, Deserialize, PartialEq, Eq, Hash, Validate)]
+    #[derive(Debug, Deserialize, PartialEq, Eq, Validate)]
     pub struct PageQuery {
         #[validate(range(min = 0, max = 10))]
         pub page: u64,

@@ -4,6 +4,7 @@ use axum::response::IntoResponse;
 use starriver_identity_application::dto::user_dto::req::{
     ChangePasswordCmd, EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd,
 };
+use starriver_shared_base::dto::PageQuery;
 use starriver_shared_base::middleware::authentication::core::principal::Principal;
 use starriver_shared_framework::extract::{Json, JsonEx, Path};
 use starriver_shared_framework::middleware::authentication::default_impl::AuthenticatedUser;
@@ -17,6 +18,18 @@ pub async fn me(user: AuthenticatedUser) -> Result<impl IntoResponse, ApiError> 
 }
 
 ////////////////////////////////////////////////////////////////////
+
+pub async fn paginate(
+    state: State<IdentityState>,
+    q: Json<PageQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    state
+        .user_service
+        .paginate(q.0)
+        .await
+        .map_err(map_error)
+        .map(Json)
+}
 
 pub async fn send_register_email(
     state: State<IdentityState>,

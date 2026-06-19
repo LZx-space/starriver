@@ -24,9 +24,9 @@ use starriver_shared_framework::{
 };
 use uuid::Uuid;
 
-use crate::{
-    dto::post_dto::{PostDetailRow, PostExcerptRow},
-    port_out::persistence::po::{
+use crate::port_out::persistence::{
+    dto::post_row::{PostDetailRow, PostExcerptRow},
+    po::{
         attachment_po, category_po, post_attachment_po,
         post_po::{Column, Entity, PostStatePo, Relation},
     },

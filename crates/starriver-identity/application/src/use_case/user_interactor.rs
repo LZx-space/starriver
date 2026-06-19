@@ -8,6 +8,7 @@ use starriver_identity_domain::{
 use starriver_shared_base::{
     authentication::UsernamePasswordCredentials,
     db::{Connection, Revision, Transaction},
+    dto::{PageQuery, PageResult},
     error::RepositoryError,
     middleware::authentication::core::error::AuthenticationError,
 };
@@ -18,7 +19,7 @@ use tracing::{error, info, warn};
 use crate::{
     dto::user_dto::{
         req::{ChangePasswordCmd, EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd},
-        res::UserDetail,
+        res::{UserDetail, UserDetailDto},
     },
     error::CtxError,
     port::{
@@ -66,6 +67,13 @@ where
             user_factory,
             pwd_service,
         }
+    }
+
+    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<UserDetailDto>, CtxError> {
+        self.user_query.paginate(&self.conn, q).await.map_err(|e| {
+            error!(error=%e, "paginate users failed");
+            CtxError::Internal
+        })
     }
 
     /// 发送邮箱验证邮件，永远不返回失败以防暴力核验邮箱

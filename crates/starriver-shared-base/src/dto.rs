@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IdName<T> {
@@ -10,6 +11,14 @@ pub struct IdName<T> {
 pub struct IdValue<I, V> {
     pub id: I,
     pub value: V,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct PageQuery {
+    #[validate(range(min = 0, max = 10))]
+    pub page: u64,
+    #[validate(range(min = 1, max = 20))]
+    pub page_size: u64,
 }
 
 /// 页数据结果

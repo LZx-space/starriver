@@ -91,7 +91,7 @@ async fn main() {
         .option_layer(csrf_layer)
         .layer(build_authentication_layer(
             UsernamePasswordAuthenticator {
-                user_service: identity_state.user_service.clone(),
+                auth_service: identity_state.authentication_interactor.clone(),
                 cfg: auth.clone(),
             },
             auth,

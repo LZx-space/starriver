@@ -11,14 +11,14 @@ use crate::port::category_cache::CACHE_KEY_CATEGORY_LIST;
 use crate::port::category_query::CategoryQuery;
 use crate::port::category_repository::CategoryRepository;
 
-pub struct CategoryApplication<Conn, Q, R, C> {
+pub struct CategoryInteractor<Conn, Q, R, C> {
     conn: Conn,
     query: Q,
     repo: R,
     cache: C,
 }
 
-impl<Conn, Q, R, C> CategoryApplication<Conn, Q, R, C>
+impl<Conn, Q, R, C> CategoryInteractor<Conn, Q, R, C>
 where
     Conn: Connection,
     Q: CategoryQuery<Conn>,

@@ -32,7 +32,17 @@ impl DefaultUserRepository {
             .one(conn)
             .await
             .map(|e| {
-                e.map(|e| User::from_repo(e.id, e.username, e.password, e.email, e.state.into()))
+                e.map(|e| {
+                    User::from_repo(
+                        e.id,
+                        e.username,
+                        e.password,
+                        e.email,
+                        e.state.into(),
+                        e.bad_password_window_start,
+                        e.bad_password_attempts as u8,
+                    )
+                })
             })
             .map_err(db_2_repo_error)
     }
@@ -42,20 +52,40 @@ impl DefaultUserRepository {
         conn: &impl ConnectionTrait,
         user: User,
     ) -> Result<User, RepositoryError> {
-        let (id, username, password, email, state) = user.dissolve();
+        let (
+            id,
+            username,
+            password,
+            email,
+            state,
+            bad_password_window_start,
+            bad_password_attempts,
+        ) = user.dissolve();
         ActiveModel {
             id: Set(id),
             username: Set(username.to_string()),
             password: Set(password.as_str().to_string()),
             email: Set(email.to_string()),
             state: Set(state.into()),
+            bad_password_window_start: Set(bad_password_window_start),
+            bad_password_attempts: Set(bad_password_attempts as i16),
             created_at: Set(OffsetDateTime::now_utc()),
             updated_at: NotSet,
         }
         .insert(conn)
         .await
         .map_err(db_2_repo_error)
-        .map(|m| User::from_repo(m.id, m.username, m.password, m.email, m.state.into()))
+        .map(|m| {
+            User::from_repo(
+                m.id,
+                m.username,
+                m.password,
+                m.email,
+                m.state.into(),
+                m.bad_password_window_start,
+                m.bad_password_attempts as u8,
+            )
+        })
     }
 
     async fn delete(
@@ -76,8 +106,25 @@ impl DefaultUserRepository {
         user: Revision<User>,
     ) -> Result<User, RepositoryError> {
         let (original, modified) = user.dissolve();
-        let (user_id, username, password, email, state) = original.dissolve();
-        let (_, new_username, new_password, new_email, new_state) = modified.dissolve();
+        let (
+            user_id,
+            username,
+            password,
+            email,
+            state,
+            bad_password_window_start,
+            bad_password_attempts,
+        ) = original.dissolve();
+        let (
+            _,
+            new_username,
+            new_password,
+            new_email,
+            new_state,
+            new_bad_password_window_start,
+            new_bad_password_attempts,
+        ) = modified.dissolve();
+
         let mut username = Unchanged(username.as_str().to_string());
         username.set_if_not_equals(new_username.as_str().to_string());
         let mut password = Unchanged(password.as_str().to_string());
@@ -86,6 +133,10 @@ impl DefaultUserRepository {
         email.set_if_not_equals(new_email.to_string());
         let mut state = Unchanged(state.into());
         state.set_if_not_equals(new_state.into());
+        let mut bad_password_window_start = Unchanged(bad_password_window_start);
+        bad_password_window_start.set_if_not_equals(new_bad_password_window_start);
+        let mut bad_password_attempts = Unchanged(bad_password_attempts as i16);
+        bad_password_attempts.set_if_not_equals(new_bad_password_attempts as i16);
 
         ActiveModel {
             id: Unchanged(user_id),
@@ -93,13 +144,25 @@ impl DefaultUserRepository {
             password,
             email,
             state,
+            bad_password_window_start,
+            bad_password_attempts,
             created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         }
         .update(conn)
         .await
         .map_err(db_2_repo_error)
-        .map(|m| User::from_repo(m.id, m.username, m.password, m.email, m.state.into()))
+        .map(|m| {
+            User::from_repo(
+                m.id,
+                m.username,
+                m.password,
+                m.email,
+                m.state.into(),
+                m.bad_password_window_start,
+                m.bad_password_attempts as u8,
+            )
+        })
     }
 }
 

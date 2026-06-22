@@ -11,7 +11,7 @@ use crate::{error_mapping::map_error, port_in::state::BloggingState};
 
 pub async fn list_all(state: State<BloggingState>) -> Result<impl IntoResponse, ApiError> {
     state
-        .category_service
+        .category_interactor
         .list_all()
         .await
         .map(Json)
@@ -23,7 +23,7 @@ pub async fn show(
     id: Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .category_service
+        .category_interactor
         .find(id.0)
         .await
         .map(Json)
@@ -36,7 +36,7 @@ pub async fn create(
     cmd: Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .category_service
+        .category_interactor
         .create(user.0, cmd.0.name)
         .await
         .map(Json)
@@ -50,7 +50,7 @@ pub async fn update(
     Json(cmd): Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .category_service
+        .category_interactor
         .update(user.0, id, cmd.name)
         .await
         .map(Json)
@@ -63,7 +63,7 @@ pub async fn delete(
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .category_service
+        .category_interactor
         .delete(user.0, id)
         .await
         .map(Json)

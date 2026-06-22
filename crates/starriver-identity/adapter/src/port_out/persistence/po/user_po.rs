@@ -17,6 +17,9 @@ pub struct Model {
     #[sea_orm(unique)]
     pub email: String,
     pub state: UserStateDo,
+    pub bad_password_window_start: Option<OffsetDateTime>,
+    // 注意sea-orm不支持u8,这里用i16接受以不污染外部配置文件及实体，所以他们
+    pub bad_password_attempts: i16,
     pub created_at: OffsetDateTime,
     pub updated_at: Option<OffsetDateTime>,
 }

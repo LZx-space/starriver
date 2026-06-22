@@ -13,14 +13,14 @@ use crate::{
     port::attachment_repository::AttachmentRepository,
 };
 
-pub struct AttachmentApplication<Conn, R, FC, ULR> {
+pub struct AttachmentInteractor<Conn, R, FC, ULR> {
     conn: Conn,
     repo: R,
     factory: AttachmentFactory<FC>,
     upload_location_resolver: ULR,
 }
 
-impl<Conn, R, FC, ULR> AttachmentApplication<Conn, R, FC, ULR>
+impl<Conn, R, FC, ULR> AttachmentInteractor<Conn, R, FC, ULR>
 where
     Conn: Connection,
     R: AttachmentRepository<Conn> + AttachmentRepository<<Conn as Connection>::Transaction>,

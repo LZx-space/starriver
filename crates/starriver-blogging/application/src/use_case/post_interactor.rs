@@ -25,14 +25,14 @@ use crate::{
     },
 };
 
-pub struct PostApplication<Conn, Q, R, PC, DC> {
+pub struct PostInteractor<Conn, Q, R, PC, DC> {
     conn: Conn,
     query: Q,
     repo: R,
     cache: PostCaches<PC, DC>,
 }
 
-impl<Conn, Q, R, PC, DC> PostApplication<Conn, Q, R, PC, DC>
+impl<Conn, Q, R, PC, DC> PostInteractor<Conn, Q, R, PC, DC>
 where
     Conn: Connection,
     Q: PostQuery<Conn>,

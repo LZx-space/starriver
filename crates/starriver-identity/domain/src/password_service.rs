@@ -1,11 +1,9 @@
 use std::sync::Arc;
-use std::time::Duration;
-use time::OffsetDateTime;
+
+use starriver_shared_base::middleware::authentication::core::error::AuthenticationError;
 
 use crate::error::DomainError;
 use crate::password_encoder::PasswordEncoder;
-use crate::security_event::entity::SecurityEvent;
-use crate::security_event::value_object::SecurityEventType;
 use crate::user::entity::User;
 use crate::user::policy::BadPasswordPolicy;
 use crate::user::specification::PasswordSpec;
@@ -33,49 +31,35 @@ where
         }
     }
 
-    pub fn policy(&self) -> &BadPasswordPolicy {
-        &self.pwd_policy
-    }
-
-    pub fn authenticate(&self, user: &User, raw_password: &str) -> Result<(), DomainError> {
+    /// # Returns
+    ///
+    /// - `Ok(())` - 密码匹配，用户认证成功
+    /// - `Err(AuthenticationError::UserLocked)` - 用户被锁定
+    /// - `Err(AuthenticationError::UserDisabled)` - 用户被禁用
+    /// - `Err(AuthenticationError::BadPassword)` - 密码不匹配，且修改状态
+    /// - `Err(AuthenticationError::InnerError)` - 密码编码失败
+    pub fn authenticate(
+        &self,
+        user: &mut User,
+        raw_password: &str,
+    ) -> Result<(), AuthenticationError> {
         match user.state() {
             UserState::Active => {}
-            UserState::Locked => return Err(DomainError::UserLocked),
-            UserState::Disabled => return Err(DomainError::UserDisabled),
+            UserState::Locked => return Err(AuthenticationError::UserLocked),
+            UserState::Disabled => return Err(AuthenticationError::UserDisabled),
         };
 
         let matches = self
             .pwd_encoder
-            .verify(raw_password, user.password().as_str())?;
+            .verify(raw_password, user.password().as_str())
+            .map_err(|e| AuthenticationError::InnerError {
+                message: e.to_string(),
+            })?;
         if !matches {
-            return Err(DomainError::BadPassword);
+            user.record_bad_password_and_attempt_lock(&self.pwd_policy);
+            return Err(AuthenticationError::BadPassword);
         }
         Ok(())
-    }
-
-    /// 依据尝试密码次数来锁定账户
-    pub fn check_and_lock_user(&self, user: &mut User, security_events: &[SecurityEvent]) {
-        let now = OffsetDateTime::now_utc();
-        let window = Duration::from_mins(self.pwd_policy.window_minutes);
-        // 找到最后一次解锁时间，作为计数起点
-        let since = security_events
-            .iter()
-            .filter(|e| matches!(e.event_type(), SecurityEventType::UserUnlocked))
-            .map(|e| e.created_at())
-            .max();
-
-        let bad_count = security_events
-            .iter()
-            .filter(|e| {
-                e.is_bad_password_attempt()
-                    && e.occurred_within(window, now)
-                    && since.is_none_or(|st| e.created_at() >= st) // 只看解锁之后
-            })
-            .count();
-
-        if bad_count > self.pwd_policy.max_attempts {
-            user.lock();
-        }
     }
 
     pub fn change_password(

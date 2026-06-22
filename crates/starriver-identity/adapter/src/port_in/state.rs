@@ -3,7 +3,10 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
 use starriver_identity_application::{
-    dto::user_dto::req::UserValidateCxt, use_case::user_interactor::UserApplicationService,
+    dto::user_dto::req::UserValidateCxt,
+    use_case::{
+        authentication_interactor::AuthenticationInteractor, user_interactor::UserInteractor,
+    },
 };
 use starriver_identity_domain::{
     password_service::PasswordDomainService,
@@ -41,13 +44,20 @@ pub struct IdentityState {
     pub username_spec: Arc<UsernameSpec>,
     pub password_spec: Arc<PasswordSpec>,
     //////////////////////////////////////////
-    pub user_service: Arc<
-        UserApplicationService<
+    pub user_interactor: Arc<
+        UserInteractor<
             DefaultConnection,
             DefaultUserQuery,
             DefaultUserRepository,
-            DefaultSecurityEventRepository,
             SmtpVerificationService,
+            Argon2PasswordEncoder,
+        >,
+    >,
+    pub authentication_interactor: Arc<
+        AuthenticationInteractor<
+            DefaultConnection,
+            DefaultUserRepository,
+            DefaultSecurityEventRepository,
             Argon2PasswordEncoder,
         >,
     >,
@@ -83,30 +93,42 @@ impl IdentityState {
         );
         let bad_password_policy = BadPasswordPolicy {
             window_minutes: cfg.bad_password.window_minutes,
-            max_attempts: cfg.bad_password.max_attempts as usize,
+            max_attempts: cfg.bad_password.max_attempts,
+            lockout_minutes: cfg.bad_password.lockout_minutes,
         };
 
-        let pwd_service = PasswordDomainService::new(
+        let pwd_service = Arc::new(PasswordDomainService::new(
             bad_password_policy,
             password_encoder,
             password_spec.clone(),
-        );
-        let user_service = UserApplicationService::new(
-            DefaultConnection::new(conn),
+        ));
+
+        let conn = DefaultConnection::new(conn.clone());
+        let user_interactor = UserInteractor::new(
+            conn.clone(),
             DefaultUserQuery,
             DefaultUserRepository,
-            DefaultSecurityEventRepository,
-            verification_code_service,
             user_factory,
-            pwd_service,
+            verification_code_service,
+            pwd_service.clone(),
         )
         .into();
+
+        let authentication_interactor = AuthenticationInteractor::new(
+            conn.clone(),
+            DefaultUserRepository,
+            DefaultSecurityEventRepository,
+            pwd_service.clone(),
+        )
+        .into();
+
         Ok(IdentityState {
             auth,
             email_spec,
             username_spec,
             password_spec,
-            user_service,
+            user_interactor,
+            authentication_interactor,
         })
     }
 }

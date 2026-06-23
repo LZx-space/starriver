@@ -3,9 +3,8 @@ use std::sync::Arc;
 use starriver_identity_adapter::{
     AuthenticationInteractor,
     port_out::{
-        persistence::repository::{
-            security_event_repository::DefaultSecurityEventRepository,
-            user_repository::DefaultUserRepository,
+        persistence::{
+            security_event_port::DefaultSecurityEventPort, user_repository::DefaultUserRepository,
         },
         service::password_encoder::Argon2PasswordEncoder,
     },
@@ -33,7 +32,7 @@ pub struct UsernamePasswordAuthenticator {
         AuthenticationInteractor<
             DefaultConnection,
             DefaultUserRepository,
-            DefaultSecurityEventRepository,
+            DefaultSecurityEventPort,
             Argon2PasswordEncoder,
         >,
     >,

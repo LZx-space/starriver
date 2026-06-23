@@ -6,7 +6,7 @@ use starriver_shared_base::{
     db::{Connection, Revision, Transaction},
     dto::{PageQuery, PageResult},
 };
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 use tracing::{error, info, warn};
 
 use crate::{
@@ -30,7 +30,7 @@ pub struct UserInteractor<Conn, UQ, UR, VCS, PE> {
     user_repo: UR,
     user_factory: UserFactory<PE>,
     verification_code_service: VCS,
-    pwd_service: Arc<PasswordDomainService<PE>>,
+    pwd_service: PasswordDomainService<PE>,
 }
 
 impl<Conn, UQ, UR, VCS, PE> UserInteractor<Conn, UQ, UR, VCS, PE>
@@ -48,7 +48,7 @@ where
         user_repo: UR,
         user_factory: UserFactory<PE>,
         verification_code_service: VCS,
-        pwd_service: Arc<PasswordDomainService<PE>>,
+        pwd_service: PasswordDomainService<PE>,
     ) -> Self {
         Self {
             conn,

@@ -23,12 +23,9 @@ use crate::{
     config::{BloggingConfig, Cache},
     port_out::{
         persistence::{
-            query::{category_query::DefaultCategoryQuery, post_query::DefaultPostQuery},
-            repository::{
-                attachment_repository::DefaultAttachmentRepository,
-                category_repository::DefaultCategoryRepository,
-                post_repository::DefaultPostRepository,
-            },
+            attachment_repository::DefaultAttachmentRepository,
+            category_query::DefaultCategoryQuery, category_repository::DefaultCategoryRepository,
+            post_query::DefaultPostQuery, post_repository::DefaultPostRepository,
         },
         service::file_type_checker::DefaultFileTypeChecker,
     },

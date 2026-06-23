@@ -3,7 +3,7 @@ use axum::{
     routing::{get, post, put},
 };
 
-use crate::port_in::{state::IdentityState, user_handler};
+use crate::port_in::{security_event_handler, state::IdentityState, user_handler};
 
 pub fn create_router(state: IdentityState) -> impl Into<Router> {
     Router::new()
@@ -14,6 +14,7 @@ pub fn create_router(state: IdentityState) -> impl Into<Router> {
             get(user_handler::paginate).post(user_handler::register_user),
         )
         .route("/users/{username}/state", put(user_handler::activate_user))
+        .route("/security-events", get(security_event_handler::paginate))
         .route(
             "/email-verifications",
             post(user_handler::send_register_email),

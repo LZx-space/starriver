@@ -1,5 +1,5 @@
 pub mod req {
-    use std::sync::Arc;
+    use std::{fmt::Display, sync::Arc};
 
     use serde::Deserialize;
     use starriver_identity_domain::user::specification::{PasswordSpec, UsernameSpec};
@@ -48,6 +48,30 @@ pub mod req {
         pub new_password_confirm: String,
     }
 
+    pub struct SecurityEventCmd {
+        pub user_id: Uuid,
+        pub event_type: SecurityEventType,
+        pub payload: String,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum SecurityEventType {
+        TryLoginWithBadPwd,
+        UserUnlocked,
+        PasswordChanged,
+    }
+
+    impl Display for SecurityEventType {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                SecurityEventType::TryLoginWithBadPwd => write!(f, "TryLoginWithBadPwd")?,
+                SecurityEventType::UserUnlocked => write!(f, "UserUnlocked")?,
+                SecurityEventType::PasswordChanged => write!(f, "PasswordChanged")?,
+            }
+            Ok(())
+        }
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////
 
     #[derive(Clone)]
@@ -73,6 +97,7 @@ pub mod req {
 
 pub mod res {
     use serde::Serialize;
+    use time::OffsetDateTime;
     use uuid::Uuid;
 
     #[derive(Serialize)]
@@ -87,5 +112,12 @@ pub mod res {
         pub id: Uuid,
         pub username: String,
         pub email: String,
+    }
+
+    #[derive(Serialize)]
+    pub struct SecurityEventDto {
+        pub id: Uuid,
+        pub event_type: String,
+        pub occurred_at: OffsetDateTime,
     }
 }

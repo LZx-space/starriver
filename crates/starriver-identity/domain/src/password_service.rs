@@ -9,6 +9,7 @@ use crate::user::policy::BadPasswordPolicy;
 use crate::user::specification::PasswordSpec;
 use crate::user::value_object::{HashedPassword, UserState};
 
+#[derive(Clone)]
 pub struct PasswordDomainService<PE> {
     pwd_policy: BadPasswordPolicy,
     pwd_encoder: Arc<PE>,

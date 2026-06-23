@@ -1,9 +1,5 @@
-use std::sync::Arc;
-
 use starriver_identity_domain::{
-    password_encoder::PasswordEncoder,
-    password_service::PasswordDomainService,
-    security_event::{entity::SecurityEvent, value_object::SecurityEventType},
+    password_encoder::PasswordEncoder, password_service::PasswordDomainService,
 };
 use starriver_shared_base::{
     authentication::UsernamePasswordCredentials,
@@ -14,37 +10,38 @@ use starriver_shared_base::{
 use tracing::{error, info};
 
 use crate::{
-    dto::user_dto::res::UserDetail,
-    port::{security_event_repository::SecurityEventRepository, user_repository::UserRepository},
+    dto::user_dto::{
+        req::{SecurityEventCmd, SecurityEventType},
+        res::UserDetail,
+    },
+    port::{security_event_port::SecurityEventPort, user_repository::UserRepository},
 };
 
 pub struct AuthenticationInteractor<Conn, UR, SER, PE> {
     conn: Conn,
     user_repo: UR,
-    security_event_repo: SER,
-    pwd_service: Arc<PasswordDomainService<PE>>,
+    security_event_recorder: SER,
+    pwd_service: PasswordDomainService<PE>,
 }
 
 impl<Conn, UR, SER, PE> AuthenticationInteractor<Conn, UR, SER, PE>
 where
     Conn: Connection,
-    UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
-    SER: SecurityEventRepository<Conn>
-        + SecurityEventRepository<<Conn as Connection>::Transaction>
-        + Sync,
+    UR: UserRepository<<Conn as Connection>::Transaction> + Sync,
+    SER: SecurityEventPort<<Conn as Connection>::Transaction> + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
     /// 新建
     pub fn new(
         conn: Conn,
         user_repo: UR,
-        security_event_repo: SER,
-        pwd_service: Arc<PasswordDomainService<PE>>,
+        security_event_recorder: SER,
+        pwd_service: PasswordDomainService<PE>,
     ) -> Self {
         Self {
             conn,
             user_repo,
-            security_event_repo,
+            security_event_recorder,
             pwd_service,
         }
     }
@@ -86,14 +83,14 @@ where
                         .await
                         .map_err(mapping_repo_error())?;
                     let user_id = user.dissolve().0;
-                    self.security_event_repo
+                    self.security_event_recorder
                         .insert(
                             &tx,
-                            SecurityEvent::new(
+                            SecurityEventCmd {
                                 user_id,
-                                SecurityEventType::TryLoginWithBadPwd,
-                                "bad password",
-                            ),
+                                event_type: SecurityEventType::TryLoginWithBadPwd,
+                                payload: "bad password".to_string(),
+                            },
                         )
                         .await
                         .map_err(mapping_repo_error())?;

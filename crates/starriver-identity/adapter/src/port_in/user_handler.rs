@@ -6,7 +6,7 @@ use starriver_identity_application::dto::user_dto::req::{
 };
 use starriver_shared_base::dto::PageQuery;
 use starriver_shared_base::middleware::authentication::core::principal::Principal;
-use starriver_shared_framework::extract::{Json, JsonEx, Path};
+use starriver_shared_framework::extract::{Json, JsonEx, Path, Query};
 use starriver_shared_framework::middleware::authentication::default_impl::AuthenticatedUser;
 use starriver_shared_framework::response::ApiError;
 
@@ -21,7 +21,7 @@ pub async fn me(user: AuthenticatedUser) -> Result<impl IntoResponse, ApiError> 
 
 pub async fn paginate(
     state: State<IdentityState>,
-    q: Json<PageQuery>,
+    q: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .user_interactor

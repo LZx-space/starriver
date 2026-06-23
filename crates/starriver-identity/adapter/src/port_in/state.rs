@@ -5,7 +5,8 @@ use sea_orm::DatabaseConnection;
 use starriver_identity_application::{
     dto::user_dto::req::UserValidateCxt,
     use_case::{
-        authentication_interactor::AuthenticationInteractor, user_interactor::UserInteractor,
+        authentication_interactor::AuthenticationInteractor,
+        security_event_interactor::SecurityEventInteractor, user_interactor::UserInteractor,
     },
 };
 use starriver_identity_domain::{
@@ -23,11 +24,8 @@ use crate::{
     config::IdentityConfig,
     port_out::{
         persistence::{
-            query::user_query::DefaultUserQuery,
-            repository::{
-                security_event_repository::DefaultSecurityEventRepository,
-                user_repository::DefaultUserRepository,
-            },
+            security_event_port::DefaultSecurityEventPort, user_query::DefaultUserQuery,
+            user_repository::DefaultUserRepository,
         },
         service::{
             email_verification_service::SmtpVerificationService,
@@ -57,10 +55,12 @@ pub struct IdentityState {
         AuthenticationInteractor<
             DefaultConnection,
             DefaultUserRepository,
-            DefaultSecurityEventRepository,
+            DefaultSecurityEventPort,
             Argon2PasswordEncoder,
         >,
     >,
+    pub security_event_interactor:
+        Arc<SecurityEventInteractor<DefaultConnection, DefaultSecurityEventPort>>,
 }
 
 impl IdentityState {
@@ -97,11 +97,11 @@ impl IdentityState {
             lockout_minutes: cfg.bad_password.lockout_minutes,
         };
 
-        let pwd_service = Arc::new(PasswordDomainService::new(
+        let pwd_service = PasswordDomainService::new(
             bad_password_policy,
             password_encoder,
             password_spec.clone(),
-        ));
+        );
 
         let conn = DefaultConnection::new(conn.clone());
         let user_interactor = UserInteractor::new(
@@ -117,10 +117,13 @@ impl IdentityState {
         let authentication_interactor = AuthenticationInteractor::new(
             conn.clone(),
             DefaultUserRepository,
-            DefaultSecurityEventRepository,
+            DefaultSecurityEventPort,
             pwd_service.clone(),
         )
         .into();
+
+        let security_event_interactor =
+            SecurityEventInteractor::new(conn.clone(), DefaultSecurityEventPort).into();
 
         Ok(IdentityState {
             auth,
@@ -129,6 +132,7 @@ impl IdentityState {
             password_spec,
             user_interactor,
             authentication_interactor,
+            security_event_interactor,
         })
     }
 }

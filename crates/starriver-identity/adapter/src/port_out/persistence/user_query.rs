@@ -23,15 +23,6 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
         q: PageQuery,
     ) -> Result<PageResult<UserDetailDto>, QueryError> {
         let users = Entity::find()
-            .select_only()
-            .columns([
-                Column::Id,
-                Column::Username,
-                Column::Email,
-                Column::State,
-                Column::CreatedAt,
-                Column::UpdatedAt,
-            ])
             .order_by_with_nulls(Column::UpdatedAt, Order::Desc, NullOrdering::Last)
             .offset(q.page * q.page_size)
             .limit(q.page_size)

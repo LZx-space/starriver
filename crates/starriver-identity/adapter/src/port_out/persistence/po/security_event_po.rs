@@ -1,5 +1,5 @@
 use sea_orm::entity::prelude::*;
-use starriver_identity_domain::security_event::value_object::SecurityEventType;
+use starriver_identity_application::dto::user_dto::req::SecurityEventType;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

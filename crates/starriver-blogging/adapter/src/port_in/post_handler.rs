@@ -14,7 +14,7 @@ pub async fn paginate(
     query: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .post_service
+        .post_interactor
         .paginate(query.0)
         .await
         .map_err(map_error)
@@ -26,7 +26,7 @@ pub async fn show(
     id: Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .post_service
+        .post_interactor
         .find(id.0)
         .await
         .map_err(map_error)
@@ -39,7 +39,7 @@ pub async fn create(
     cmd: Json<SaveOrUpdatePostCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .post_service
+        .post_interactor
         .create(user.0, cmd.0)
         .await
         .map_err(map_error)
@@ -53,7 +53,7 @@ pub async fn update(
     cmd: Json<SaveOrUpdatePostCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .post_service
+        .post_interactor
         .update(user.0, id.0, cmd.0)
         .await
         .map_err(map_error)
@@ -66,7 +66,7 @@ pub async fn delete(
     user: AuthenticatedUser,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .post_service
+        .post_interactor
         .delete_by_id(user.0, id.0)
         .await
         .map_err(map_error)

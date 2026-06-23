@@ -6,10 +6,7 @@ use starriver_blogging_application::{
         post_dto::res::{PostDetailDto, PostExcerptDto},
     },
     port::post_cache::{PostCaches, PostPageKey},
-    use_case::{
-        attachement_interactor::AttachmentApplication, category_interactor::CategoryApplication,
-        post_interactor::PostApplication,
-    },
+    use_case::{attachement_interactor, category_interactor, post_interactor},
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_base::{dto::PageResult, random::duration_with_jitter};
@@ -37,7 +34,7 @@ use crate::{
     },
 };
 
-type PostService = PostApplication<
+type PostInteractor = post_interactor::PostInteractor<
     DefaultConnection,
     DefaultPostQuery,
     DefaultPostRepository,
@@ -45,14 +42,14 @@ type PostService = PostApplication<
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
 
-type CategoryService = CategoryApplication<
+type CategoryInteractor = category_interactor::CategoryInteractor<
     DefaultConnection,
     DefaultCategoryQuery,
     DefaultCategoryRepository,
     DefaultCache<(), Vec<CategoryDetailDto>>,
 >;
 
-type AttachmentService = AttachmentApplication<
+type AttachmentInteractor = attachement_interactor::AttachmentInteractor<
     DefaultConnection,
     DefaultAttachmentRepository,
     DefaultFileTypeChecker,
@@ -65,9 +62,9 @@ pub struct BloggingState {
     pub auth: Arc<Auth>,
     pub uploads: Arc<Uploads>,
     pub upload_file_url_builder: DefaultUploadLocationResolver,
-    pub post_service: Arc<PostService>,
-    pub category_service: Arc<CategoryService>,
-    pub attachment_service: Arc<AttachmentService>,
+    pub post_interactor: Arc<PostInteractor>,
+    pub category_interactor: Arc<CategoryInteractor>,
+    pub attachment_interactor: Arc<AttachmentInteractor>,
 }
 
 impl BloggingState {
@@ -81,7 +78,7 @@ impl BloggingState {
         let conn = DefaultConnection::new(conn);
 
         let cache_cfg = &cfg.cache;
-        let post_service = PostApplication::new(
+        let post_interactor = PostInteractor::new(
             conn.clone(),
             DefaultPostQuery::new(upload_file_url_builder.clone()),
             DefaultPostRepository,
@@ -92,7 +89,7 @@ impl BloggingState {
         )
         .into();
 
-        let category_service = CategoryApplication::new(
+        let category_interactor = CategoryInteractor::new(
             conn.clone(),
             DefaultCategoryQuery,
             DefaultCategoryRepository,
@@ -100,7 +97,7 @@ impl BloggingState {
         )
         .into();
 
-        let attachment_service = AttachmentApplication::new(
+        let attachment_interactor = AttachmentInteractor::new(
             conn.clone(),
             DefaultAttachmentRepository,
             AttachmentFactory::new(DefaultFileTypeChecker {}),
@@ -112,9 +109,9 @@ impl BloggingState {
             auth,
             uploads,
             upload_file_url_builder,
-            post_service,
-            category_service,
-            attachment_service,
+            post_interactor,
+            category_interactor,
+            attachment_interactor,
         })
     }
 }

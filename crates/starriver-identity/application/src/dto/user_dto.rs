@@ -8,7 +8,7 @@ pub mod req {
 
     #[derive(Debug, Deserialize, Validate)]
     #[validate(context = UserValidateCxt)]
-    pub struct UserCmd {
+    pub struct UserRegisterCmd {
         #[validate(custom(function = "validate_username", use_context))]
         pub username: String,
         #[validate(custom(function = "validate_password", use_context))]
@@ -20,13 +20,13 @@ pub mod req {
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    pub struct EmailVerifyCmd {
+    pub struct UserRegisterEmailCmd {
         #[validate(email)]
         pub email: String,
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    pub struct EmailActiveCmd {
+    pub struct UserActiveEmailCmd {
         pub user_id: Uuid,
         #[validate(email)]
         pub email: String,

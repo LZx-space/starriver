@@ -1,19 +1,13 @@
 use std::sync::Arc;
 
 use starriver_identity_adapter::{
-    UserApplicationService,
+    AuthenticationInteractor,
     port_out::{
-        persistence::{
-            query::user_query::DefaultUserQuery,
-            repository::{
-                security_event_repository::DefaultSecurityEventRepository,
-                user_repository::DefaultUserRepository,
-            },
+        persistence::repository::{
+            security_event_repository::DefaultSecurityEventRepository,
+            user_repository::DefaultUserRepository,
         },
-        service::{
-            email_verification_service::SmtpVerificationService,
-            password_encoder::Argon2PasswordEncoder,
-        },
+        service::password_encoder::Argon2PasswordEncoder,
     },
 };
 use starriver_shared_base::{
@@ -35,13 +29,11 @@ use starriver_shared_framework::{
 use time::Duration;
 
 pub struct UsernamePasswordAuthenticator {
-    pub user_service: Arc<
-        UserApplicationService<
+    pub auth_service: Arc<
+        AuthenticationInteractor<
             DefaultConnection,
-            DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventRepository,
-            SmtpVerificationService,
             Argon2PasswordEncoder,
         >,
     >,
@@ -56,7 +48,7 @@ impl Authenticator for UsernamePasswordAuthenticator {
         &self,
         credentials: &Self::Credentials,
     ) -> Result<Self::Principal, AuthenticationError> {
-        let detail = self.user_service.authenticate(credentials).await?;
+        let detail = self.auth_service.authenticate(credentials).await?;
         let claims = PrincipalClaims::new(
             Duration::hours(self.cfg.jws_exp_hours as i64),
             detail.id,

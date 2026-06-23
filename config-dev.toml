@@ -37,6 +37,8 @@ password = "^[A-Za-z0-9@$!%*?&]{8,12}$"
 [ctx_identity.bad_password]
 window_minutes = 10
 max_attempts = 5
+lockout_minutes = 60
+
 
 [ctx_identity.email_smtp]
 smtp_username = "lzx@example.com"

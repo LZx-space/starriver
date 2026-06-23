@@ -71,7 +71,7 @@ pub async fn upload_attachment(
 
         info!(file=%file_name, "uploading attachment");
         let attachment = state
-            .attachment_service
+            .attachment_interactor
             .upload(
                 attachment_id, // 附件ID生成附件名，确保外部Writer的文件和附件是同一个
                 claimed_extension.as_str(),

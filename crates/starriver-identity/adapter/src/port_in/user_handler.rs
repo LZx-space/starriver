@@ -2,7 +2,7 @@ use axum::extract::State;
 use axum::response::IntoResponse;
 
 use starriver_identity_application::dto::user_dto::req::{
-    ChangePasswordCmd, EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd,
+    ChangePasswordCmd, UserActiveCmd, UserActiveEmailCmd, UserRegisterCmd, UserRegisterEmailCmd,
 };
 use starriver_shared_base::dto::PageQuery;
 use starriver_shared_base::middleware::authentication::core::principal::Principal;
@@ -24,19 +24,21 @@ pub async fn paginate(
     q: Json<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .user_service
+        .user_interactor
         .paginate(q.0)
         .await
         .map_err(map_error)
         .map(Json)
 }
 
+////////////////////////////////////////////////////////////////////
+
 pub async fn send_register_email(
     state: State<IdentityState>,
-    cmd: Json<EmailVerifyCmd>,
+    cmd: Json<UserRegisterEmailCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .user_service
+        .user_interactor
         .send_register_email(cmd.0)
         .await
         .map_err(|e| e.into())
@@ -45,11 +47,11 @@ pub async fn send_register_email(
 #[axum::debug_handler]
 pub async fn register_user(
     state: State<IdentityState>,
-    cmd: JsonEx<UserCmd>,
+    cmd: JsonEx<UserRegisterCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     let cmd = cmd.0;
     state
-        .user_service
+        .user_interactor
         .register_user(cmd)
         .await
         .map_err(map_error)
@@ -57,13 +59,13 @@ pub async fn register_user(
 
 ////////////////////////////////////////////////////////////////////
 
-pub async fn send_activate_email(
+pub async fn send_activation_email(
     state: State<IdentityState>,
-    cmd: Json<EmailActiveCmd>,
+    cmd: Json<UserActiveEmailCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .user_service
-        .send_active_email(cmd.0)
+        .user_interactor
+        .send_activation_email(cmd.0)
         .await
         .map_err(|e| e.into())
 }
@@ -74,11 +76,13 @@ pub async fn activate_user(
     cmd: Json<UserActiveCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .user_service
+        .user_interactor
         .activate_user(username.0, cmd.0)
         .await
         .map_err(map_error)
 }
+
+////////////////////////////////////////////////////////////////////
 
 pub async fn change_password(
     state: State<IdentityState>,
@@ -87,7 +91,7 @@ pub async fn change_password(
 ) -> Result<impl IntoResponse, ApiError> {
     let username = user.id();
     state
-        .user_service
+        .user_interactor
         .change_password(username, cmd.0)
         .await
         .map_err(map_error)

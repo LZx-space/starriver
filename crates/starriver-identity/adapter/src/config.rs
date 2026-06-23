@@ -16,8 +16,9 @@ pub struct Regexes {
 
 #[derive(Deserialize)]
 pub struct BadPassword {
-    pub window_minutes: u64,
-    pub max_attempts: u64,
+    pub window_minutes: u16,
+    pub max_attempts: u8,
+    pub lockout_minutes: u16,
 }
 
 #[derive(Deserialize)]

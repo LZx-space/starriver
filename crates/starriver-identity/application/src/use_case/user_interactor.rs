@@ -1,50 +1,43 @@
 use starriver_identity_domain::{
-    error::DomainError,
-    password_encoder::PasswordEncoder,
-    password_service::PasswordDomainService,
-    security_event::{entity::SecurityEvent, value_object::SecurityEventType},
-    user::{factory::UserFactory, value_object::UserState},
+    password_encoder::PasswordEncoder, password_service::PasswordDomainService,
+    user::factory::UserFactory,
 };
 use starriver_shared_base::{
-    authentication::UsernamePasswordCredentials,
     db::{Connection, Revision, Transaction},
     dto::{PageQuery, PageResult},
-    error::RepositoryError,
-    middleware::authentication::core::error::AuthenticationError,
 };
-use std::convert::Infallible;
-use time::{Duration, OffsetDateTime};
+use std::{convert::Infallible, sync::Arc};
 use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{ChangePasswordCmd, EmailActiveCmd, EmailVerifyCmd, UserActiveCmd, UserCmd},
-        res::{UserDetail, UserDetailDto},
+        req::{
+            ChangePasswordCmd, UserActiveCmd, UserActiveEmailCmd, UserRegisterCmd,
+            UserRegisterEmailCmd,
+        },
+        res::UserDetailDto,
     },
     error::CtxError,
     port::{
-        email_verification_service::EmailVerificationService,
-        security_event_repository::SecurityEventRepository, user_query::UserQuery,
+        email_verification_service::EmailVerificationService, user_query::UserQuery,
         user_repository::UserRepository,
     },
 };
 
-pub struct UserApplicationService<Conn, UQ, UR, SER, VCS, PE> {
+pub struct UserInteractor<Conn, UQ, UR, VCS, PE> {
     conn: Conn,
     user_query: UQ,
     user_repo: UR,
     user_factory: UserFactory<PE>,
-    security_event_repo: SER,
     verification_code_service: VCS,
-    pwd_service: PasswordDomainService<PE>,
+    pwd_service: Arc<PasswordDomainService<PE>>,
 }
 
-impl<Conn, UQ, UR, SER, VCS, PE> UserApplicationService<Conn, UQ, UR, SER, VCS, PE>
+impl<Conn, UQ, UR, VCS, PE> UserInteractor<Conn, UQ, UR, VCS, PE>
 where
     Conn: Connection,
     UQ: UserQuery<Conn> + Sync,
     UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
-    SER: SecurityEventRepository<Conn> + Sync,
     VCS: EmailVerificationService + Send + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
@@ -53,16 +46,14 @@ where
         conn: Conn,
         user_query: UQ,
         user_repo: UR,
-        security_event_repo: SER,
-        verification_code_service: VCS,
         user_factory: UserFactory<PE>,
-        pwd_service: PasswordDomainService<PE>,
+        verification_code_service: VCS,
+        pwd_service: Arc<PasswordDomainService<PE>>,
     ) -> Self {
         Self {
             conn,
             user_query,
             user_repo,
-            security_event_repo,
             verification_code_service,
             user_factory,
             pwd_service,
@@ -76,8 +67,10 @@ where
         })
     }
 
+    ///// register user ///////////////////////////////////////////////////////////////////////
+
     /// 发送邮箱验证邮件，永远不返回失败以防暴力核验邮箱
-    pub async fn send_register_email(&self, cmd: EmailVerifyCmd) -> Result<(), Infallible> {
+    pub async fn send_register_email(&self, cmd: UserRegisterEmailCmd) -> Result<(), Infallible> {
         let email = cmd.email.as_str();
         match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(found) => {
@@ -97,7 +90,7 @@ where
         }
     }
 
-    pub async fn register_user(&self, cmd: UserCmd) -> Result<(), CtxError> {
+    pub async fn register_user(&self, cmd: UserRegisterCmd) -> Result<(), CtxError> {
         let email_code = cmd.email_code.as_str();
         let email = cmd.email.as_str();
         let matches = self
@@ -120,8 +113,10 @@ where
         Ok(())
     }
 
+    ///// activate user by self ///////////////////////////////////////////////////////////////////////
+
     /// 发送用户激活邮件，永远不返回失败以防暴力核验邮箱
-    pub async fn send_active_email(&self, cmd: EmailActiveCmd) -> Result<(), Infallible> {
+    pub async fn send_activation_email(&self, cmd: UserActiveEmailCmd) -> Result<(), Infallible> {
         let email = cmd.email.as_str();
         match self
             .user_query
@@ -203,119 +198,6 @@ where
         }
     }
 
-    pub async fn authenticate(
-        &self,
-        credentials: &UsernamePasswordCredentials,
-    ) -> Result<UserDetail, AuthenticationError> {
-        let username = credentials.username.as_str();
-        let password = credentials.password.as_str();
-
-        let tx = self.conn.begin().await.map_err(|e| {
-            error!(error = %e, "begin transaction failed");
-            AuthenticationError::InnerError {
-                message: e.to_string(),
-            }
-        })?;
-        let result = async {
-            let user = self
-                .user_repo
-                .find_by_username(&self.conn, username)
-                .await
-                .map_err(mapping_error())?;
-
-            let Some(mut user) = user else {
-                info!(username=%username, "user not found");
-                return Err(AuthenticationError::BadPassword); // 避免刻意查询账户是否存在
-            };
-
-            let result = self.pwd_service.authenticate(&user, password);
-
-            match result {
-                Ok(()) => {
-                    let fields = user.dissolve();
-                    Ok(UserDetail {
-                        id: fields.0,
-                        username: fields.1.to_string(),
-                        email: fields.3.to_string(),
-                    })
-                }
-                Err(domain_err) => {
-                    info!(error=%domain_err, "authentication failed");
-                    // BadPassword 时：记录事件 + 判断锁定
-                    if matches!(domain_err, DomainError::BadPassword) {
-                        info!("handle bad password event");
-                        let event = SecurityEvent::new(
-                            *user.id(),
-                            SecurityEventType::TryLoginWithBadPwd,
-                            "bad password attempt",
-                        );
-                        self.security_event_repo
-                            .insert(&self.conn, event)
-                            .await
-                            .map_err(mapping_error())?;
-
-                        let since = OffsetDateTime::now_utc().saturating_sub(Duration::minutes(
-                            self.pwd_service.policy().window_minutes as i64,
-                        ));
-                        let events = self
-                            .security_event_repo
-                            .find_by_user_id_since(
-                                &self.conn,
-                                *user.id(),
-                                SecurityEventType::TryLoginWithBadPwd,
-                                since,
-                            )
-                            .await
-                            .map_err(mapping_error())?;
-
-                        let original = user.clone();
-                        self.pwd_service.check_and_lock_user(&mut user, &events);
-
-                        if matches!(user.state(), UserState::Locked) {
-                            info!(user_id=%user.id(), "user locked");
-                            self.user_repo
-                                .update(&self.conn, Revision::new(original, user))
-                                .await
-                                .map_err(mapping_error())?;
-                        }
-                    }
-
-                    // 统一转换
-                    Err(match domain_err {
-                        DomainError::UserLocked => AuthenticationError::UserLocked,
-                        DomainError::UserDisabled => AuthenticationError::UserDisabled,
-                        DomainError::BadPassword => AuthenticationError::BadPassword,
-                        _ => AuthenticationError::InnerError {
-                            message: domain_err.to_string(),
-                        },
-                    })
-                }
-            }
-        }
-        .await;
-
-        match result {
-            Ok(ok) => {
-                tx.commit().await.map_err(|e| {
-                    error!(user_id=%username, error=%e, "commit transaction failed");
-                    AuthenticationError::InnerError {
-                        message: e.to_string(),
-                    }
-                })?;
-                Ok(ok)
-            }
-            Err(e) => {
-                tx.rollback().await.map_err(|e| {
-                    error!(user_id=%username, error=%e, "rollback transaction failed");
-                    AuthenticationError::InnerError {
-                        message: e.to_string(),
-                    }
-                })?;
-                Err(e)
-            }
-        }
-    }
-
     pub async fn change_password(
         &self,
         username: &str,
@@ -366,15 +248,6 @@ where
                 error!(username=%username, error=%e, "update user failed");
                 Err(CtxError::Internal)
             }
-        }
-    }
-}
-
-fn mapping_error() -> impl FnOnce(RepositoryError) -> AuthenticationError {
-    |e| {
-        error!(error=%e, "handle bad password event failed");
-        AuthenticationError::InnerError {
-            message: e.to_string(),
         }
     }
 }

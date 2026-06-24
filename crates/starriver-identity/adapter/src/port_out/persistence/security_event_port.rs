@@ -39,7 +39,7 @@ impl DefaultSecurityEventPort {
             .column(Column::EventType)
             .column(Column::CreatedAt)
             .column_as(Column::CreatedAt, "occurred_at")
-            .column_as(user_po::Column::Username, "user_name")
+            .column_as(user_po::Column::Username, "username")
             .join(JoinType::LeftJoin, Relation::User.def())
             .order_by_desc(Column::CreatedAt)
             .offset(q.page * q.page_size)

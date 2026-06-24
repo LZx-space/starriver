@@ -1,12 +1,9 @@
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ConnectionTrait, EntityTrait, PaginatorTrait, QueryOrder,
-    QuerySelect,
+    ActiveModelTrait, ActiveValue::Set, ConnectionTrait, EntityTrait, JoinType, PaginatorTrait,
+    QueryOrder, QuerySelect, RelationTrait,
 };
 use starriver_identity_application::{
-    dto::user_dto::{
-        req::{SecurityEventCmd, SecurityEventType},
-        res::SecurityEventDto,
-    },
+    dto::user_dto::{req::SecurityEventCmd, res::SecurityEventDto},
     port::security_event_port::SecurityEventPort,
 };
 use starriver_shared_base::{
@@ -20,7 +17,13 @@ use starriver_shared_framework::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::port_out::persistence::po::security_event_po::{ActiveModel, Column, Entity};
+use crate::port_out::persistence::{
+    dto::security_event_row::SecurityEventRow,
+    po::{
+        security_event_po::{ActiveModel, Column, Entity, Relation},
+        user_po,
+    },
+};
 
 pub struct DefaultSecurityEventPort;
 
@@ -31,18 +34,22 @@ impl DefaultSecurityEventPort {
         q: PageQuery,
     ) -> Result<PageResult<SecurityEventDto>, QueryError> {
         let events = Entity::find()
+            .select_only()
+            .column(Column::Id)
+            .column(Column::EventType)
+            .column(Column::CreatedAt)
+            .column_as(Column::CreatedAt, "occurred_at")
+            .column_as(user_po::Column::Username, "username")
+            .join(JoinType::LeftJoin, Relation::User.def())
             .order_by_desc(Column::CreatedAt)
             .offset(q.page * q.page_size)
             .limit(q.page_size)
+            .into_model::<SecurityEventRow>()
             .all(conn)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?
             .into_iter()
-            .map(|e| SecurityEventDto {
-                id: e.id,
-                event_type: SecurityEventType::from(e.event_type).to_string(),
-                occurred_at: e.created_at,
-            })
+            .map(|e| e.into())
             .collect::<Vec<_>>();
         let record_total = Entity::find()
             .select_only()

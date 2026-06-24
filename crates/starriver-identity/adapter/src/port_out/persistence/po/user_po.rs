@@ -2,7 +2,7 @@ use sea_orm::DerivePrimaryKey;
 use sea_orm::entity::prelude::*;
 use sea_orm::sqlx::types::time::OffsetDateTime;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
-use starriver_identity_domain::user::value_object::UserState;
+use starriver_identity_domain::user::value_object::LifeCycle;
 use uuid::Uuid;
 
 /// 用户
@@ -16,10 +16,11 @@ pub struct Model {
     pub password: String,
     #[sea_orm(unique)]
     pub email: String,
-    pub state: UserStateDo,
-    pub bad_password_window_start: Option<OffsetDateTime>,
-    // 注意sea-orm不支持u8,这里用i16接受以不污染外部配置文件及实体，所以他们
-    pub bad_password_attempts: i16,
+    pub life_cycle: UserLifeCycle,
+    pub password_locked_until: Option<OffsetDateTime>,
+    pub password_window_start: Option<OffsetDateTime>,
+    // 注意sea-orm不支持u8,这里用i16接受以不污染外部配置文件及实体
+    pub password_attempts: i16,
     pub created_at: OffsetDateTime,
     pub updated_at: Option<OffsetDateTime>,
 }
@@ -33,33 +34,33 @@ pub enum Relation {}
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
-pub enum UserStateDo {
+pub enum UserLifeCycle {
     #[default]
     #[sea_orm(num_value = 0)]
     Active, // 正常
     #[sea_orm(num_value = 1)]
-    Locked, // 临时锁定
-    #[sea_orm(num_value = 2)]
     Disabled, // 禁用/暂停
+    #[sea_orm(num_value = 2)]
+    Deleted, // 临时锁定
 }
 
 /////////////////////////////////////////////////////////////
-impl From<UserStateDo> for UserState {
-    fn from(value: UserStateDo) -> Self {
+impl From<UserLifeCycle> for LifeCycle {
+    fn from(value: UserLifeCycle) -> Self {
         match value {
-            UserStateDo::Active => UserState::Active,
-            UserStateDo::Locked => UserState::Locked,
-            UserStateDo::Disabled => UserState::Disabled,
+            UserLifeCycle::Active => LifeCycle::Active,
+            UserLifeCycle::Disabled => LifeCycle::Disabled,
+            UserLifeCycle::Deleted => LifeCycle::Deleted,
         }
     }
 }
 
-impl From<UserState> for UserStateDo {
-    fn from(value: UserState) -> Self {
+impl From<LifeCycle> for UserLifeCycle {
+    fn from(value: LifeCycle) -> Self {
         match value {
-            UserState::Active => UserStateDo::Active,
-            UserState::Locked => UserStateDo::Locked,
-            UserState::Disabled => UserStateDo::Disabled,
+            LifeCycle::Active => UserLifeCycle::Active,
+            LifeCycle::Disabled => UserLifeCycle::Disabled,
+            LifeCycle::Deleted => UserLifeCycle::Deleted,
         }
     }
 }

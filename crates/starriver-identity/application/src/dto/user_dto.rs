@@ -97,6 +97,7 @@ pub mod req {
 
 pub mod res {
     use serde::Serialize;
+    use starriver_identity_domain::user::value_object::LifeCycle;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -112,6 +113,10 @@ pub mod res {
         pub id: Uuid,
         pub username: String,
         pub email: String,
+        pub life_cycle: LifeCycle,
+        pub password_locked_until: Option<OffsetDateTime>,
+        pub password_window_start: Option<OffsetDateTime>,
+        pub password_attempts: i16,
     }
 
     #[derive(Serialize)]

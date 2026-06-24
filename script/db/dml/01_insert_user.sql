@@ -1,3 +1,3 @@
 INSERT INTO public."user"(
-	id, username, password, email, state, bad_password_window_start, bad_password_attempts, created_at, updated_at)
-	VALUES ('019cd0d6-514d-70e2-9de1-83b8dbbd298d', 'LZx', '$argon2id$v=19$m=19456,t=2,p=1$0/qfVb7Gfa3kDhp+4ntuqw$rW2yM2FMs8NABQRkG/cZMPJPKcQLXcxJoyrqRNwGuck', 'lzx@example.com', 0, null, 0, '2026-03-09 12:00:00.000000+08', '2026-03-09 12:00:00.000000+08');
+	id, username, password, email, life_cycle, password_locked_until, password_window_start, password_attempts, created_at, updated_at)
+	VALUES ('019cd0d6-514d-70e2-9de1-83b8dbbd298d', 'LZx', '$argon2id$v=19$m=19456,t=2,p=1$0/qfVb7Gfa3kDhp+4ntuqw$rW2yM2FMs8NABQRkG/cZMPJPKcQLXcxJoyrqRNwGuck', 'lzx@example.com', 0, null, null, 0, '2026-03-09 12:00:00.000000+08', '2026-03-09 12:00:00.000000+08');

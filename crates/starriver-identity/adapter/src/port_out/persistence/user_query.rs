@@ -34,6 +34,10 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
                 id: e.id,
                 username: e.username,
                 email: e.email,
+                life_cycle: e.life_cycle.into(),
+                password_locked_until: e.password_locked_until,
+                password_window_start: e.password_window_start,
+                password_attempts: e.password_attempts,
             })
             .collect::<Vec<_>>();
         let record_total = Entity::find()

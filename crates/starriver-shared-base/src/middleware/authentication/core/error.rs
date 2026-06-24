@@ -17,12 +17,16 @@ pub enum AuthenticationError {
     #[error("bad password")]
     BadPassword,
 
-    /////////////////////////
+    ///// transient states ///////////////
     #[error("user locked")]
     UserLocked,
 
+    ///// life cycle ////////////////////
     #[error("user disabled")]
     UserDisabled,
+
+    #[error("user deleted")]
+    UserDeleted,
 
     /////////////////////////
     #[error("inner error: {message}")]

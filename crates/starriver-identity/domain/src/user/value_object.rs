@@ -1,17 +1,20 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
+
 use crate::error::DomainError;
 use crate::user::specification::{EmailSpec, UsernameSpec};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub enum UserState {
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LifeCycle {
     /// 正常
     #[default]
     Active,
-    /// 临时锁定
-    Locked,
-    /// 禁用/暂停
+    /// 禁用
     Disabled,
+    /// 删除
+    Deleted,
 }
 
 /////////////////////////////////////////////////////////////////////////////////

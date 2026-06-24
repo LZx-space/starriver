@@ -7,7 +7,7 @@ use crate::password_encoder::PasswordEncoder;
 use crate::user::entity::User;
 use crate::user::policy::BadPasswordPolicy;
 use crate::user::specification::PasswordSpec;
-use crate::user::value_object::{HashedPassword, UserState};
+use crate::user::value_object::{HashedPassword, LifeCycle};
 
 #[derive(Clone)]
 pub struct PasswordDomainService<PE> {
@@ -44,11 +44,15 @@ where
         user: &mut User,
         raw_password: &str,
     ) -> Result<(), AuthenticationError> {
-        match user.state() {
-            UserState::Active => {}
-            UserState::Locked => return Err(AuthenticationError::UserLocked),
-            UserState::Disabled => return Err(AuthenticationError::UserDisabled),
+        match user.life_cycle() {
+            LifeCycle::Active => {}
+            LifeCycle::Disabled => return Err(AuthenticationError::UserDisabled),
+            LifeCycle::Deleted => return Err(AuthenticationError::UserDeleted),
         };
+
+        if user.is_locked() {
+            return Err(AuthenticationError::UserLocked);
+        }
 
         let matches = self
             .pwd_encoder

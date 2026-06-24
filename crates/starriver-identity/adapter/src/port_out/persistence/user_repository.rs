@@ -38,9 +38,10 @@ impl DefaultUserRepository {
                         e.username,
                         e.password,
                         e.email,
-                        e.state.into(),
-                        e.bad_password_window_start,
-                        e.bad_password_attempts as u8,
+                        e.life_cycle.into(),
+                        e.password_locked_until,
+                        e.password_window_start,
+                        e.password_attempts as u8,
                     )
                 })
             })
@@ -57,18 +58,20 @@ impl DefaultUserRepository {
             username,
             password,
             email,
-            state,
-            bad_password_window_start,
-            bad_password_attempts,
+            life_cycle,
+            password_locked_until,
+            password_window_start,
+            password_attempts,
         ) = user.dissolve();
         ActiveModel {
             id: Set(id),
             username: Set(username.to_string()),
             password: Set(password.as_str().to_string()),
             email: Set(email.to_string()),
-            state: Set(state.into()),
-            bad_password_window_start: Set(bad_password_window_start),
-            bad_password_attempts: Set(bad_password_attempts as i16),
+            life_cycle: Set(life_cycle.into()),
+            password_locked_until: Set(password_locked_until),
+            password_window_start: Set(password_window_start),
+            password_attempts: Set(password_attempts as i16),
             created_at: Set(OffsetDateTime::now_utc()),
             updated_at: NotSet,
         }
@@ -81,9 +84,10 @@ impl DefaultUserRepository {
                 m.username,
                 m.password,
                 m.email,
-                m.state.into(),
-                m.bad_password_window_start,
-                m.bad_password_attempts as u8,
+                m.life_cycle.into(),
+                m.password_locked_until,
+                m.password_window_start,
+                m.password_attempts as u8,
             )
         })
     }
@@ -111,18 +115,20 @@ impl DefaultUserRepository {
             username,
             password,
             email,
-            state,
-            bad_password_window_start,
-            bad_password_attempts,
+            life_cycle,
+            password_locked_until,
+            password_window_start,
+            password_attempts,
         ) = original.dissolve();
         let (
             _,
             new_username,
             new_password,
             new_email,
-            new_state,
-            new_bad_password_window_start,
-            new_bad_password_attempts,
+            new_life_cycle,
+            new_password_locked_until,
+            new_password_window_start,
+            new_password_attempts,
         ) = modified.dissolve();
 
         let mut username = Unchanged(username.as_str().to_string());
@@ -131,21 +137,24 @@ impl DefaultUserRepository {
         password.set_if_not_equals(new_password.as_str().to_string());
         let mut email = Unchanged(email.to_string());
         email.set_if_not_equals(new_email.to_string());
-        let mut state = Unchanged(state.into());
-        state.set_if_not_equals(new_state.into());
-        let mut bad_password_window_start = Unchanged(bad_password_window_start);
-        bad_password_window_start.set_if_not_equals(new_bad_password_window_start);
-        let mut bad_password_attempts = Unchanged(bad_password_attempts as i16);
-        bad_password_attempts.set_if_not_equals(new_bad_password_attempts as i16);
+        let mut life_cycle = Unchanged(life_cycle.into());
+        life_cycle.set_if_not_equals(new_life_cycle.into());
+        let mut password_locked_until = Unchanged(password_locked_until);
+        password_locked_until.set_if_not_equals(new_password_locked_until);
+        let mut password_window_start = Unchanged(password_window_start);
+        password_window_start.set_if_not_equals(new_password_window_start);
+        let mut password_attempts = Unchanged(password_attempts as i16);
+        password_attempts.set_if_not_equals(new_password_attempts as i16);
 
         ActiveModel {
             id: Unchanged(user_id),
             username,
             password,
             email,
-            state,
-            bad_password_window_start,
-            bad_password_attempts,
+            life_cycle,
+            password_locked_until,
+            password_window_start,
+            password_attempts,
             created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
         }
@@ -158,9 +167,10 @@ impl DefaultUserRepository {
                 m.username,
                 m.password,
                 m.email,
-                m.state.into(),
-                m.bad_password_window_start,
-                m.bad_password_attempts as u8,
+                m.life_cycle.into(),
+                m.password_locked_until,
+                m.password_window_start,
+                m.password_attempts as u8,
             )
         })
     }

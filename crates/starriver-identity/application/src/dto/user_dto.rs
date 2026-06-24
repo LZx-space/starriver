@@ -122,6 +122,7 @@ pub mod res {
     #[derive(Serialize)]
     pub struct SecurityEventDto {
         pub id: Uuid,
+        pub user_name: String,
         pub event_type: String,
         pub occurred_at: OffsetDateTime,
     }

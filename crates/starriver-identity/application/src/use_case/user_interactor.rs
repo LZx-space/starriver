@@ -75,16 +75,16 @@ where
         match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(found) => {
                 if found {
-                    warn!(email=%email, "email already registered, skipping verification");
+                    warn!(to=%email, "email already registered, skipping verification");
                     return Ok(());
                 }
                 if let Err(e) = self.verification_code_service.send_code(email).await {
-                    error!(email=%email, error=%e, "send verification email failed");
+                    error!(to=%email, error=%e, "send verification email failed");
                 }
                 Ok(())
             }
             Err(e) => {
-                error!(email=%email, error=%e, "find user by email failed");
+                error!(to=%email, error=%e, "find user by email failed");
                 Ok(())
             }
         }

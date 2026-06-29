@@ -32,7 +32,7 @@ derive-getters = "^0"
 futures-util = "^0"
 infer = "^0"
 jsonwebtoken = { version = "^10", features = ["rust_crypto"] }
-lettre = { version = "^0", features = ["smtp-transport", "tokio1-native-tls", "builder"] }
+lettre = { version = "^0", default-features = false, features = ["builder", "pool", "ring", "smtp-transport", "tokio1-rustls", "webpki-roots"] }
 moka = { version = "^0", features = ["future"] }
 rand = "^0"
 regex = { version = "^1" }

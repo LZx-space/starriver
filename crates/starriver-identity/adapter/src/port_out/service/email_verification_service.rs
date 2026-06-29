@@ -39,12 +39,13 @@ impl SmtpVerificationService {
 }
 
 impl EmailVerificationService for SmtpVerificationService {
-    async fn send_code(&self, email: &str) -> Result<(), EmailVerificationError> {
-        let to = email
-            .parse::<Mailbox>()
-            .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
+    async fn send_code(&self, email_to: &str) -> Result<(), EmailVerificationError> {
         let from = self
             .smtp_username
+            .parse::<Mailbox>()
+            .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
+
+        let to = email_to
             .parse::<Mailbox>()
             .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
 
@@ -59,6 +60,7 @@ impl EmailVerificationService for SmtpVerificationService {
             .to(to)
             .body(format!("email verification code is {}", code))
             .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
+
         self.smtp_client
             .send(message)
             .await
@@ -66,7 +68,7 @@ impl EmailVerificationService for SmtpVerificationService {
             .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
 
         self.code_cache
-            .insert(email.to_string(), code.clone())
+            .insert(email_to.to_string(), code.clone())
             .await;
         Ok(())
     }

@@ -13,7 +13,6 @@ starriver-blogging-domain = { path = "../domain" }
 argon2 = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
-axum-valid = { workspace = true }
 infer = { workspace = true }
 moka = { workspace = true }
 sea-orm = { workspace = true }

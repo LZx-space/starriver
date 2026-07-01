@@ -1,8 +1,8 @@
 use std::convert::Infallible;
 
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Response;
-use http::StatusCode;
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]

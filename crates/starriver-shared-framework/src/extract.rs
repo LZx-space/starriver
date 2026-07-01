@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use http::StatusCode;
+use axum::http::StatusCode;
 use serde::{Serialize, de::DeserializeOwned};
 use validator::ValidationErrors;
 use validator::{Validate, ValidateArgs};

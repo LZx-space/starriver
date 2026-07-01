@@ -12,9 +12,7 @@ starriver-shared-base = { path = "../starriver-shared-base" }
 
 axum = { workspace = true }
 axum-extra = { workspace = true }
-axum-valid = { workspace = true }
 futures-util = { workspace = true }
-http = "^1"
 jsonwebtoken = { workspace = true }
 moka = { workspace = true }
 regex = { workspace = true }

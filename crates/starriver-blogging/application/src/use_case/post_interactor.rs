@@ -15,7 +15,7 @@ use uuid::Uuid;
 use crate::{
     dto::post_dto::{
         req::{PageQuery, SaveOrUpdatePostCmd},
-        res::{PostDetailDto, PostExcerptDto},
+        res::{PostDetailDto, PostExcerptDto, PostSearchDto},
     },
     error::CtxError,
     port::{
@@ -65,6 +65,13 @@ where
                 error!(error=%e, "database error");
                 CtxError::Internal
             })
+    }
+
+    pub async fn search(&self, q: &str) -> Result<Vec<PostSearchDto>, CtxError> {
+        self.query.search(&self.conn, q).await.map_err(|e| {
+            error!(error=%e, "database error");
+            CtxError::Internal
+        })
     }
 
     pub async fn find(&self, id: Uuid) -> Result<PostDetailDto, CtxError> {

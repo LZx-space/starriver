@@ -32,6 +32,14 @@ pub struct PostDetailRow {
     pub updated_at: Option<OffsetDateTime>,
 }
 
+#[derive(FromQueryResult)]
+pub struct PostSearchRow {
+    pub id: Uuid,
+    pub title: String,
+    pub snippet: String,
+    pub rank: f32,
+}
+
 //////////////////////////////////////////////////
 
 impl From<PostExcerptRow> for PostExcerptDto {

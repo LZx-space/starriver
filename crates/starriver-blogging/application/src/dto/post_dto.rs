@@ -16,6 +16,12 @@ pub mod req {
     }
 
     #[derive(Debug, Deserialize, Validate)]
+    pub struct SearchQuery {
+        #[validate(length(min = 1, max = 10))]
+        pub q: String,
+    }
+
+    #[derive(Debug, Deserialize, Validate)]
     pub struct SaveOrUpdatePostCmd {
         #[validate(length(min = 1, max = 50))]
         pub title: String,
@@ -60,5 +66,13 @@ pub mod res {
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
         pub updated_at: Option<OffsetDateTime>,
+    }
+
+    #[derive(Clone, Serialize)]
+    pub struct PostSearchDto {
+        pub id: Uuid,
+        pub title: String,
+        pub snippet: String,
+        pub rank: f32,
     }
 }

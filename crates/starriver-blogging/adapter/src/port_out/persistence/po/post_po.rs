@@ -4,7 +4,7 @@ use starriver_blogging_domain::post::value_object::PostState;
 use time::OffsetDateTime;
 
 /// 博客
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "post")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

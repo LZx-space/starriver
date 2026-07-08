@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::dto::post_dto::{
     req::PageQuery,
-    res::{PostDetailDto, PostExcerptDto},
+    res::{PostDetailDto, PostExcerptDto, PostSearchDto},
 };
 
 pub trait PostQuery<T: Executor> {
@@ -19,4 +19,10 @@ pub trait PostQuery<T: Executor> {
         conn: &T,
         id: Uuid,
     ) -> impl Future<Output = Result<Option<PostDetailDto>, QueryError>> + Send;
+
+    fn search(
+        &self,
+        conn: &T,
+        q: &str,
+    ) -> impl Future<Output = Result<Vec<PostSearchDto>, QueryError>> + Send;
 }

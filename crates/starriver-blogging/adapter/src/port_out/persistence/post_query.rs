@@ -1,13 +1,14 @@
 use sea_orm::{
-    ColumnTrait, Condition, EntityTrait, JoinType, Order, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, RelationTrait, sea_query::NullOrdering,
+    ColumnTrait, Condition, DbBackend, EntityTrait, FromQueryResult, JoinType, Order,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Statement,
+    sea_query::NullOrdering,
 };
 use starriver_blogging_application::{
     dto::{
         attachment_dto::res::AttachmentDto,
         post_dto::{
             req::PageQuery,
-            res::{PostDetailDto, PostExcerptDto},
+            res::{PostDetailDto, PostExcerptDto, PostSearchDto},
         },
     },
     port::post_query::PostQuery,
@@ -25,7 +26,7 @@ use starriver_shared_framework::{
 use uuid::Uuid;
 
 use crate::port_out::persistence::{
-    dto::post_row::{PostDetailRow, PostExcerptRow},
+    dto::post_row::{PostDetailRow, PostExcerptRow, PostSearchRow},
     po::{
         attachment_po, category_po, post_attachment_po,
         post_po::{Column, Entity, PostStatePo, Relation},
@@ -153,5 +154,40 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             created_at: post.created_at,
             updated_at: post.updated_at,
         }))
+    }
+
+    async fn search(
+        &self,
+        conn: &DefaultConnection,
+        q: &str,
+    ) -> Result<Vec<PostSearchDto>, QueryError> {
+        let rows = PostSearchRow::find_by_statement(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"
+                SELECT id, title,
+                       ts_headline('zh_cfg', content, websearch_to_tsquery('zh_cfg', $1),
+                                   'MaxWords=50, MinWords=20') AS snippet,
+                       ts_rank(search_vector, websearch_to_tsquery('zh_cfg', $1)) AS rank
+                FROM post
+                WHERE search_vector @@ websearch_to_tsquery('zh_cfg', $1)
+                ORDER BY rank DESC
+                LIMIT 10
+                "#,
+            [q.into()],
+        ))
+        .all(conn)
+        .await
+        .map_err(|e| QueryError::DbError(e.to_string()))?;
+
+        let result = rows
+            .into_iter()
+            .map(|e| PostSearchDto {
+                id: e.id,
+                title: e.title,
+                snippet: e.snippet,
+                rank: e.rank,
+            })
+            .collect();
+        Ok(result)
     }
 }

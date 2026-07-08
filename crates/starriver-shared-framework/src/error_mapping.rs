@@ -4,6 +4,7 @@ use tracing::warn;
 
 pub fn db_2_repo_error(err: DbErr) -> RepositoryError {
     warn!(error=%err, "db error");
+    println!("----------------{:?}", err);
     match err {
         DbErr::ConnectionAcquire(conn_acquire_err) => {
             RepositoryError::ConnectionFailed(conn_acquire_err.to_string())

@@ -73,6 +73,8 @@ pub mod res {
         pub id: Uuid,
         pub title: String,
         pub snippet: String,
+        pub category: String,
+        pub published_at: OffsetDateTime,
         pub rank: f32,
     }
 }

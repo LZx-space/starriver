@@ -161,18 +161,33 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         conn: &DefaultConnection,
         q: &str,
     ) -> Result<Vec<PostSearchDto>, QueryError> {
+        if q.is_empty() {
+            return Ok(vec![]);
+        }
         let rows = PostSearchRow::find_by_statement(Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
-                SELECT id, title,
-                       ts_headline('zh_cfg', content, websearch_to_tsquery('zh_cfg', $1),
-                                   'MaxWords=50, MinWords=20') AS snippet,
-                       ts_rank(search_vector, websearch_to_tsquery('zh_cfg', $1)) AS rank
-                FROM post
-                WHERE search_vector @@ websearch_to_tsquery('zh_cfg', $1)
-                ORDER BY rank DESC
-                LIMIT 10
-                "#,
+            WITH
+                q AS (
+                    SELECT plainto_tsquery('zh_cfg', $1) AS query
+                )
+            SELECT
+                post.id AS id,
+                post.title AS title,
+                post.published_at AS published_at,
+                category.name AS category,
+                ts_headline('zh_cfg', post.content, q.query, 'MaxWords=50, MinWords=20') AS snippet,
+                ts_rank(post.search_vector, q.query) AS rank
+            FROM
+                q,
+                post
+                LEFT JOIN category ON post.category_id = category.id
+            WHERE
+                post.search_vector @@ q.query
+            ORDER BY
+                rank DESC
+            LIMIT 10
+            "#,
             [q.into()],
         ))
         .all(conn)
@@ -184,6 +199,8 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .map(|e| PostSearchDto {
                 id: e.id,
                 title: e.title,
+                published_at: e.published_at,
+                category: e.category,
                 snippet: e.snippet,
                 rank: e.rank,
             })

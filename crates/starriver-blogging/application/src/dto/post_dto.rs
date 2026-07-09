@@ -72,8 +72,6 @@ pub mod res {
     pub struct PostSearchDto {
         pub id: Uuid,
         pub title: String,
-        pub published_at: OffsetDateTime,
-        pub category: String,
         pub snippet: String,
         pub category: String,
         pub published_at: OffsetDateTime,

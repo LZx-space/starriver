@@ -75,6 +75,5 @@ pub mod res {
         pub snippet: String,
         pub category: String,
         pub published_at: OffsetDateTime,
-        pub rank: f32,
     }
 }

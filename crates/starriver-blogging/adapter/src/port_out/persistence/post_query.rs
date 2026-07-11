@@ -164,29 +164,44 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         if q.is_empty() {
             return Ok(vec![]);
         }
+        let q = q.split_whitespace().collect::<Vec<_>>().join(" OR ");
+        // pgroonga扩展实现搜索功能
         let rows = PostSearchRow::find_by_statement(Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
             WITH
-                q AS (
-                    SELECT plainto_tsquery('zh_cfg', $1) AS query
-                )
+                search_kw AS (
+                    SELECT pgroonga_query_extract_keywords($1) AS kw
+                ),
+                filtered_posts AS (
+                    SELECT
+                        post.id,
+                        post.title,
+                        post.content,
+                        post.published_at,
+                        post.category_id,
+                        regexp_replace(post.content, '<[^>]*>', '', 'g') AS clean_content
+                    FROM post
+                    WHERE
+                        post.state = 1
+                        AND (post.title &@~ $1 OR post.content &@~ $1)
+            )
             SELECT
-                post.id AS id,
-                post.title AS title,
-                post.published_at AS published_at,
-                category.name AS category,
-                ts_headline('zh_cfg', post.content, q.query, 'MaxWords=50, MinWords=20') AS snippet,
-                ts_rank(post.search_vector, q.query) AS rank
-            FROM
-                q,
-                post
-                LEFT JOIN category ON post.category_id = category.id
-            WHERE
-                post.search_vector @@ q.query
-            ORDER BY
-                rank DESC
-            LIMIT 10
+                fp.id,
+                fp.title,
+                COALESCE(
+                    NULLIF(
+                        (pgroonga_snippet_html(fp.clean_content, (SELECT kw FROM search_kw), 100))[1],
+                        ''
+                    ),
+                    left(fp.clean_content, 100)
+                ) AS snippet,
+                fp.published_at,
+                category.name AS category
+            FROM filtered_posts fp
+            LEFT JOIN category ON fp.category_id = category.id
+            ORDER BY fp.published_at DESC NULLS LAST
+            LIMIT 10;
             "#,
             [q.into()],
         ))
@@ -199,10 +214,9 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .map(|e| PostSearchDto {
                 id: e.id,
                 title: e.title,
-                published_at: e.published_at,
-                category: e.category,
                 snippet: e.snippet,
-                rank: e.rank,
+                category: e.category,
+                published_at: e.published_at,
             })
             .collect();
         Ok(result)

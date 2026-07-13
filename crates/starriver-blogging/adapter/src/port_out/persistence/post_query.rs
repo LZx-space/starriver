@@ -164,7 +164,6 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         if q.is_empty() {
             return Ok(vec![]);
         }
-        let q = q.split_whitespace().collect::<Vec<_>>().join(" OR ");
         // pgroonga扩展实现搜索功能
         let rows = PostSearchRow::find_by_statement(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -177,11 +176,11 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                     SELECT
                         post.id,
                         post.title,
-                        post.content,
                         post.published_at,
                         post.category_id,
                         regexp_replace(post.content, '<[^>]*>', '', 'g') AS clean_content
-                    FROM post
+                    FROM
+                        post
                     WHERE
                         post.state = 1
                         AND (post.title &@~ $1 OR post.content &@~ $1)
@@ -198,10 +197,13 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                 ) AS snippet,
                 fp.published_at,
                 category.name AS category
-            FROM filtered_posts fp
-            LEFT JOIN category ON fp.category_id = category.id
-            ORDER BY fp.published_at DESC NULLS LAST
-            LIMIT 10;
+            FROM
+                filtered_posts fp
+                LEFT JOIN category ON fp.category_id = category.id
+            ORDER BY
+                fp.published_at DESC NULLS LAST
+            LIMIT
+                10;
             "#,
             [q.into()],
         ))

@@ -36,10 +36,9 @@ pub struct PostDetailRow {
 pub struct PostSearchRow {
     pub id: Uuid,
     pub title: String,
-    pub published_at: OffsetDateTime, // 未发布的才有可能为空
-    pub category: String,
     pub snippet: String,
-    pub rank: f32,
+    pub category: String,
+    pub published_at: OffsetDateTime, // 未发布的才有可能为空
 }
 
 //////////////////////////////////////////////////

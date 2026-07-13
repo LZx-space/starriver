@@ -214,6 +214,8 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .map(|e| PostSearchDto {
                 id: e.id,
                 title: e.title,
+                published_at: e.published_at,
+                category: e.category,
                 snippet: e.snippet,
                 category: e.category,
                 published_at: e.published_at,

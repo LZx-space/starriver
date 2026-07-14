@@ -21,6 +21,16 @@ pub struct PageQuery {
     pub page_size: u64,
 }
 
+#[derive(Debug, Deserialize, Validate)]
+pub struct PageSearch {
+    #[validate(range(min = 0, max = 10))]
+    pub page: u64,
+    #[validate(range(min = 1, max = 20))]
+    pub page_size: u64,
+    #[validate(length(min = 1))]
+    pub q: String,
+}
+
 /// 页数据结果
 #[derive(Clone, Debug, Serialize)]
 pub struct PageResult<T: Serialize> {

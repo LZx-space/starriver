@@ -7,7 +7,7 @@ use starriver_shared_base::{
     authentication::PrincipalClaims,
     cache::Cache,
     db::{Connection, Revision, Transaction},
-    dto::PageResult,
+    dto::{PageResult, PageSearch},
 };
 use tracing::{error, info};
 use uuid::Uuid;
@@ -67,7 +67,7 @@ where
             })
     }
 
-    pub async fn search(&self, q: &str) -> Result<Vec<PostSearchDto>, CtxError> {
+    pub async fn search(&self, q: PageSearch) -> Result<PageResult<PostSearchDto>, CtxError> {
         self.query.search(&self.conn, q).await.map_err(|e| {
             error!(error=%e, "database error");
             CtxError::Internal

@@ -15,7 +15,7 @@ use starriver_blogging_application::{
 };
 use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
-    dto::{IdName, PageResult},
+    dto::{IdName, PageResult, PageSearch},
     error::QueryError,
     html_utils::{DefaultExcerptor, Excerptor},
     upload_file::UploadLocationResolver,
@@ -159,59 +159,107 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
     async fn search(
         &self,
         conn: &DefaultConnection,
-        q: &str,
-    ) -> Result<Vec<PostSearchDto>, QueryError> {
-        if q.is_empty() {
-            return Ok(vec![]);
+        q: PageSearch,
+    ) -> Result<PageResult<PostSearchDto>, QueryError> {
+        if q.q.is_empty() {
+            return Ok(PageResult::new(q.page, q.page_size, 0, vec![]));
         }
-        // pgroonga扩展实现搜索功能
+
+        // pgroonga扩展实现搜索功能，数据量极小时可能会由于不走全文索引而score为0
         let rows = PostSearchRow::find_by_statement(Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"
             WITH
-                search_kw AS (
-                    SELECT pgroonga_query_extract_keywords($1) AS kw
-                ),
-                filtered_posts AS (
-                    SELECT
-                        post.id,
-                        post.title,
-                        post.published_at,
-                        post.category_id,
-                        regexp_replace(post.content, '<[^>]*>', '', 'g') AS clean_content
-                    FROM
-                        post
-                    WHERE
-                        post.state = 1
-                        AND (post.title &@~ $1 OR post.content &@~ $1)
-            )
+               	search_kw AS (
+              		SELECT pgroonga_query_extract_keywords($3) AS kw
+               	),
+               	unioned AS (
+               	    SELECT
+             			id,
+             			title,
+             			content,
+             			published_at,
+             			category_id,
+             			pgroonga_score(tableoid, ctid) AS score
+              		FROM
+             			post
+              		WHERE
+             			state = 1 AND title &@~ $3
+               	    UNION ALL
+               	    SELECT
+             			id,
+             			title,
+             			content,
+             			published_at,
+             			category_id,
+             			pgroonga_score(tableoid, ctid) AS score
+              		FROM
+             			post
+              		WHERE
+             			state = 1 AND content &@~ $3
+               	),
+               	ranked AS (
+               	    SELECT
+                        *,
+                	    ROW_NUMBER() OVER (PARTITION BY id ORDER BY score DESC) AS rn
+               	    FROM
+                        unioned
+               	),
+               	filtered AS (
+               	    SELECT
+               	        id,
+               	        title,
+               	        regexp_replace(
+               	            regexp_replace(content, '<[^>]*>', '', 'g'),
+               	            '&[^;]+;',
+               	            '',
+               	            'g'
+               	        ) AS clean_content,
+             			published_at,
+                        category_id,
+                        score
+               	    FROM
+                        ranked
+               	    WHERE
+                        rn = 1
+               	)
             SELECT
-                fp.id,
-                fp.title,
+                filtered.id,
+                filtered.title,
                 COALESCE(
                     NULLIF(
-                        (pgroonga_snippet_html(fp.clean_content, (SELECT kw FROM search_kw), 100))[1],
+                        (pgroonga_snippet_html(filtered.clean_content, (SELECT kw FROM search_kw), 100))[1],
                         ''
                     ),
-                    left(fp.clean_content, 100)
+                    left(filtered.clean_content, 100)
                 ) AS snippet,
-                fp.published_at,
-                category.name AS category
+                filtered.published_at,
+                filtered.score,
+                category.name AS category,
+                COUNT(*) OVER() AS total_count
             FROM
-                filtered_posts fp
-                LEFT JOIN category ON fp.category_id = category.id
+               	filtered
+               	LEFT JOIN category ON filtered.category_id = category.id
             ORDER BY
-                fp.published_at DESC NULLS LAST
+               	score DESC,
+                published_at DESC NULLS LAST
+            OFFSET
+                $1
             LIMIT
-                10;
+               	$2;
             "#,
-            [q.into()],
+            [q.page.into(), q.page_size.into(), q.q.into()],
         ))
         .all(conn)
         .await
         .map_err(|e| QueryError::DbError(e.to_string()))?;
 
-        let result = rows
+        if rows.is_empty() {
+            return Ok(PageResult::new(q.page, q.page_size, 0, vec![]));
+        }
+
+        let total_count = rows[0].total_count;
+        let items = rows
             .into_iter()
             .map(|e| PostSearchDto {
                 id: e.id,
@@ -219,8 +267,14 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                 snippet: e.snippet,
                 category: e.category,
                 published_at: e.published_at,
+                score: e.score,
             })
             .collect();
-        Ok(result)
+        Ok(PageResult::new(
+            q.page,
+            q.page_size,
+            total_count as u64,
+            items,
+        ))
     }
 }

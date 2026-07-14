@@ -34,7 +34,8 @@ COMMENT ON COLUMN public.post.published_at IS '发布时间';
 CREATE EXTENSION IF NOT EXISTS pgroonga SCHEMA public;
 
 -- INDEX
-CREATE INDEX idx_post_title_content_pgroonga ON public.post USING pgroonga (title, content) WHERE state = 1;
+CREATE INDEX idx_post_title_pgroonga         ON public.post USING pgroonga (title pgroonga_varchar_full_text_search_ops_v2) WHERE state = 1;  -- pgroonga_varchar_full_text_search_ops_v2 为varchar类型时支持全文索引的配置
+CREATE INDEX idx_post_content_pgroonga       ON public.post USING pgroonga (content) WHERE state = 1;
 CREATE INDEX idx_post_author_id              ON public.post (author_id);
 CREATE INDEX idx_post_category_id            ON public.post (category_id);
 CREATE INDEX idx_post_updated_at             ON public.post (updated_at DESC NULLS LAST);

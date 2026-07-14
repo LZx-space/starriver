@@ -39,6 +39,8 @@ pub struct PostSearchRow {
     pub snippet: String,
     pub category: String,
     pub published_at: OffsetDateTime, // 未发布的才有可能为空
+    pub score: f64,
+    pub total_count: i64,
 }
 
 //////////////////////////////////////////////////

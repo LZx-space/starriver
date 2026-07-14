@@ -1,4 +1,8 @@
-use starriver_shared_base::{db::Executor, dto::PageResult, error::QueryError};
+use starriver_shared_base::{
+    db::Executor,
+    dto::{PageResult, PageSearch},
+    error::QueryError,
+};
 use uuid::Uuid;
 
 use crate::dto::post_dto::{
@@ -23,6 +27,6 @@ pub trait PostQuery<T: Executor> {
     fn search(
         &self,
         conn: &T,
-        q: &str,
-    ) -> impl Future<Output = Result<Vec<PostSearchDto>, QueryError>> + Send;
+        q: PageSearch,
+    ) -> impl Future<Output = Result<PageResult<PostSearchDto>, QueryError>> + Send;
 }

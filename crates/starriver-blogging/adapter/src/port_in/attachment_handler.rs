@@ -9,7 +9,7 @@ use starriver_shared_framework::{
     middleware::authentication::default_impl::AuthenticatedUser,
     response::ApiError,
 };
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::port_in::state::BloggingState;
@@ -27,50 +27,35 @@ pub async fn upload_attachment(
         .await
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?
     {
-        let file_name = field.file_name().unwrap_or_default().to_string();
-        info!(file=%file_name, "processing field");
-        if file_name.is_empty() {
-            return Err(ApiError::new(
-                StatusCode::BAD_REQUEST,
-                "file name is empty".to_string(),
-            ));
-        }
+        let file_name = field.file_name().unwrap_or_default();
+        info!(filename=%file_name, "processing field");
 
-        let claimed_extension = field
-            .file_name()
-            .map(|n| {
-                Path::new(n)
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or_default()
-            })
-            .unwrap_or_default()
-            .to_owned();
-
-        // 创建文件
-        let extension = Extension::new(
-            Path::new(file_name.as_str())
+        // create file; bad code, but DIP
+        let claimed_extension = Extension::new(
+            Path::new(file_name)
                 .extension()
-                .and_then(|ext| ext.to_str())
+                .and_then(|e| e.to_str())
                 .unwrap_or_default(),
         )
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
-        let attachment_id = Uuid::now_v7(); // 附件ID生成附件名
-        let attachment_name = Attachment::make_file_name(&attachment_id, &extension);
+        info!(claimed_extension=%claimed_extension.as_str());
 
+        let attachment_id = Uuid::now_v7(); // 附件ID生成附件名
+        let attachment_name = Attachment::make_file_name(&attachment_id, &claimed_extension);
         let save_path = state
             .upload_file_url_builder
             .save_path(attachment_name.as_str());
-        info!(file=%file_name, "new async writer");
-        let async_writer = TokioFileAsyncWriter::new(save_path)
+
+        info!("new async writer");
+        let async_writer = TokioFileAsyncWriter::new(&save_path)
             .await
             .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
 
-        info!(file=%file_name, "new async reader");
+        info!("new async reader");
         let async_reader = MultipartFieldAsyncReader::new(&mut field);
 
-        info!(file=%file_name, "uploading attachment");
-        let attachment = state
+        info!("uploading attachment");
+        match state
             .attachment_interactor
             .upload(
                 attachment_id, // 附件ID生成附件名，确保外部Writer的文件和附件是同一个
@@ -79,8 +64,18 @@ pub async fn upload_attachment(
                 async_writer,
             )
             .await
-            .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-        attachments.push(attachment);
+            .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+        {
+            Ok(attachment) => {
+                attachments.push(attachment);
+            }
+            Err(err) => {
+                if let Err(rm_err) = tokio::fs::remove_file(&save_path).await {
+                    error!(error=%rm_err, "remove file error");
+                }
+                return Err(err);
+            }
+        };
     }
     Ok(Json(attachments))
 }

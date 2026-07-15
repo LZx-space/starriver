@@ -1,6 +1,5 @@
 use axum::{
     Router,
-    extract::DefaultBodyLimit,
     routing::{get, post},
 };
 
@@ -30,6 +29,5 @@ pub fn create_router(state: BloggingState) -> Router<()> {
         )
         .route("/attachments", post(attachment_handler::upload_attachment))
         .route("/search/posts", get(post_handler::search))
-        .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
         .with_state(state)
 }

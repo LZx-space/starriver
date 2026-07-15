@@ -70,15 +70,16 @@ where
                 "file too small for MIME detection".to_string(),
             ));
         }
+
         let attachment =
             self.factory
                 .create_attachment(attachment_id, &magic_checker_buf, claimed_extension)?;
         let attachment = self.repo.insert(&self.conn, attachment).await?;
+
         let file_name = attachment.file_name();
         let url = self.upload_location_resolver.url(&file_name);
-        let fields = attachment.dissolve();
         Ok(AttachmentDto {
-            id: fields.0,
+            id: attachment.dissolve().0,
             file_name,
             url,
         })

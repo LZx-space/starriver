@@ -33,7 +33,7 @@ impl DefaultSecurityEventPort {
         conn: &impl ConnectionTrait,
         q: PageQuery,
     ) -> Result<PageResult<SecurityEventDto>, QueryError> {
-        let events = Entity::find()
+        let paginator = Entity::find()
             .select_only()
             .column(Column::Id)
             .column(Column::EventType)
@@ -42,22 +42,20 @@ impl DefaultSecurityEventPort {
             .column_as(user_po::Column::Username, "username")
             .join(JoinType::LeftJoin, Relation::User.def())
             .order_by_desc(Column::CreatedAt)
-            .offset(q.page * q.page_size)
-            .limit(q.page_size)
             .into_model::<SecurityEventRow>()
-            .all(conn)
+            .paginate(conn, q.page_size);
+        let events = paginator
+            .fetch_page(q.page)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?
             .into_iter()
             .map(|e| e.into())
             .collect::<Vec<_>>();
-        let record_total = Entity::find()
-            .select_only()
-            .column(Column::Id)
-            .count(conn)
+        let total_items = paginator
+            .num_items()
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(PageResult::new(q.page, q.page_size, record_total, events))
+        Ok(PageResult::new(q.page, q.page_size, total_items, events))
     }
 
     async fn insert(

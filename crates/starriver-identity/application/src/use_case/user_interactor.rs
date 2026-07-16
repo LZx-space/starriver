@@ -198,6 +198,8 @@ where
         }
     }
 
+    ///// change_password by self ///////////////////////////////////////////////////////////////////////
+
     pub async fn change_password(
         &self,
         username: &str,

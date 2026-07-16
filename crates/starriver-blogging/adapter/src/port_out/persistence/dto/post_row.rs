@@ -52,7 +52,7 @@ impl From<PostExcerptRow> for PostExcerptDto {
         PostExcerptDto {
             id: value.id,
             title: value.title,
-            excerpt: value.excerpt + " ...",
+            excerpt: value.excerpt,
             state: PostState::from(value.state).to_string(),
             category: value.category,
             published_at: value.published_at,

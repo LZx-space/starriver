@@ -50,6 +50,7 @@ impl DefaultPostRepository {
     }
 
     async fn add(&self, conn: &impl ConnectionTrait, post: Post) -> Result<Post, RepositoryError> {
+        let excerpt = post.content_excerpt();
         let (id, title, content, state, author_id, category_id, attachments, published_at) =
             post.dissolve();
         // 插入 Post 实体
@@ -57,6 +58,7 @@ impl DefaultPostRepository {
             id: Set(id),
             title: Set(title.to_string()),
             content: Set(content.to_string()),
+            excerpt: Set(excerpt),
             state: Set(state.into()),
             author_id: Set(author_id),
             category_id: Set(category_id),
@@ -114,8 +116,11 @@ impl DefaultPostRepository {
         post: Revision<Post>,
     ) -> Result<Post, RepositoryError> {
         let (original, modified) = post.dissolve();
+
+        let original_excerpt = original.content_excerpt();
         let (id, title, content, state, author_id, category_id, old_attachments, published_at) =
             original.dissolve();
+        let modified_excerpt = modified.content_excerpt();
         let (
             _,
             new_title,
@@ -134,6 +139,9 @@ impl DefaultPostRepository {
         let mut content = Unchanged(content.to_string());
         content.set_if_not_equals(new_content.to_string());
 
+        let mut excerpt = Unchanged(original_excerpt);
+        excerpt.set_if_not_equals(modified_excerpt);
+
         let mut state = Unchanged(state.into());
         state.set_if_not_equals(new_state.into());
 
@@ -150,6 +158,7 @@ impl DefaultPostRepository {
             id: Unchanged(id),
             title,
             content,
+            excerpt,
             state,
             author_id,
             category_id,

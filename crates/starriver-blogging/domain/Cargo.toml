@@ -8,6 +8,7 @@ rust-version.workspace = true
 starriver-shared-base = { workspace = true }
 
 derive-getters = { workspace = true }
+html-escape = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

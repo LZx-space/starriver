@@ -25,8 +25,8 @@ pub struct Post {
 
 impl Post {
     pub fn new(
-        title: Title,
-        content: Content,
+        title: String,
+        content: String,
         state: PostState,
         author_id: Uuid,
         category_id: Uuid,
@@ -39,8 +39,8 @@ impl Post {
         };
         Ok(Self {
             id: Uuid::now_v7(),
-            title,
-            content,
+            title: Title::new(title)?,
+            content: Content::new(content)?,
             state,
             author_id,
             category_id,
@@ -111,5 +111,10 @@ impl Post {
         self.state = PostState::Published;
         self.published_at = Some(OffsetDateTime::now_utc());
         Ok(())
+    }
+
+    /// 提取正文摘要
+    pub fn content_excerpt(&self) -> String {
+        self.content.excerpt()
     }
 }

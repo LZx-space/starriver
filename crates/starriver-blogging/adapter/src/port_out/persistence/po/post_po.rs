@@ -13,6 +13,8 @@ pub struct Model {
     pub title: String,
     #[sea_orm(column_type = "Text")]
     pub content: String,
+    #[sea_orm(column_type = "Text")]
+    pub excerpt: String,
     pub state: PostStatePo,
     pub author_id: Uuid,
     pub category_id: Uuid,

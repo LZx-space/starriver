@@ -17,7 +17,6 @@ use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
     dto::{IdName, PageResult, PageSearch},
     error::QueryError,
-    html_utils::{DefaultExcerptor, Excerptor},
     upload_file::UploadLocationResolver,
 };
 use starriver_shared_framework::{
@@ -60,12 +59,12 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         if let Some(category_id) = q.category_id {
             cond = cond.add(Column::CategoryId.eq(category_id));
         }
-        let posts = Entity::find()
+        let paginator = Entity::find()
             .select_only()
             .columns([
                 Column::Id,
                 Column::Title,
-                Column::Content,
+                Column::Excerpt,
                 Column::State,
                 Column::PublishedAt,
                 Column::CreatedAt,
@@ -73,28 +72,22 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             ])
             .join(JoinType::LeftJoin, Relation::Category.def())
             .column_as(category_po::Column::Name, "category")
-            .filter(cond.clone())
+            .filter(cond)
             .order_by_with_nulls(order, Order::Desc, NullOrdering::Last)
-            .offset(q.page * q.page_size)
-            .limit(q.page_size)
             .into_model::<PostExcerptRow>()
-            .all(conn)
+            .paginate(conn, q.page_size);
+        let posts = paginator
+            .fetch_page(q.page)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?
             .into_iter()
-            .map(|mut e| {
-                e.excerpt = DefaultExcerptor::excerpt(&e.excerpt, 200);
-                e.into()
-            })
+            .map(|e| e.into())
             .collect::<Vec<_>>();
-        let record_total = Entity::find()
-            .select_only()
-            .column(Column::Id)
-            .filter(cond)
-            .count(conn)
+        let total_items = paginator
+            .num_items()
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(PageResult::new(q.page, q.page_size, record_total, posts))
+        Ok(PageResult::new(q.page, q.page_size, total_items, posts))
     }
 
     async fn find_detail(
@@ -165,7 +158,9 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             return Ok(PageResult::new(q.page, q.page_size, 0, vec![]));
         }
 
-        // pgroonga扩展实现搜索功能，数据量极小时可能会由于不走全文索引而score为0
+        // pgroonga扩展实现搜索功能
+        // 数据量极小时可能会由于不走全文索引而score为0
+        // WHERE title OR content会导致不走全文索引，因此UNION ALL
         let rows = PostSearchRow::find_by_statement(Statement::from_sql_and_values(
             DbBackend::Postgres,
             r#"

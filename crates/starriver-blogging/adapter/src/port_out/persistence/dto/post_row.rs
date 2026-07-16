@@ -6,11 +6,11 @@ use uuid::Uuid;
 
 use crate::port_out::persistence::po::post_po::PostStatePo;
 
+/// cuz：Left Join Category
 #[derive(FromQueryResult)]
 pub struct PostExcerptRow {
     pub id: Uuid,
     pub title: String,
-    #[sea_orm(from_alias = "content")]
     pub excerpt: String,
     pub state: PostStatePo,
     pub category: String,
@@ -19,6 +19,7 @@ pub struct PostExcerptRow {
     pub updated_at: Option<OffsetDateTime>,
 }
 
+/// cuz：Left Join Category
 #[derive(FromQueryResult)]
 pub struct PostDetailRow {
     pub id: Uuid,
@@ -32,6 +33,7 @@ pub struct PostDetailRow {
     pub updated_at: Option<OffsetDateTime>,
 }
 
+/// cuz：snippet
 #[derive(FromQueryResult)]
 pub struct PostSearchRow {
     pub id: Uuid,
@@ -50,7 +52,7 @@ impl From<PostExcerptRow> for PostExcerptDto {
         PostExcerptDto {
             id: value.id,
             title: value.title,
-            excerpt: value.excerpt,
+            excerpt: value.excerpt + " ...",
             state: PostState::from(value.state).to_string(),
             category: value.category,
             published_at: value.published_at,

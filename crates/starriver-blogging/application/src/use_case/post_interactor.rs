@@ -1,8 +1,4 @@
-use starriver_blogging_domain::post::{
-    entity::Post,
-    params::PostUpdate,
-    value_object::{Content, PostState, Title},
-};
+use starriver_blogging_domain::post::{entity::Post, params::PostUpdate, value_object::PostState};
 use starriver_shared_base::{
     authentication::PrincipalClaims,
     cache::Cache,
@@ -98,8 +94,8 @@ where
         };
 
         let post = Post::new(
-            Title::new(cmd.title)?,
-            Content::new(cmd.content)?,
+            cmd.title,
+            cmd.content,
             state,
             author_id,
             cmd.category_id,

@@ -23,7 +23,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(
+    pub(crate) fn new(
         id: Uuid,
         username: Username,
         password: HashedPassword,

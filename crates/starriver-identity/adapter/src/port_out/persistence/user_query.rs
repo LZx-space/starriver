@@ -22,11 +22,11 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
         conn: &DefaultConnection,
         q: PageQuery,
     ) -> Result<PageResult<UserDetailDto>, QueryError> {
-        let users = Entity::find()
+        let paginator = Entity::find()
             .order_by_with_nulls(Column::UpdatedAt, Order::Desc, NullOrdering::Last)
-            .offset(q.page * q.page_size)
-            .limit(q.page_size)
-            .all(conn)
+            .paginate(conn, q.page_size);
+        let users = paginator
+            .fetch_page(q.page)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?
             .into_iter()
@@ -40,13 +40,11 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
                 password_attempts: e.password_attempts,
             })
             .collect::<Vec<_>>();
-        let record_total = Entity::find()
-            .select_only()
-            .column(Column::Id)
-            .count(conn)
+        let total_items = paginator
+            .num_items()
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(PageResult::new(q.page, q.page_size, record_total, users))
+        Ok(PageResult::new(q.page, q.page_size, total_items, users))
     }
 
     async fn exists_by_email(
@@ -56,7 +54,7 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
     ) -> Result<bool, QueryError> {
         Entity::find()
             .select_only()
-            .filter(user_po::Column::Email.eq(email.to_string()))
+            .filter(user_po::Column::Email.eq(email))
             .exists(conn)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))

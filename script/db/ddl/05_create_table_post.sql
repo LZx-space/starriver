@@ -3,6 +3,7 @@ CREATE TABLE public.post
     id            uuid PRIMARY KEY         NOT NULL,
     title         character varying(50)    NOT NULL,  -- 对齐领域 Title::new(≤50)
     content       text                     NOT NULL,
+    excerpt       character varying(250)   NOT NULL,
     state         smallint                 NOT NULL DEFAULT 0 CHECK (state IN (0, 1, 2)), -- 0草稿 1发布 2归档
     author_id     uuid                     NOT NULL,
     category_id   uuid                     NOT NULL,
@@ -25,6 +26,7 @@ COMMENT ON TABLE  public.post IS '博文';
 
 COMMENT ON COLUMN public.post.title IS '标题';
 COMMENT ON COLUMN public.post.content IS '正文';
+COMMENT ON COLUMN public.post.excerpt IS '摘要';
 COMMENT ON COLUMN public.post.state IS '状态';
 COMMENT ON COLUMN public.post.author_id IS '作者id';
 COMMENT ON COLUMN public.post.category_id IS '分类id';

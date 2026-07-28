@@ -4,28 +4,49 @@ use tracing::warn;
 
 pub fn db_2_repo_error(err: DbErr) -> RepositoryError {
     warn!(error=%err, "db error");
-    println!("----------------{:?}", err);
     match err {
-        DbErr::ConnectionAcquire(conn_acquire_err) => {
-            RepositoryError::ConnectionFailed(conn_acquire_err.to_string())
-        }
+        DbErr::ConnectionAcquire(e) => RepositoryError::ConnectionFailed(e.to_string()),
         DbErr::TryIntoErr { from, into, source } => RepositoryError::BadData(format!(
             "TryIntoErr: from={from:?} into={into:?} source={source:?}"
         )),
         DbErr::Conn(runtime_err) => RepositoryError::ConnectionFailed(runtime_err.to_string()),
         DbErr::Exec(runtime_err) => RepositoryError::Infrastructure(runtime_err.to_string()),
         DbErr::Query(runtime_err) => RepositoryError::Infrastructure(runtime_err.to_string()),
-        DbErr::ConvertFromU64(_) => RepositoryError::BadData("ConvertFromU64".to_string()),
-        DbErr::UnpackInsertId => RepositoryError::BadData("UnpackInsertId".to_string()),
-        DbErr::UpdateGetPrimaryKey => RepositoryError::BadData("UpdateGetPrimaryKey".to_string()),
-        DbErr::RecordNotFound(_) => RepositoryError::NotFound("RecordNotFound".to_string()),
-        DbErr::AttrNotSet(_) => RepositoryError::BadData("AttrNotSet".to_string()),
-        DbErr::Custom(_) => RepositoryError::BadData("Custom".to_string()),
-        DbErr::Type(_) => RepositoryError::BadData("Type".to_string()),
-        DbErr::Json(_) => RepositoryError::BadData("Json".to_string()),
-        DbErr::Migration(_) => RepositoryError::BadData("Migration".to_string()),
+        DbErr::ConvertFromU64(e) => RepositoryError::BadData(e.to_string()),
+        DbErr::UnpackInsertId => RepositoryError::BadData("unpack insert id".to_string()),
+        DbErr::UpdateGetPrimaryKey => {
+            RepositoryError::BadData("update get primary key".to_string())
+        }
+        DbErr::RecordNotFound(e) => RepositoryError::NotFound(e),
+        DbErr::AttrNotSet(e) => RepositoryError::BadData(e),
+        DbErr::Custom(e) => RepositoryError::BadData(e),
+        DbErr::Type(e) => RepositoryError::BadData(e),
+        DbErr::Json(e) => RepositoryError::BadData(e),
+        DbErr::Migration(e) => RepositoryError::BadData(e),
         DbErr::RecordNotInserted => RepositoryError::BadData("RecordNotInserted".to_string()),
         DbErr::RecordNotUpdated => RepositoryError::BadData("RecordNotUpdated".to_string()),
+        DbErr::BackendNotSupported { db, ctx } => {
+            RepositoryError::Infrastructure(format!("db {} not supported, {}", db, ctx))
+        }
+        DbErr::KeyArityMismatch { expected, received } => RepositoryError::BadData(format!(
+            "key arity mismatch, expected {} received {}",
+            expected, received
+        )),
+        DbErr::PrimaryKeyNotSet { ctx } => {
+            RepositoryError::BadData(format!("primary key not set {}", ctx))
+        }
+        DbErr::RbacError(e) => RepositoryError::PermissionDenied(e),
+        DbErr::AccessDenied {
+            permission,
+            resource,
+        } => RepositoryError::PermissionDenied(format!(
+            "access denied, permission {} resource {}",
+            permission, resource
+        )),
+        DbErr::MutexPoisonError => RepositoryError::Infrastructure("Mutex poisoned".to_string()),
+        _ => RepositoryError::Unexpected {
+            message: err.to_string(),
+        },
     }
 }
 

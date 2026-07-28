@@ -1,6 +1,6 @@
 use sea_orm::{
     ColumnTrait, EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
-    sea_query::NullOrdering,
+    SelectExt, sea_query::NullOrdering,
 };
 use starriver_identity_application::{
     dto::user_dto::res::UserDetailDto, port::user_query::UserQuery,

@@ -5,9 +5,10 @@ CREATE TABLE public.category
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone
 );
+
+-- Table comment
 COMMENT ON TABLE public.category IS '分类';
 
 -- Column comments
-
 COMMENT ON COLUMN public.category.id IS 'ID';
 COMMENT ON COLUMN public.category.name IS '名称';

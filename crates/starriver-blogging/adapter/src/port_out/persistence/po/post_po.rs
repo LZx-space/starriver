@@ -3,7 +3,7 @@ use sea_orm::{DeriveActiveEnum, EnumIter};
 use starriver_blogging_domain::post::value_object::PostState;
 use time::OffsetDateTime;
 
-/// 博客
+/// 博文
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "post")]
 pub struct Model {

@@ -5,25 +5,17 @@ CREATE TABLE public.post
     content       text                     NOT NULL,
     excerpt       character varying(250)   NOT NULL,
     state         smallint                 NOT NULL DEFAULT 0 CHECK (state IN (0, 1, 2)), -- 0草稿 1发布 2归档
-    author_id     uuid                     NOT NULL,
-    category_id   uuid                     NOT NULL,
+    author_id     uuid                     NOT NULL,  -- 不同聚合不定义为FK
+    category_id   uuid                     NOT NULL,  -- 不同聚合不定义为FK
     published_at  timestamp with time zone,
     created_at    timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    timestamp with time zone,
-
-    CONSTRAINT fk_post_author FOREIGN KEY (author_id)
-        REFERENCES public."user"(id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_post_category FOREIGN KEY (category_id)
-        REFERENCES public.category(id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE RESTRICT
+    updated_at    timestamp with time zone
 );
 
+-- Table comment
 COMMENT ON TABLE  public.post IS '博文';
 
+-- Column comments
 COMMENT ON COLUMN public.post.title IS '标题';
 COMMENT ON COLUMN public.post.content IS '正文';
 COMMENT ON COLUMN public.post.excerpt IS '摘要';

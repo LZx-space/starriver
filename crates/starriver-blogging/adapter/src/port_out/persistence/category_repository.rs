@@ -30,6 +30,18 @@ impl DefaultCategoryRepository {
             .map(|e| e.map(|e| Category::from_repo(e.id, e.name)))
     }
 
+    async fn exists_by_id(
+        &self,
+        conn: &impl ConnectionTrait,
+        id: Uuid,
+    ) -> Result<bool, RepositoryError> {
+        Entity::find_by_id(id)
+            .one(conn)
+            .await
+            .map_err(db_2_repo_error)
+            .map(|e| e.is_some())
+    }
+
     async fn insert(
         &self,
         conn: &impl ConnectionTrait,
@@ -84,6 +96,14 @@ impl CategoryRepository<DefaultConnection> for DefaultCategoryRepository {
         self.find_by_id(conn, id).await
     }
 
+    async fn exists_by_id(
+        &self,
+        conn: &DefaultConnection,
+        id: Uuid,
+    ) -> Result<bool, RepositoryError> {
+        self.exists_by_id(conn, id).await
+    }
+
     async fn insert(
         &self,
         conn: &DefaultConnection,
@@ -112,6 +132,14 @@ impl CategoryRepository<DefaultTransaction> for DefaultCategoryRepository {
         id: Uuid,
     ) -> Result<Option<Category>, RepositoryError> {
         self.find_by_id(conn, id).await
+    }
+
+    async fn exists_by_id(
+        &self,
+        conn: &DefaultTransaction,
+        id: Uuid,
+    ) -> Result<bool, RepositoryError> {
+        self.exists_by_id(conn, id).await
     }
 
     async fn insert(

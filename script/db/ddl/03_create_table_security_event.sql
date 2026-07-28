@@ -1,19 +1,16 @@
 CREATE TABLE public.security_event
 (
     id          uuid PRIMARY KEY         NOT NULL,
-    user_id     uuid                     NOT NULL,
+    user_id     uuid                     NOT NULL,  -- 不同聚合不定义为FK
     event_type  smallint                 NOT NULL,
     message     character varying(100)   NOT NULL,
     created_at  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  timestamp with time zone,
-
-    CONSTRAINT fk_user FOREIGN KEY (user_id)
-        REFERENCES public."user" (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE CASCADE
+    updated_at  timestamp with time zone
 );
 
+-- Table comment
 COMMENT ON TABLE public.security_event
     IS '用户安全事件';
 
+-- Index
 CREATE INDEX idx_security_event_user_type_created ON public.security_event (user_id, event_type, created_at DESC);

@@ -15,33 +15,43 @@ use crate::{
     },
     error::CtxError,
     port::{
+        category_repository::CategoryRepository,
         post_cache::{PostCaches, PostPageKey},
         post_query::PostQuery,
         post_repository::PostRepository,
     },
 };
 
-pub struct PostInteractor<Conn, Q, R, PC, DC> {
+pub struct PostInteractor<Conn, Q, PR, CR, PC, DC> {
     conn: Conn,
     query: Q,
-    repo: R,
+    post_repo: PR,
+    category_repo: CR,
     cache: PostCaches<PC, DC>,
 }
 
-impl<Conn, Q, R, PC, DC> PostInteractor<Conn, Q, R, PC, DC>
+impl<Conn, Q, PR, CR, PC, DC> PostInteractor<Conn, Q, PR, CR, PC, DC>
 where
     Conn: Connection,
     Q: PostQuery<Conn>,
-    R: PostRepository<Conn> + PostRepository<<Conn as Connection>::Transaction>,
+    PR: PostRepository<Conn> + PostRepository<<Conn as Connection>::Transaction>,
+    CR: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
     PC: Cache<PostPageKey, PageResult<PostExcerptDto>>,
     DC: Cache<Uuid, Option<PostDetailDto>>,
 {
     /// 新建
-    pub fn new(conn: Conn, query: Q, repo: R, cache: PostCaches<PC, DC>) -> Self {
+    pub fn new(
+        conn: Conn,
+        query: Q,
+        post_repo: PR,
+        category_repo: CR,
+        cache: PostCaches<PC, DC>,
+    ) -> Self {
         Self {
             conn,
             query,
-            repo,
+            post_repo,
+            category_repo,
             cache,
         }
     }
@@ -92,6 +102,16 @@ where
             true => PostState::Published,
             false => PostState::Draft,
         };
+        if !self
+            .category_repo
+            .exists_by_id(&self.conn, cmd.category_id)
+            .await?
+        {
+            return Err(CtxError::NotFound(format!(
+                "category [{}] not exist",
+                cmd.category_id
+            )));
+        }
 
         let post = Post::new(
             cmd.title,
@@ -101,7 +121,7 @@ where
             cmd.category_id,
             cmd.attachments,
         )?;
-        let created = self.repo.add(&self.conn, post).await?;
+        let created = self.post_repo.add(&self.conn, post).await?;
 
         // 新增帖子后，清除所有帖子缓存
         self.cache.invalidate_all();
@@ -126,7 +146,17 @@ where
             CtxError::Internal
         })?;
         let result = async {
-            let post = self.repo.find_by_id(&self.conn, id).await?;
+            if !self
+                .category_repo
+                .exists_by_id(&self.conn, cmd.category_id)
+                .await?
+            {
+                return Err(CtxError::NotFound(format!(
+                    "category [{}] not exist",
+                    cmd.category_id
+                )));
+            }
+            let post = self.post_repo.find_by_id(&self.conn, id).await?;
             let Some(mut found) = post else {
                 return Err(CtxError::NotFound(format!("post [{}] not exist", id)));
             };
@@ -139,7 +169,7 @@ where
             };
             let original = found.clone();
             found.update(cmd)?;
-            self.repo
+            self.post_repo
                 .update(&self.conn, Revision::new(original, found))
                 .await
                 .map_err(CtxError::from)
@@ -176,7 +206,7 @@ where
             Post_id = %id,
             "deleting post"
         );
-        self.repo
+        self.post_repo
             .delete(&self.conn, id)
             .await
             .map_err(CtxError::from)

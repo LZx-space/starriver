@@ -13,6 +13,8 @@ CREATE TABLE public."user"
     CONSTRAINT uq_username UNIQUE (username),
     CONSTRAINT uq_email UNIQUE (email)
 );
+
+-- Table comment
 COMMENT ON TABLE public."user" IS '用户';
 
 -- Column comments

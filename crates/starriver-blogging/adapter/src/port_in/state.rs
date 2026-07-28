@@ -35,6 +35,7 @@ type PostInteractor = post_interactor::PostInteractor<
     DefaultConnection,
     DefaultPostQuery,
     DefaultPostRepository,
+    DefaultCategoryRepository,
     DefaultCache<PostPageKey, PageResult<PostExcerptDto>>,
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
@@ -79,6 +80,7 @@ impl BloggingState {
             conn.clone(),
             DefaultPostQuery::new(upload_file_url_builder.clone()),
             DefaultPostRepository,
+            DefaultCategoryRepository,
             PostCaches::new(
                 DefaultCache::new(1, cache_jitter_ttl(cache_cfg)),
                 DefaultCache::new(100, cache_jitter_ttl(cache_cfg)),

@@ -12,6 +12,12 @@ pub trait CategoryRepository<T: Executor> {
         id: Uuid,
     ) -> impl Future<Output = Result<Option<Category>, RepositoryError>> + Send;
 
+    fn exists_by_id(
+        &self,
+        conn: &T,
+        id: Uuid,
+    ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
+
     fn insert(
         &self,
         conn: &T,

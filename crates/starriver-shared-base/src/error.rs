@@ -53,9 +53,12 @@ pub enum RepositoryError {
     #[error("数据格式错误: {0}")]
     BadData(String),
 
+    #[error("权限拒绝: {0}")]
+    PermissionDenied(String),
+
     /// 未知或未分类的错误
     #[error("未知的数据库错误: {message}")]
-    Unknown { message: String },
+    Unexpected { message: String },
 }
 
 #[derive(Debug, Error)]

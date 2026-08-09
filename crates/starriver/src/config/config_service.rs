@@ -1,14 +1,26 @@
+use std::env::VarError;
+
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use starriver_blogging_adapter::config::BloggingConfig;
 use starriver_identity_adapter::config::IdentityConfig;
 use starriver_shared_framework::config::{Auth, Uploads};
 
-pub fn load_config() -> Result<AppConfig, ConfigError> {
-    let config_path = std::env::var("APP_CONFIG_PATH").unwrap_or_else(|_| "config-dev".into());
+const APP_CONFIG_PATH_ENV: &str = "APP_CONFIG_PATH";
 
+pub fn load_config() -> Result<AppConfig, ConfigError> {
+    let config_file_path = match std::env::var(APP_CONFIG_PATH_ENV) {
+        Ok(path) => path,
+        Err(VarError::NotPresent) => {
+            println!("cfg file env var {APP_CONFIG_PATH_ENV} not set, try read config-dev file");
+            "config-dev".to_owned()
+        }
+        Err(VarError::NotUnicode(value)) => Err(ConfigError::Message(format!(
+            "{APP_CONFIG_PATH_ENV} 不是合法 Unicode 路径: {value:?}"
+        )))?,
+    };
     Config::builder()
-        .add_source(File::with_name(&config_path).required(true)) // 外部路径
+        .add_source(File::with_name(&config_file_path).required(true)) // 外部路径
         .add_source(Environment::with_prefix("APP").separator("__")) // 环境变量最高优先级
         .build()?
         .try_deserialize()

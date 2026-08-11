@@ -3,7 +3,7 @@ use std::{
     sync::LazyLock,
 };
 
-use html_escape::decode_html_entities;
+use html_escape::{decode_html_entities, encode_text};
 use regex::Regex;
 
 use crate::shared_error::DomainError;
@@ -61,21 +61,28 @@ impl Content {
     }
 
     pub(crate) fn excerpt(&self) -> String {
-        let no_tags = TAG_REGEX.replace_all(&self.0, "");
-        let decoded = decode_html_entities(&no_tags);
-        let len = decoded.chars().count();
+        // 先解码实体：
+        // 实体化的标签（如 &lt;script&gt;）必须先还原成标签，才能被下一步剥掉。
+        // 若先剥标签，实体化的标签会逃过正则、解码后又还原成可执行标签（存储型 XSS）。
+        let decoded = decode_html_entities(&self.0);
+        // 再剥标签
+        let no_tags = TAG_REGEX.replace_all(&decoded, "");
+        // 转义剩余文本中的 <>&：摘要契约是“可直接按 HTML 渲染的文本”，
+        // 防止解码残留（如双重编码 &amp;lt;）被浏览器二次解析成标签
+        let escaped = encode_text(&no_tags);
+        let len = escaped.chars().count();
 
         const MAX_LEN: usize = 200;
         const EXTRA_SEARCH: usize = 50; // 允许向后多找50个字符的边界
 
         if len <= MAX_LEN {
-            return decoded.to_string();
+            return escaped.to_string();
         }
 
         // 在 [MAX_LEN, MAX_LEN + EXTRA_SEARCH] 区间内查找第一个分隔符
         let mut end = MAX_LEN;
         let search_limit = (MAX_LEN + EXTRA_SEARCH).min(len);
-        let chars: Vec<char> = decoded.chars().collect();
+        let chars: Vec<char> = escaped.chars().collect();
 
         while end < search_limit {
             let c = chars[end];

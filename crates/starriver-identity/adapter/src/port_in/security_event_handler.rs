@@ -2,6 +2,7 @@ use axum::{extract::State, response::IntoResponse};
 use starriver_shared_base::dto::PageQuery;
 use starriver_shared_framework::{
     extract::{Json, Query},
+    middleware::authentication::default_impl::AuthenticatedUser,
     response::ApiError,
 };
 
@@ -9,6 +10,7 @@ use crate::{error_mapping::map_error, port_in::state::IdentityState};
 
 pub async fn paginate(
     state: State<IdentityState>,
+    _: AuthenticatedUser,
     q: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     state

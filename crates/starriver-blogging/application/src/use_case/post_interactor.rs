@@ -148,7 +148,7 @@ where
         let result = async {
             if !self
                 .category_repo
-                .exists_by_id(&self.conn, cmd.category_id)
+                .exists_by_id(&tx, cmd.category_id)
                 .await?
             {
                 return Err(CtxError::NotFound(format!(
@@ -156,7 +156,7 @@ where
                     cmd.category_id
                 )));
             }
-            let post = self.post_repo.find_by_id(&self.conn, id).await?;
+            let post = self.post_repo.find_by_id(&tx, id).await?;
             let Some(mut found) = post else {
                 return Err(CtxError::NotFound(format!("post [{}] not exist", id)));
             };
@@ -170,7 +170,7 @@ where
             let original = found.clone();
             found.update(cmd)?;
             self.post_repo
-                .update(&self.conn, Revision::new(original, found))
+                .update(&tx, Revision::new(original, found))
                 .await
                 .map_err(CtxError::from)
         }

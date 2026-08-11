@@ -226,7 +226,13 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                         (pgroonga_snippet_html(filtered.clean_content, (SELECT kw FROM search_kw), 100))[1],
                         ''
                     ),
-                    left(filtered.clean_content, 100)
+                    replace(
+                        replace(
+                            replace(left(filtered.clean_content, 100), '&', '&amp;'),
+                            '<', '&lt;'
+                        ),
+                        '>', '&gt;'
+                    )
                 ) AS snippet,
                 filtered.published_at,
                 filtered.score,

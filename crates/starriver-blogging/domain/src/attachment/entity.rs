@@ -36,7 +36,7 @@ impl Attachment {
     }
 
     pub fn file_name(&self) -> String {
-        Attachment::make_file_name(&self.id, &self.extension)
+        Attachment::generate_file_name(&self.id, &self.extension)
     }
 
     pub fn file_size(&self) -> i64 {
@@ -44,7 +44,7 @@ impl Attachment {
     }
 
     /// 命名规则的单点来源：`{id}.{extension}`
-    pub fn make_file_name(id: &Uuid, extension: &Extension) -> String {
+    pub fn generate_file_name(id: &Uuid, extension: &Extension) -> String {
         format!("{}.{}", id, extension.as_str())
     }
 }

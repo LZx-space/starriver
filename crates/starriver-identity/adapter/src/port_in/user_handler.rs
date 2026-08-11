@@ -21,6 +21,7 @@ pub async fn me(user: AuthenticatedUser) -> Result<impl IntoResponse, ApiError> 
 
 pub async fn paginate(
     state: State<IdentityState>,
+    _: AuthenticatedUser,
     q: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     state

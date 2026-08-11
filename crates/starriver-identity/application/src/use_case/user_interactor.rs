@@ -5,6 +5,7 @@ use starriver_identity_domain::{
 use starriver_shared_base::{
     db::{Connection, Revision, Transaction},
     dto::{PageQuery, PageResult},
+    error::RepositoryError,
 };
 use std::convert::Infallible;
 use tracing::{error, info, warn};
@@ -145,41 +146,37 @@ where
         username: String,
         cmd: UserActiveCmd,
     ) -> Result<(), CtxError> {
-        let email_code = cmd.email_code.as_str();
-
         let tx = self.conn.begin().await.map_err(|e| {
             error!(error = %e, "begin transaction failed");
             CtxError::Internal
         })?;
-        let result = match self.user_repo.find_by_username(&tx, &username).await {
-            Ok(found) => {
-                if let Some(mut found) = found {
-                    let email = found.email().as_str();
-                    let matches = self
-                        .verification_code_service
-                        .validate_code(email, email_code)
-                        .await
-                        .inspect_err(
-                            |e| info!(email=%email, error=%e, "active user validate code failed"),
-                        )?;
-                    if !matches {
-                        return Err(CtxError::InvalidInput("invalid email code".to_string()));
-                    }
-                    let original = found.clone();
-                    found.activate();
-                    self.user_repo
-                        .update(&self.conn, Revision::new(original, found))
-                        .await?;
-                } else {
-                    warn!(username=%username, "user not found");
-                }
-                Ok(())
+        let result: Result<(), CtxError> = async {
+            let email_code = cmd.email_code.as_str();
+            let found = self.user_repo.find_by_username(&tx, &username).await?;
+            let Some(mut found) = found else {
+                warn!(username=%username, "user not found");
+                return Ok(());
+            };
+            let email = found.email().as_str();
+            let matches = self
+                .verification_code_service
+                .validate_code(email, email_code)
+                .await
+                .inspect_err(
+                    |e| info!(email=%email, error=%e, "active user validate code failed"),
+                )?;
+            if !matches {
+                return Err(CtxError::InvalidInput("invalid email code".to_string()));
             }
-            Err(e) => {
-                error!(user_id=%username, error=%e, "find user by id failed");
-                Err(CtxError::Internal)
-            }
-        };
+            let original = found.clone();
+            found.activate();
+            self.user_repo
+                .update(&tx, Revision::new(original, found))
+                .await?;
+            Ok(())
+        }
+        .await;
+
         match result {
             Ok(val) => {
                 tx.commit().await.map_err(|e| {
@@ -215,26 +212,27 @@ where
             CtxError::Internal
         })?;
 
-        let mut user = self
-            .user_repo
-            .find_by_username(&tx, username)
-            .await?
-            .ok_or(CtxError::NotFound("user not found".to_string()))?;
+        let result: Result<(), CtxError> = async {
+            let user_opt = self.user_repo.find_by_username(&tx, username).await?;
+            let mut user =
+                user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
 
-        let original = user.clone();
+            let original = user.clone();
+            // todo anti timing attack
+            self.pwd_service.change_password(
+                &mut user,
+                cmd.cur_password.as_str(),
+                cmd.new_password.as_str(),
+            )?;
 
-        // todo anti timing attack
-        self.pwd_service.change_password(
-            &mut user,
-            cmd.cur_password.as_str(),
-            cmd.new_password.as_str(),
-        )?;
+            self.user_repo
+                .update(&tx, Revision::new(original, user))
+                .await?;
+            Ok(())
+        }
+        .await;
 
-        match self
-            .user_repo
-            .update(&tx, Revision::new(original, user))
-            .await
-        {
+        match result {
             Ok(_) => {
                 tx.commit().await.map_err(|e| {
                     error!(error=%e, "commit transaction failed");
@@ -247,8 +245,7 @@ where
                     error!(username=%username, error=%e, "rollback transaction failed");
                     CtxError::Internal
                 })?;
-                error!(username=%username, error=%e, "update user failed");
-                Err(CtxError::Internal)
+                Err(e)
             }
         }
     }

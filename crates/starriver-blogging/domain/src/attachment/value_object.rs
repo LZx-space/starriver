@@ -3,8 +3,17 @@ use crate::shared_error::DomainError;
 #[derive(Clone)]
 pub struct FileSize(pub(crate) i64);
 impl FileSize {
+    /// 附件大小上限（字节）：10 MB
+    pub const MAX_SIZE: i64 = 1024 * 1024 * 10;
+
+    /// 大小规则的单点来源：已写入 `written` 字节后，是否还能容纳 `additional` 字节。
+    /// 流式写入用它做实时判断，构造时用 `new`（等价于 `allows(0, size)`）做最终校验。
+    pub fn allows(written: i64, additional: i64) -> bool {
+        written + additional <= Self::MAX_SIZE
+    }
+
     pub fn new(size: i64) -> Result<Self, DomainError> {
-        if size > 1024 * 1024 * 10 {
+        if !Self::allows(0, size) {
             return Err(DomainError::AttachmentFileSizeInvalid(size));
         }
         Ok(Self(size))

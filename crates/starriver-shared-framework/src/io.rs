@@ -51,6 +51,7 @@ pub struct TokioFileAsyncWriter {
 }
 
 impl TokioFileAsyncWriter {
+    /// 创建文件
     pub async fn new(path: impl AsRef<std::path::Path>) -> io::Result<Self> {
         Ok(Self {
             file: File::create(path).await?,

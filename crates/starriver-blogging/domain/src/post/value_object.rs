@@ -3,6 +3,7 @@ use std::{
     sync::LazyLock,
 };
 
+use ammonia::clean;
 use html_escape::{decode_html_entities, encode_text};
 use regex::Regex;
 
@@ -36,6 +37,7 @@ impl Title {
         if value.chars().count() > 50 {
             return Err(DomainError::PostTitleTooLong(value));
         }
+        let value = clean(&value);
         Ok(Self(value))
     }
 }
@@ -57,6 +59,7 @@ impl Content {
         if value.chars().count() > 50000 {
             return Err(DomainError::PostContentTooLong(value));
         }
+        let value = clean(&value);
         Ok(Self(value))
     }
 

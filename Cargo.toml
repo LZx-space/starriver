@@ -22,6 +22,7 @@ starriver-blogging-adapter = { path = "crates/starriver-blogging/adapter" }
 starriver-shared-base = { path = "crates/starriver-shared-base" }
 starriver-shared-framework = { path = "crates/starriver-shared-framework" }
 
+ammonia = { version = "^4" }
 axum = { version = "^0", features = ["macros", "multipart"] }
 axum-extra = { version = "^0", features = ["cookie", "form"] }
 argon2 = "^0"

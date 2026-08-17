@@ -6,7 +6,7 @@ use starriver_blogging_application::{
         post_dto::res::{PostDetailDto, PostExcerptDto},
     },
     port::post_cache::{PostCaches, PostPageKey},
-    use_case::{attachement_interactor, category_interactor, post_interactor},
+    use_case::{attachment_interactor, category_interactor, post_interactor},
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_base::{dto::PageResult, random::duration_with_jitter};
@@ -47,7 +47,7 @@ type CategoryInteractor = category_interactor::CategoryInteractor<
     DefaultCache<(), Vec<CategoryDetailDto>>,
 >;
 
-type AttachmentInteractor = attachement_interactor::AttachmentInteractor<
+type AttachmentInteractor = attachment_interactor::AttachmentInteractor<
     DefaultConnection,
     DefaultAttachmentRepository,
     DefaultFileTypeChecker,

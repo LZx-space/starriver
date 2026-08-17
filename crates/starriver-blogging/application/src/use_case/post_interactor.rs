@@ -203,7 +203,7 @@ where
     ) -> Result<bool, CtxError> {
         info!(
             user_id = %operator.sub,
-            Post_id = %id,
+            post_id = %id,
             "deleting post"
         );
         self.post_repo

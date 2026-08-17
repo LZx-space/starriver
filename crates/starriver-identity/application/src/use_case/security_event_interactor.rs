@@ -31,7 +31,7 @@ where
             .paginate(&self.conn, q)
             .await
             .map_err(|e| {
-                error!(error=%e, "paginate users failed");
+                error!(error=%e, "paginate security events failed");
                 CtxError::Internal
             })
     }

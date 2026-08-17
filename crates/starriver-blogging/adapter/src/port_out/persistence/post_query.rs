@@ -200,24 +200,19 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                	    FROM
                         unioned
                	),
-               	filtered AS (
+                filtered AS (
                	    SELECT
                	        id,
                	        title,
-               	        regexp_replace(
-               	            regexp_replace(content, '<[^>]*>', '', 'g'),
-               	            '&[^;]+;',
-               	            '',
-               	            'g'
-               	        ) AS clean_content,
-             			published_at,
+               	        regexp_replace(content, '<[^>]*>', '', 'g') AS clean_content,
+					    published_at,
                         category_id,
                         score
-               	    FROM
+                    FROM
                         ranked
-               	    WHERE
+                    WHERE
                         rn = 1
-               	)
+                )
             SELECT
                 filtered.id,
                 filtered.title,
@@ -226,13 +221,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                         (pgroonga_snippet_html(filtered.clean_content, (SELECT kw FROM search_kw), 100))[1],
                         ''
                     ),
-                    replace(
-                        replace(
-                            replace(left(filtered.clean_content, 100), '&', '&amp;'),
-                            '<', '&lt;'
-                        ),
-                        '>', '&gt;'
-                    )
+                    left(filtered.clean_content, 100)
                 ) AS snippet,
                 filtered.published_at,
                 filtered.score,

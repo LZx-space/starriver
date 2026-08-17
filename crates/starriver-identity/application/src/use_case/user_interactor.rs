@@ -98,14 +98,14 @@ where
             .verification_code_service
             .validate_code(email, email_code)
             .await
-            .inspect_err(|e| info!(email=%email, error=%e, "rigister user validate code failed"))?;
+            .inspect_err(|e| info!(email=%email, error=%e, "register user validate code failed"))?;
         if !matches {
             return Err(CtxError::InvalidInput("invalid email code".to_string()));
         }
         let user = self
             .user_factory
             .create_user(cmd.username.as_str(), cmd.password.as_str(), email)
-            .inspect_err(|e| info!(email=%email, error=%e, "rigister user create user failed"))?;
+            .inspect_err(|e| info!(email=%email, error=%e, "register user create user failed"))?;
 
         self.user_repo
             .insert(&self.conn, user)

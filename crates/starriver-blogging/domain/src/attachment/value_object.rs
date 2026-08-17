@@ -32,14 +32,15 @@ impl Extension {
     const ALLOWED_TYPES: &[&str] = &["png", "jpg", "jpeg", "gif"];
 
     pub fn new(extension: &str) -> Result<Self, DomainError> {
-        // 检查是否在白名单中
-        if !Self::ALLOWED_TYPES.contains(&extension) {
+        // 统一小写后再与白名单比较，避免 "PNG"/"JpEg" 这类大小写变体被误拒
+        let normalized = extension.to_ascii_lowercase();
+        if !Self::ALLOWED_TYPES.contains(&normalized.as_str()) {
             return Err(DomainError::AttachmentExtensionInvalid(format!(
                 "不允许的文件类型：{}",
                 extension
             )));
         }
-        Ok(Self(extension.to_string()))
+        Ok(Self(normalized))
     }
 
     pub fn as_str(&self) -> &str {

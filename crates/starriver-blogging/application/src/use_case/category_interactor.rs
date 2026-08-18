@@ -40,10 +40,7 @@ where
                 self.query.list_all(&self.conn).await
             })
             .await
-            .map_err(|e| {
-                error!(error=%e, "database error");
-                CtxError::Internal
-            })
+            .map_err(|e| CtxError::internal("list categories failed", e))
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Category, CtxError> {

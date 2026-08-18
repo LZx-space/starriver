@@ -67,17 +67,14 @@ where
             .page_cache()
             .try_get_with(key, async { self.query.paginate(&self.conn, q).await })
             .await
-            .map_err(|e| {
-                error!(error=%e, "database error");
-                CtxError::Internal
-            })
+            .map_err(|e| CtxError::internal("paginate posts failed", e))
     }
 
     pub async fn search(&self, q: PageSearch) -> Result<PageResult<PostSearchDto>, CtxError> {
-        self.query.search(&self.conn, q).await.map_err(|e| {
-            error!(error=%e, "database error");
-            CtxError::Internal
-        })
+        self.query
+            .search(&self.conn, q)
+            .await
+            .map_err(|e| CtxError::internal("search posts failed", e))
     }
 
     pub async fn find(&self, id: Uuid) -> Result<PostDetailDto, CtxError> {
@@ -85,10 +82,7 @@ where
             .detail_cache()
             .try_get_with(id, async { self.query.find_detail(&self.conn, id).await })
             .await
-            .map_err(|e| {
-                error!(error=%e, "database error");
-                CtxError::Internal
-            })
+            .map_err(|e| CtxError::internal("find post failed", e))
             .and_then(|r| r.ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id))))
     }
 

@@ -62,10 +62,10 @@ where
     }
 
     pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<UserDetailDto>, CtxError> {
-        self.user_query.paginate(&self.conn, q).await.map_err(|e| {
-            error!(error=%e, "paginate users failed");
-            CtxError::Internal
-        })
+        self.user_query
+            .paginate(&self.conn, q)
+            .await
+            .map_err(|e| CtxError::internal("paginate users failed", e))
     }
 
     ///// register user ///////////////////////////////////////////////////////////////////////

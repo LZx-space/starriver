@@ -2,7 +2,6 @@ use starriver_shared_base::{
     db::Connection,
     dto::{PageQuery, PageResult},
 };
-use tracing::error;
 
 use crate::{
     dto::user_dto::res::SecurityEventDto, error::CtxError,
@@ -30,9 +29,6 @@ where
         self.security_event_port
             .paginate(&self.conn, q)
             .await
-            .map_err(|e| {
-                error!(error=%e, "paginate users failed");
-                CtxError::Internal
-            })
+            .map_err(|e| CtxError::internal("paginate security events failed", e))
     }
 }

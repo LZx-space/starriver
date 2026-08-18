@@ -22,9 +22,9 @@ impl PasswordEncoder for Argon2PasswordEncoder {
     fn verify(
         &self,
         raw_password: &str,
-        encode_password: &str,
+        encoded_password: &str,
     ) -> Result<bool, PasswordEncoderError> {
-        let password_hash_str = PasswordHashString::new(encode_password)
+        let password_hash_str = PasswordHashString::new(encoded_password)
             .map_err(|e| PasswordEncoderError::EncodingFailed(e.to_string()))?;
         let password_hash = password_hash_str.password_hash();
         match self

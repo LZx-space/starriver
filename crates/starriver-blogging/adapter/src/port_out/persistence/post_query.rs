@@ -200,24 +200,19 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                	    FROM
                         unioned
                	),
-               	filtered AS (
+                filtered AS (
                	    SELECT
                	        id,
                	        title,
-               	        regexp_replace(
-               	            regexp_replace(content, '<[^>]*>', '', 'g'),
-               	            '&[^;]+;',
-               	            '',
-               	            'g'
-               	        ) AS clean_content,
-             			published_at,
+               	        regexp_replace(content, '<[^>]*>', '', 'g') AS clean_content,
+					    published_at,
                         category_id,
                         score
-               	    FROM
+                    FROM
                         ranked
-               	    WHERE
+                    WHERE
                         rn = 1
-               	)
+                )
             SELECT
                 filtered.id,
                 filtered.title,

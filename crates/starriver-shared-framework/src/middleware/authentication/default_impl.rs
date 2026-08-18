@@ -149,7 +149,8 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             Ok(token) => token,
             Err(err) => {
                 error!(error = %err, "failed to serialize JWS principal claims");
-                return "".into_response();
+                return (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+                    .into_response();
             }
         };
         // 创建cookie
@@ -167,7 +168,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             .body(Body::empty())
             .unwrap_or_else(|e| {
                 error!(error = %e, "failed to build authentication success response");
-                "build authentication success response error".into_response()
+                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error").into_response()
             })
     }
 }
@@ -181,25 +182,22 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
 
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
         info!(error=%err, "authentication failed");
-        let (cause, message) = match err {
-            AuthenticationError::UserLocked => (StatusCode::BAD_REQUEST, "user locked".to_string()),
-            AuthenticationError::UserDisabled => {
-                (StatusCode::BAD_REQUEST, "user disabled".to_string())
-            }
-            AuthenticationError::BadPassword => (
-                StatusCode::BAD_REQUEST,
-                "username or password incorrect".to_string(),
-            ),
+        match err {
+            // 内部错误：状态码 500，但绝不向客户端泄漏内部细节
             AuthenticationError::InnerError { message } => {
                 error!(error=%message, "authentication failed inner error");
-                (StatusCode::INTERNAL_SERVER_ERROR, message)
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                )
             }
+            // 其余所有失败（未找到/空/密码错/锁定/禁用/删除）统一文案，防止账号状态枚举
             _ => (
                 StatusCode::BAD_REQUEST,
                 "username or password incorrect".to_string(),
             ),
-        };
-        (cause, message).into_response()
+        }
+        .into_response()
     }
 }
 

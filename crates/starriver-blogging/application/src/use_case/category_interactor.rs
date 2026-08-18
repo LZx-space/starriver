@@ -40,10 +40,7 @@ where
                 self.query.list_all(&self.conn).await
             })
             .await
-            .map_err(|e| {
-                error!(error=%e, "database error");
-                CtxError::Internal
-            })
+            .map_err(|e| CtxError::internal("list categories failed", e))
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Category, CtxError> {
@@ -64,14 +61,10 @@ where
             "creating category"
         );
         let category = Category::new(name)?;
-        self.repo
-            .insert(&self.conn, category)
-            .await
-            .map(Ok)
-            .inspect(|_| {
-                // 插入成功后，缓存需要失效
-                self.cache.invalidate_all();
-            })?
+        let created = self.repo.insert(&self.conn, category).await?;
+        // 插入成功后，缓存需要失效
+        self.cache.invalidate_all();
+        Ok(created)
     }
 
     pub async fn update(
@@ -102,7 +95,7 @@ where
             self.repo
                 .update(&tx, Revision::new(original, category))
                 .await
-                .map(Ok)?
+                .map_err(CtxError::from)
         }
         .await;
 

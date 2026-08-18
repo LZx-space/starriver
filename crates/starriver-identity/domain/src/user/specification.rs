@@ -2,51 +2,68 @@ use regex::Regex;
 
 use crate::error::DomainError;
 
-pub struct UsernameSpec(Regex);
+/// 正则规范共享实现：一个正则 + 匹配失败时返回的错误变体。
+/// 三个 *Spec 的验证逻辑单点在这里，避免各写一份。
+#[derive(Clone)]
+struct RegexValidator {
+    regex: Regex,
+    error: fn() -> DomainError,
+}
+
+impl RegexValidator {
+    fn validate(&self, value: &str) -> Result<(), DomainError> {
+        if !self.regex.is_match(value) {
+            return Err((self.error)());
+        }
+        Ok(())
+    }
+}
+
+pub struct UsernameSpec(RegexValidator);
 
 impl UsernameSpec {
     pub fn new(regex: Regex) -> Self {
-        Self(regex)
+        Self(RegexValidator {
+            regex,
+            error: || DomainError::InvalidUsernameFormat,
+        })
     }
 
     pub fn validate(&self, username: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(username) {
-            return Err(DomainError::InvalidUsernameFormat);
-        }
-        Ok(())
+        self.0.validate(username)
     }
 }
 
 /// 原始密码格式规范，面向用户输入的明文密码。
 /// 仅被 UserFactory 在校验原始密码时消费。
 #[derive(Clone)]
-pub struct PasswordSpec(Regex);
+pub struct PasswordSpec(RegexValidator);
 
 impl PasswordSpec {
     pub fn new(regex: Regex) -> Self {
-        Self(regex)
+        Self(RegexValidator {
+            regex,
+            error: || DomainError::InvalidPasswordFormat,
+        })
     }
 
     pub fn validate(&self, password: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(password) {
-            return Err(DomainError::InvalidPasswordFormat);
-        }
-        Ok(())
+        self.0.validate(password)
     }
 }
 
-pub struct EmailSpec(Regex);
+pub struct EmailSpec(RegexValidator);
 
 impl EmailSpec {
     pub fn new(regex: Regex) -> Self {
-        Self(regex)
+        Self(RegexValidator {
+            regex,
+            error: || DomainError::InvalidEmailFormat,
+        })
     }
 
     pub fn validate(&self, email: &str) -> Result<(), DomainError> {
-        if !self.0.is_match(email) {
-            return Err(DomainError::InvalidEmailFormat);
-        }
-        Ok(())
+        self.0.validate(email)
     }
 }
 

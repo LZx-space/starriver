@@ -85,7 +85,7 @@ impl User {
             .is_some_and(|time| time > OffsetDateTime::now_utc())
     }
 
-    pub fn unlock(&mut self) {
+    pub fn clean_password_state(&mut self) {
         self.password_locked_until = None;
         self.password_window_start = None;
         self.password_attempts = 0;

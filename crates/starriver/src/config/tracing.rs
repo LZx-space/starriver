@@ -1,4 +1,4 @@
-use tracing::{Level, error, info, level_filters::LevelFilter};
+use tracing::{Level, debug, info, level_filters::LevelFilter};
 use tracing_subscriber::Layer;
 
 use crate::config::config_service::Logging;
@@ -60,8 +60,9 @@ pub fn tracing_span(request: &axum::extract::Request) -> tracing::Span {
         .get("x-request-id")
         .and_then(|hv| hv.to_str().ok())
         .unwrap_or_else(|| {
-            error!("failed to get x-request-id from headers");
-            "unknow"
+            // SetRequestIdLayer 在 TraceLayer 外层，正常路径总能拿到 id，这里只是兜底
+            debug!("failed to get x-request-id from headers");
+            "unknown"
         });
     tracing::info_span!(
         "http_request",

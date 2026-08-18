@@ -1,3 +1,4 @@
+use ammonia::clean;
 use derive_getters::{Dissolve, Getters};
 use serde::Serialize;
 use uuid::Uuid;
@@ -15,6 +16,10 @@ impl Category {
         if name.chars().count() > 10 {
             return Err(DomainError::PostCategoryTooLong(name));
         }
+        let name = clean(&name);
+        if name.is_empty() {
+            return Err(DomainError::PostCategoryIsNone);
+        }
         Ok(Self {
             id: Uuid::now_v7(),
             name,
@@ -28,6 +33,10 @@ impl Category {
     pub fn update(&mut self, name: String) -> Result<(), DomainError> {
         if name.chars().count() > 10 {
             return Err(DomainError::PostCategoryTooLong(name));
+        }
+        let name = clean(&name);
+        if name.is_empty() {
+            return Err(DomainError::PostCategoryIsNone);
         }
         self.name = name;
         Ok(())

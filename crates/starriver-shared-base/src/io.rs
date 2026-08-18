@@ -64,10 +64,21 @@ pub async fn copy_stream(
         if n == 0 {
             break;
         }
-        writer
-            .write(&buf[..n])
-            .await
-            .map_err(CopyStreamError::Writer)?;
+        // `AsyncWriter::write` 允许部分写入：循环重写，直到整个 chunk 落盘，
+        // 否则未写入的尾部会被静默丢弃且 total 虚高
+        let mut written = 0;
+        while written < n {
+            let w = writer
+                .write(&buf[written..n])
+                .await
+                .map_err(CopyStreamError::Writer)?;
+            if w == 0 {
+                return Err(CopyStreamError::Writer(AsyncWriterError::Other(
+                    "writer made no progress".to_string(),
+                )));
+            }
+            written += w;
+        }
         total += n as u64;
     }
     Ok(total)

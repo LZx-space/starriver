@@ -24,17 +24,16 @@ impl<T: FileTypeChecker> AttachmentFactory<T> {
         &self,
         attachment_id: Uuid,
         bytes: &[u8],
-        claimed_extension: &str,
+        extension: &Extension,
+        file_size: FileSize,
     ) -> Result<Attachment, DomainError> {
-        let checked = self.file_type_checker.check(bytes, claimed_extension)?;
+        let checked = self.file_type_checker.check(bytes, extension.as_str())?;
         if !checked {
             return Err(DomainError::AttachmentExtensionInvalid(
-                claimed_extension.to_string(),
+                extension.as_str().to_string(),
             ));
         }
 
-        let extension = Extension::new(claimed_extension)?;
-        let file_size = FileSize::new(bytes.len() as i64)?;
-        Ok(Attachment::new(attachment_id, extension, file_size))
+        Ok(Attachment::new(attachment_id, extension.clone(), file_size))
     }
 }

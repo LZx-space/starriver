@@ -27,6 +27,14 @@ pub enum CtxError {
     Internal,
 }
 
+impl CtxError {
+    /// 基础设施错误：带操作上下文记录日志后转为 Internal，细节不向客户端暴露
+    pub fn internal(context: &str, e: impl std::fmt::Display) -> Self {
+        error!(context=%context, error=%e, "operation failed");
+        CtxError::Internal
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum EmailVerificationError {
     #[error("构建客户端错误：{0}")]

@@ -47,7 +47,7 @@ where
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // 解析查询参数，错误自动转为 ApiError
+        // 解析路径参数，错误自动转为 ApiError
         let path = axum::extract::Path::<T>::from_request_parts(parts, _state)
             .await
             .map_err(mapping_bad_request_err)?;

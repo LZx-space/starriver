@@ -67,17 +67,14 @@ where
             .page_cache()
             .try_get_with(key, async { self.query.paginate(&self.conn, q).await })
             .await
-            .map_err(|e| {
-                error!(error=%e, "database error");
-                CtxError::Internal
-            })
+            .map_err(|e| CtxError::internal("paginate posts failed", e))
     }
 
     pub async fn search(&self, q: PageSearch) -> Result<PageResult<PostSearchDto>, CtxError> {
-        self.query.search(&self.conn, q).await.map_err(|e| {
-            error!(error=%e, "database error");
-            CtxError::Internal
-        })
+        self.query
+            .search(&self.conn, q)
+            .await
+            .map_err(|e| CtxError::internal("search posts failed", e))
     }
 
     pub async fn find(&self, id: Uuid) -> Result<PostDetailDto, CtxError> {
@@ -85,10 +82,7 @@ where
             .detail_cache()
             .try_get_with(id, async { self.query.find_detail(&self.conn, id).await })
             .await
-            .map_err(|e| {
-                error!(error=%e, "database error");
-                CtxError::Internal
-            })
+            .map_err(|e| CtxError::internal("find post failed", e))
             .and_then(|r| r.ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id))))
     }
 
@@ -148,7 +142,7 @@ where
         let result = async {
             if !self
                 .category_repo
-                .exists_by_id(&self.conn, cmd.category_id)
+                .exists_by_id(&tx, cmd.category_id)
                 .await?
             {
                 return Err(CtxError::NotFound(format!(
@@ -156,7 +150,7 @@ where
                     cmd.category_id
                 )));
             }
-            let post = self.post_repo.find_by_id(&self.conn, id).await?;
+            let post = self.post_repo.find_by_id(&tx, id).await?;
             let Some(mut found) = post else {
                 return Err(CtxError::NotFound(format!("post [{}] not exist", id)));
             };
@@ -170,7 +164,7 @@ where
             let original = found.clone();
             found.update(cmd)?;
             self.post_repo
-                .update(&self.conn, Revision::new(original, found))
+                .update(&tx, Revision::new(original, found))
                 .await
                 .map_err(CtxError::from)
         }
@@ -203,7 +197,7 @@ where
     ) -> Result<bool, CtxError> {
         info!(
             user_id = %operator.sub,
-            Post_id = %id,
+            post_id = %id,
             "deleting post"
         );
         self.post_repo

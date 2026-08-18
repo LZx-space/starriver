@@ -12,6 +12,7 @@ use starriver_shared_framework::{
 use tracing::{error, info};
 use uuid::Uuid;
 
+use crate::error_mapping::map_error;
 use crate::port_in::state::BloggingState;
 
 #[axum::debug_handler]
@@ -41,7 +42,7 @@ pub async fn upload_attachment(
         info!(claimed_extension=%claimed_extension.as_str());
 
         let attachment_id = Uuid::now_v7(); // 附件ID生成附件名
-        let attachment_name = Attachment::make_file_name(&attachment_id, &claimed_extension);
+        let attachment_name = Attachment::generate_file_name(&attachment_id, &claimed_extension);
         let save_path = state
             .upload_file_url_builder
             .save_path(attachment_name.as_str());
@@ -59,12 +60,12 @@ pub async fn upload_attachment(
             .attachment_interactor
             .upload(
                 attachment_id, // 附件ID生成附件名，确保外部Writer的文件和附件是同一个
-                claimed_extension.as_str(),
+                claimed_extension,
                 async_reader,
                 async_writer,
             )
             .await
-            .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+            .map_err(map_error)
         {
             Ok(attachment) => {
                 attachments.push(attachment);

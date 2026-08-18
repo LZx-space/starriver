@@ -1,4 +1,4 @@
-use std::{path::MAIN_SEPARATOR, sync::Arc};
+use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer};
 
@@ -19,19 +19,22 @@ impl Auth {
 #[derive(Clone, Deserialize)]
 pub struct Uploads {
     /// 上传文件在磁盘上的存储根目录（不以分隔符结束，相对或绝对路径）
-    #[serde(deserialize_with = "not_end_with_separator")]
+    #[serde(deserialize_with = "validate_storage_dir")]
     pub storage_dir: String,
     /// Nginx 或其他前端服务访问上传文件时使用的 URL 路径前缀（例如 "/uploads"）
-    #[serde(deserialize_with = "start_and_not_end_with_separator")]
+    #[serde(deserialize_with = "validate_proxy_prefix")]
     pub proxy_prefix: String,
 }
 
-fn not_end_with_separator<'de, D>(deserializer: D) -> Result<String, D::Error>
+fn validate_storage_dir<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    let separators = ['/', '\\', MAIN_SEPARATOR]; // 覆盖 Unix 和 Windows
+    if s.is_empty() {
+        return Err(serde::de::Error::custom("must not be empty"));
+    }
+    let separators = ['/', '\\']; // 覆盖 Unix 和 Windows 两种分隔符
     if s.ends_with(separators) {
         return Err(serde::de::Error::custom(format!(
             "must not end with a path separator, got: {}",
@@ -41,12 +44,15 @@ where
     Ok(s)
 }
 
-fn start_and_not_end_with_separator<'de, D>(deserializer: D) -> Result<String, D::Error>
+fn validate_proxy_prefix<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    let separators = ['/', '\\', MAIN_SEPARATOR]; // 覆盖 Unix 和 Windows
+    if s.is_empty() {
+        return Err(serde::de::Error::custom("must not be empty"));
+    }
+    let separators = ['/', '\\']; // 覆盖 Unix 和 Windows 两种分隔符
     if !s.starts_with(separators) {
         return Err(serde::de::Error::custom(format!(
             "must start with a path separator, got: {}",

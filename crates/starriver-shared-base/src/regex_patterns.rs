@@ -34,7 +34,7 @@ mod patterns_tests {
             // email: 与 config 中的 regexes.email 保持一致
             r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
             // username: 与 config 中的 regexes.username 保持一致
-            r"^[a-zA-Z0-9._%+-]{3,15}$",
+            r"^[a-zA-Z0-9_]{3,16}$",
             // password: 与 config 中的 regexes.password 保持一致
             r"^[A-Za-z0-9@$!%*?&]{8,12}$",
         )
@@ -94,7 +94,7 @@ mod patterns_tests {
 
         #[test]
         fn max_length_valid() {
-            assert!(prod_patterns().username.is_match("123456789012345"));
+            assert!(prod_patterns().username.is_match("1234567890123456"));
         }
 
         #[test]
@@ -104,7 +104,7 @@ mod patterns_tests {
 
         #[test]
         fn too_long_rejected() {
-            assert!(!prod_patterns().username.is_match("1234567890123456"));
+            assert!(!prod_patterns().username.is_match("12345678901234567"));
         }
 
         #[test]

@@ -71,19 +71,7 @@ impl DefaultPostRepository {
         .map_err(db_2_repo_error)?;
 
         // 插入附件关联
-        if !attachments.is_empty() {
-            post_attachment_po::Entity::insert_many(attachments.iter().map(|att_id| {
-                post_attachment_po::ActiveModel {
-                    post_id: Set(id),
-                    attachment_id: Set(*att_id),
-                    created_at: Set(OffsetDateTime::now_utc()),
-                    updated_at: Set(None),
-                }
-            }))
-            .exec(conn)
-            .await
-            .map_err(db_2_repo_error)?;
-        }
+        self.insert_attachments(conn, id, &attachments).await?;
 
         // 构建 Post 实体
         Ok(Post::from_repo(
@@ -190,19 +178,8 @@ impl DefaultPostRepository {
                 .await
                 .map_err(db_2_repo_error)?;
         }
-        if !to_insert.is_empty() {
-            post_attachment_po::Entity::insert_many(to_insert.iter().map(|att_id| {
-                post_attachment_po::ActiveModel {
-                    post_id: Set(id),
-                    attachment_id: Set(*att_id),
-                    created_at: Set(OffsetDateTime::now_utc()),
-                    updated_at: Set(None),
-                }
-            }))
-            .exec(conn)
-            .await
-            .map_err(db_2_repo_error)?;
-        }
+        // 只插新增的
+        self.insert_attachments(conn, id, &to_insert).await?;
 
         Ok(Post::from_repo(
             updated.id,
@@ -214,6 +191,32 @@ impl DefaultPostRepository {
             new_attachments,
             updated.published_at,
         ))
+    }
+
+    ///// private //////////////////////////////////////////////////////////////////////////
+
+    /// 批量插入帖子-附件关联（add 与 update 共用）
+    async fn insert_attachments(
+        &self,
+        conn: &impl ConnectionTrait,
+        post_id: uuid::Uuid,
+        attachment_ids: &[uuid::Uuid],
+    ) -> Result<(), RepositoryError> {
+        if attachment_ids.is_empty() {
+            return Ok(());
+        }
+        post_attachment_po::Entity::insert_many(attachment_ids.iter().map(|att_id| {
+            post_attachment_po::ActiveModel {
+                post_id: Set(post_id),
+                attachment_id: Set(*att_id),
+                created_at: Set(OffsetDateTime::now_utc()),
+                updated_at: Set(None),
+            }
+        }))
+        .exec(conn)
+        .await
+        .map_err(db_2_repo_error)?;
+        Ok(())
     }
 }
 

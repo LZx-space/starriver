@@ -180,14 +180,14 @@ where
         match result {
             Ok(val) => {
                 tx.commit().await.map_err(|e| {
-                    error!(user_id=%username, error=%e, "commit transaction failed");
+                    error!(username=%username, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
                 Ok(val)
             }
             Err(e) => {
                 tx.rollback().await.map_err(|e| {
-                    error!(user_id=%username, error=%e, "rollback transaction failed");
+                    error!(username=%username, error=%e, "rollback transaction failed");
                     CtxError::Internal
                 })?;
                 Err(e)

@@ -41,7 +41,7 @@ pub enum UserLifeCycle {
     #[sea_orm(num_value = 1)]
     Disabled, // 禁用/暂停
     #[sea_orm(num_value = 2)]
-    Deleted, // 临时锁定
+    Deleted, // 已删除
 }
 
 /////////////////////////////////////////////////////////////

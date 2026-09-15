@@ -5,12 +5,27 @@ use uuid::Uuid;
 use crate::middleware::authentication::core::credentials::Credentials;
 
 #[derive(Clone, Debug)]
-pub struct UsernamePasswordCredentials {
-    pub username: String,
+pub struct IdentifierPasswordCredentials {
+    pub identifier: String,
     pub password: String,
 }
 
-impl Credentials for UsernamePasswordCredentials {}
+impl Credentials for IdentifierPasswordCredentials {}
+
+pub enum UserIdentifier<'a> {
+    Username(&'a str),
+    Email(&'a str),
+}
+
+impl<'a> UserIdentifier<'a> {
+    pub fn new(identifier: &'a str) -> Self {
+        if identifier.contains('@') {
+            UserIdentifier::Email(identifier)
+        } else {
+            UserIdentifier::Username(identifier)
+        }
+    }
+}
 
 /////////////////////////////////////////////////////////////////////////
 

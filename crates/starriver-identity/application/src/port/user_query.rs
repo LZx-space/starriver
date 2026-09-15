@@ -3,7 +3,6 @@ use starriver_shared_base::{
     dto::{PageQuery, PageResult},
     error::QueryError,
 };
-use uuid::Uuid;
 
 use crate::dto::user_dto::res::UserDetailDto;
 
@@ -21,9 +20,9 @@ pub trait UserQuery<T: Executor> {
         email: &str,
     ) -> impl Future<Output = Result<bool, QueryError>>;
 
-    fn find_email_by_user_id(
+    fn find_email_by_username(
         &self,
         conn: &T,
-        user_id: Uuid,
+        username: &str,
     ) -> impl Future<Output = Result<Option<String>, QueryError>>;
 }

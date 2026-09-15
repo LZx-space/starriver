@@ -2,7 +2,7 @@ use starriver_identity_domain::{
     password_encoder::PasswordEncoder, password_service::PasswordDomainService,
 };
 use starriver_shared_base::{
-    authentication::UsernamePasswordCredentials,
+    authentication::{IdentifierPasswordCredentials, UserIdentifier},
     db::{Connection, Revision, Transaction},
     error::RepositoryError,
     middleware::authentication::core::error::AuthenticationError,
@@ -48,9 +48,9 @@ where
 
     pub async fn authenticate(
         &self,
-        credentials: &UsernamePasswordCredentials,
+        credentials: &IdentifierPasswordCredentials,
     ) -> Result<UserDetail, AuthenticationError> {
-        let username = credentials.username.as_str();
+        let identifier = credentials.identifier.as_str();
         let password = credentials.password.as_str();
 
         let tx = self.conn.begin().await.map_err(|e| {
@@ -61,15 +61,16 @@ where
         })?;
 
         match async {
-            let mut user = self
-                .user_repo
-                .find_by_username(&tx, username)
-                .await
-                .map_err(mapping_repo_error())?
-                .ok_or_else(|| {
-                    info!(username = %username, "user not found");
-                    AuthenticationError::UsernameNotFound
-                })?;
+            let found = match UserIdentifier::new(identifier) {
+                UserIdentifier::Username(username) => {
+                    self.user_repo.find_by_username(&tx, username).await
+                }
+                UserIdentifier::Email(email) => self.user_repo.find_by_email(&tx, email).await,
+            };
+            let mut user = found.map_err(mapping_repo_error())?.ok_or_else(|| {
+                info!(identifier = %identifier, "user not found");
+                AuthenticationError::UsernameNotFound
+            })?;
 
             let result = self.pwd_service.authenticate(&mut user, password);
 

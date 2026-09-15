@@ -10,7 +10,7 @@ use starriver_identity_adapter::{
     },
 };
 use starriver_shared_base::{
-    authentication::{PrincipalClaims, UsernamePasswordCredentials},
+    authentication::{IdentifierPasswordCredentials, PrincipalClaims},
     middleware::authentication::core::{authenticator::Authenticator, error::AuthenticationError},
 };
 use starriver_shared_framework::{
@@ -27,7 +27,7 @@ use starriver_shared_framework::{
 };
 use time::Duration;
 
-pub struct UsernamePasswordAuthenticator {
+pub struct IdentifierPasswordAuthenticator {
     pub auth_service: Arc<
         AuthenticationInteractor<
             DefaultConnection,
@@ -39,8 +39,8 @@ pub struct UsernamePasswordAuthenticator {
     pub cfg: Arc<Auth>,
 }
 
-impl Authenticator for UsernamePasswordAuthenticator {
-    type Credentials = UsernamePasswordCredentials;
+impl Authenticator for IdentifierPasswordAuthenticator {
+    type Credentials = IdentifierPasswordCredentials;
     type Principal = AuthenticatedUser;
 
     async fn authenticate(
@@ -70,11 +70,11 @@ pub fn build_authentication_layer<A>(
     TokioTimingAttackProtection,
     DefaultAuthenticationSuccessHandler,
     DefaultAuthenticationFailureHandler,
-    UsernamePasswordCredentials,
+    IdentifierPasswordCredentials,
     AuthenticatedUser,
 >
 where
-    A: Authenticator<Credentials = UsernamePasswordCredentials, Principal = AuthenticatedUser>,
+    A: Authenticator<Credentials = IdentifierPasswordCredentials, Principal = AuthenticatedUser>,
 {
     AuthenticationLayer::new(
         LoginRequestMatcher::default(),

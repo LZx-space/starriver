@@ -10,7 +10,6 @@ use starriver_shared_base::{
     error::QueryError,
 };
 use starriver_shared_framework::db::DefaultConnection;
-use uuid::Uuid;
 
 use crate::port_out::persistence::po::user_po::{self, Column, Entity};
 
@@ -53,25 +52,24 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
         email: &str,
     ) -> Result<bool, QueryError> {
         Entity::find()
-            .select_only()
             .filter(user_po::Column::Email.eq(email))
             .exists(conn)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))
     }
 
-    async fn find_email_by_user_id(
+    async fn find_email_by_username(
         &self,
         conn: &DefaultConnection,
-        user_id: Uuid,
+        username: &str,
     ) -> Result<Option<String>, QueryError> {
         Entity::find()
             .select_only()
-            .filter(user_po::Column::Id.eq(user_id))
             .column(user_po::Column::Email)
+            .filter(user_po::Column::Username.eq(username))
             .one(conn)
             .await
-            .map(|e| e.map(|e| e.email))
             .map_err(|e| QueryError::DbError(e.to_string()))
+            .map(|e| e.map(|e| e.email))
     }
 }

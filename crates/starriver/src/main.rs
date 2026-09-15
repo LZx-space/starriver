@@ -19,7 +19,7 @@ use tower_http::{
 use tracing::{error, info};
 
 use crate::config::{
-    authentication::{UsernamePasswordAuthenticator, build_authentication_layer},
+    authentication::{IdentifierPasswordAuthenticator, build_authentication_layer},
     config_service::load_config,
     tracing::{init_tracing, tracing_span},
 };
@@ -90,7 +90,7 @@ async fn main() {
         )
         .option_layer(csrf_layer)
         .layer(build_authentication_layer(
-            UsernamePasswordAuthenticator {
+            IdentifierPasswordAuthenticator {
                 auth_service: identity_state.authentication_interactor.clone(),
                 cfg: auth.clone(),
             },

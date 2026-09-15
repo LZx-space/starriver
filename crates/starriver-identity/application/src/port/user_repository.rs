@@ -12,6 +12,12 @@ pub trait UserRepository<T: Executor> {
         username: &str,
     ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
 
+    fn find_by_email(
+        &self,
+        conn: &T,
+        email: &str,
+    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
+
     fn insert(
         &self,
         conn: &T,

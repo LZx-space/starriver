@@ -12,7 +12,7 @@ use axum_extra::extract::{
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use starriver_shared_base::{
-    authentication::{PrincipalClaims, UsernamePasswordCredentials},
+    authentication::{IdentifierPasswordCredentials, PrincipalClaims},
     middleware::authentication::{
         core::{
             error::AuthenticationError,
@@ -205,7 +205,7 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
 
 #[derive(Deserialize, Debug)]
 pub struct FormLoginCmd {
-    pub username: String,
+    pub identifier: String,
     pub password: String,
 }
 
@@ -214,7 +214,7 @@ pub struct DefaultCredentialsExtractor {}
 impl CredentialsExtractor for DefaultCredentialsExtractor {
     type Request = Request<Body>;
 
-    type Credentials = UsernamePasswordCredentials;
+    type Credentials = IdentifierPasswordCredentials;
 
     async fn extract(&self, req: Self::Request) -> Result<Self::Credentials, AuthenticationError> {
         // 提取表单数据
@@ -223,10 +223,10 @@ impl CredentialsExtractor for DefaultCredentialsExtractor {
             .map_err(|e| AuthenticationError::InnerError {
                 message: e.to_string(),
             })?;
-        info!(username = %form.0.username, "login credentials received");
+        info!(identifier = %form.0.identifier, "login credentials received");
         // 创建凭证
-        let credentials = UsernamePasswordCredentials {
-            username: form.0.username,
+        let credentials = IdentifierPasswordCredentials {
+            identifier: form.0.identifier,
             password: form.0.password,
         };
 

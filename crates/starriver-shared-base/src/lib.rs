@@ -4,7 +4,6 @@ pub mod db;
 pub mod dto;
 pub mod error;
 pub mod io;
-pub mod middleware;
 pub mod random;
 pub mod regex_patterns;
 pub mod upload_file;

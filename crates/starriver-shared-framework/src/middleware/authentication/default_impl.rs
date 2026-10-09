@@ -11,26 +11,24 @@ use axum_extra::extract::{
 };
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
-use starriver_shared_base::{
-    authentication::{IdentifierPasswordCredentials, PrincipalClaims},
-    middleware::authentication::{
-        core::{
-            error::AuthenticationError,
-            principal::{Principal, SimpleAuthority},
+use starriver_shared_base::authentication::{
+    authentication_request::IdentifierPasswordRequest,
+    core::{authentication_result::AuthenticationResult, error::AuthenticationError},
+    principal::DefaultUser,
+    web::{
+        authentication_request_extractor::AuthenticationRequestExtractor,
+        authentication_result_handler::{
+            AuthenticationFailureHandler, AuthenticationSuccessHandler,
         },
-        web::{
-            authentication_credentials_extractor::CredentialsExtractor,
-            authentication_result_handler::{
-                AuthenticationFailureHandler, AuthenticationSuccessHandler,
-            },
-            request_matcher::RequestMatcher,
-        },
+        request_matcher::RequestMatcher,
     },
 };
+use time::UtcDateTime;
 use tracing::{error, info};
+use uuid::Uuid;
 
 use core::time::Duration;
-use starriver_shared_base::middleware::authentication::web::timing_attack_protection::TimingAttackProtection;
+use starriver_shared_base::authentication::web::timing_attack_protection::TimingAttackProtection;
 use std::{sync::Arc, time::Instant};
 use tokio::time::sleep;
 
@@ -64,23 +62,31 @@ impl Default for LoginRequestMatcher {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Serialize)]
-pub struct AuthenticatedUser(pub PrincipalClaims);
+#[derive(Deserialize, Serialize)]
+pub struct AuthenticatedJwtClaims {
+    exp: i64,      // Expiration time (as UTC timestamp)
+    nbf: i64,      // Not Before (as UTC timestamp)
+    iat: i64,      // Issued at (as UTC timestamp)
+    pub sub: Uuid, // Subject (whom token refers to)
+    pub username: String,
+    pub email: String,
+}
 
-impl Principal for AuthenticatedUser {
-    type Id = String;
-    type Authority = SimpleAuthority;
-
-    fn id(&self) -> &Self::Id {
-        &self.0.username
-    }
-
-    fn authorities(&self) -> Vec<&Self::Authority> {
-        vec![]
+impl AuthenticatedJwtClaims {
+    pub fn new(exp: time::Duration, id: Uuid, username: String, email: String) -> Self {
+        let now = UtcDateTime::now();
+        Self {
+            exp: now.saturating_add(exp).unix_timestamp(),
+            nbf: now.unix_timestamp(),
+            iat: now.unix_timestamp(),
+            sub: id,
+            username,
+            email,
+        }
     }
 }
 
-impl<S> FromRequestParts<S> for AuthenticatedUser
+impl<S> FromRequestParts<S> for AuthenticatedJwtClaims
 where
     Arc<Auth>: FromRef<S>,
     S: Send + Sync,
@@ -102,19 +108,23 @@ where
             })?
             .value();
 
-        decode::<PrincipalClaims>(
+        decode::<AuthenticatedJwtClaims>(
             jws,
             &DecodingKey::from_secret(cfg.jws_secret_as_ref()),
             &Validation::default(),
         )
-        .map(|data| {
-            let principal_claims = data.claims;
-            AuthenticatedUser(principal_claims)
-        })
+        .map(|data| data.claims)
         .map_err(|e| {
             error!(error = %e, "JWS token decode failed");
             StatusCode::UNAUTHORIZED
         })
+    }
+}
+
+// impl ForeignTrait<T1..Tn> for T0，只要至少有一个 T0..Tn 是本地类型，就不违背孤儿规则
+impl From<AuthenticatedJwtClaims> for DefaultUser {
+    fn from(value: AuthenticatedJwtClaims) -> Self {
+        DefaultUser::new(value.sub, value.username, value.email)
     }
 }
 
@@ -133,11 +143,20 @@ impl DefaultAuthenticationSuccessHandler {
 impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
     type Response = Response;
 
-    type Principal = AuthenticatedUser;
+    type Principal = DefaultUser;
 
-    async fn on_authentication_success(&self, principal: AuthenticatedUser) -> Self::Response {
+    async fn on_authentication_success(
+        &self,
+        result: AuthenticationResult<DefaultUser>,
+    ) -> Self::Response {
         // 创建JWS声明
-        let principal_claims = principal.0;
+        let user = result.principal();
+        let principal_claims = AuthenticatedJwtClaims::new(
+            time::Duration::hours(self.cfg.jws_exp_hours as i64),
+            user.id,
+            user.username.clone(),
+            user.email.clone(),
+        );
 
         // 编码为JWS
         let jws = encode(
@@ -203,34 +222,25 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Deserialize, Debug)]
-pub struct FormLoginCmd {
-    pub identifier: String,
-    pub password: String,
-}
+pub struct DefaultAuthenticationRequestExtractor {}
 
-pub struct DefaultCredentialsExtractor {}
-
-impl CredentialsExtractor for DefaultCredentialsExtractor {
+impl AuthenticationRequestExtractor for DefaultAuthenticationRequestExtractor {
     type Request = Request<Body>;
 
-    type Credentials = IdentifierPasswordCredentials;
+    type AuthenticationRequest = IdentifierPasswordRequest;
 
-    async fn extract(&self, req: Self::Request) -> Result<Self::Credentials, AuthenticationError> {
+    async fn extract(
+        &self,
+        req: Self::Request,
+    ) -> Result<Self::AuthenticationRequest, AuthenticationError> {
         // 提取表单数据
-        let form = Form::<FormLoginCmd>::from_request(req, &())
+        let form = Form::<IdentifierPasswordRequest>::from_request(req, &())
             .await
             .map_err(|e| AuthenticationError::InnerError {
                 message: e.to_string(),
             })?;
-        info!(identifier = %form.0.identifier, "login credentials received");
-        // 创建凭证
-        let credentials = IdentifierPasswordCredentials {
-            identifier: form.0.identifier,
-            password: form.0.password,
-        };
-
-        Ok(credentials)
+        info!(identifier = %form.0.identifier, "login request received and parsed");
+        Ok(form.0)
     }
 }
 
@@ -268,7 +278,7 @@ mod tests {
         body::Body,
         http::{Method, Request},
     };
-    use starriver_shared_base::middleware::authentication::web::request_matcher::RequestMatcher;
+    use starriver_shared_base::authentication::web::request_matcher::RequestMatcher;
 
     use crate::middleware::authentication::default_impl::LoginRequestMatcher;
 

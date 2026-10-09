@@ -2,15 +2,15 @@ use axum::body::Body;
 use axum::http::Request;
 use axum::response::Response;
 use futures_util::future::BoxFuture;
-use starriver_shared_base::middleware::authentication::core::authenticator::Authenticator;
-use starriver_shared_base::middleware::authentication::core::credentials::Credentials;
-use starriver_shared_base::middleware::authentication::core::principal::Principal;
-use starriver_shared_base::middleware::authentication::web::authentication_credentials_extractor::CredentialsExtractor;
-use starriver_shared_base::middleware::authentication::web::authentication_result_handler::{
+use starriver_shared_base::authentication::core::authentication_request::AuthenticationRequest;
+use starriver_shared_base::authentication::core::authenticator::Authenticator;
+use starriver_shared_base::authentication::core::principal::Principal;
+use starriver_shared_base::authentication::web::authentication_request_extractor::AuthenticationRequestExtractor;
+use starriver_shared_base::authentication::web::authentication_result_handler::{
     AuthenticationFailureHandler, AuthenticationSuccessHandler,
 };
-use starriver_shared_base::middleware::authentication::web::request_matcher::RequestMatcher;
-use starriver_shared_base::middleware::authentication::web::timing_attack_protection::TimingAttackProtection;
+use starriver_shared_base::authentication::web::request_matcher::RequestMatcher;
+use starriver_shared_base::authentication::web::timing_attack_protection::TimingAttackProtection;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -31,12 +31,12 @@ pub struct AuthenticationLayer<RM, CE, A, TAP, RS, RF, C, P> {
 impl<RM, CE, A, TAP, RS, RF, C, P> AuthenticationLayer<RM, CE, A, TAP, RS, RF, C, P>
 where
     RM: RequestMatcher<Request = Request<Body>>,
-    CE: CredentialsExtractor<Request = Request<Body>, Credentials = C>,
-    A: Authenticator<Credentials = C, Principal = P>,
+    CE: AuthenticationRequestExtractor<Request = Request<Body>, AuthenticationRequest = C>,
+    A: Authenticator<Request = C, Principal = P>,
     TAP: TimingAttackProtection,
     RS: AuthenticationSuccessHandler<Response = Response, Principal = P>,
     RF: AuthenticationFailureHandler<Response = Response>,
-    C: Credentials,
+    C: AuthenticationRequest,
     P: Principal,
 {
     pub fn new(
@@ -64,12 +64,12 @@ impl<S, RM, CE, A, TAP, RS, RF, C, P> Layer<S> for AuthenticationLayer<RM, CE, A
 where
     S: Service<Request<Body>, Response = Response>,
     RM: RequestMatcher<Request = Request<Body>>,
-    CE: CredentialsExtractor<Request = Request<Body>, Credentials = C>,
-    A: Authenticator<Credentials = C, Principal = P>,
+    CE: AuthenticationRequestExtractor<Request = Request<Body>, AuthenticationRequest = C>,
+    A: Authenticator<Request = C, Principal = P>,
     TAP: TimingAttackProtection,
     RS: AuthenticationSuccessHandler<Response = Response, Principal = P>,
     RF: AuthenticationFailureHandler<Response = Response>,
-    C: Credentials,
+    C: AuthenticationRequest,
     P: Principal,
 {
     type Service = AuthenticationService<S, RM, CE, A, TAP, RS, RF, C, P>;
@@ -126,12 +126,15 @@ where
     S: Service<Request<Body>, Response = Response> + Clone + Send + 'static,
     S::Future: Send + 'static,
     RM: RequestMatcher<Request = Request<Body>> + Send + Sync + 'static,
-    CE: CredentialsExtractor<Request = Request<Body>, Credentials = C> + Send + Sync + 'static,
-    A: Authenticator<Credentials = C, Principal = P> + Send + Sync + 'static,
+    CE: AuthenticationRequestExtractor<Request = Request<Body>, AuthenticationRequest = C>
+        + Send
+        + Sync
+        + 'static,
+    A: Authenticator<Request = C, Principal = P> + Send + Sync + 'static,
     TAP: TimingAttackProtection + Send + Sync + 'static,
     RS: AuthenticationSuccessHandler<Response = Response, Principal = P> + Send + Sync + 'static,
     RF: AuthenticationFailureHandler<Response = Response> + Send + Sync + 'static,
-    C: Credentials + 'static,
+    C: AuthenticationRequest + 'static,
     P: Principal + 'static,
 {
     type Response = Response;

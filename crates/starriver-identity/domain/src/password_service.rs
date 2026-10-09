@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use starriver_shared_base::middleware::authentication::core::error::AuthenticationError;
+use starriver_shared_base::authentication::core::error::AuthenticationError;
 
 use crate::error::DomainError;
 use crate::password_encoder::PasswordEncoder;

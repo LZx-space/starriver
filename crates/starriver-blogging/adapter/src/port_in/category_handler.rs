@@ -2,7 +2,7 @@ use axum::{extract::State, response::IntoResponse};
 use starriver_blogging_application::dto::category_dto::req::CreateOrUpdateCategoryCmd;
 use starriver_shared_framework::{
     extract::{Json, Path},
-    middleware::authentication::default_impl::AuthenticatedUser,
+    middleware::authentication::default_impl::AuthenticatedJwtClaims,
     response::ApiError,
 };
 use uuid::Uuid;
@@ -32,12 +32,12 @@ pub async fn show(
 
 pub async fn create(
     state: State<BloggingState>,
-    user: AuthenticatedUser,
+    user: AuthenticatedJwtClaims,
     cmd: Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .category_interactor
-        .create(user.0, cmd.0.name)
+        .create(user.into(), cmd.0.name)
         .await
         .map(Json)
         .map_err(map_error)
@@ -45,13 +45,13 @@ pub async fn create(
 
 pub async fn update(
     state: State<BloggingState>,
-    user: AuthenticatedUser,
+    user: AuthenticatedJwtClaims,
     Path(id): Path<Uuid>,
     Json(cmd): Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .category_interactor
-        .update(user.0, id, cmd.name)
+        .update(user.into(), id, cmd.name)
         .await
         .map(Json)
         .map_err(map_error)
@@ -59,12 +59,12 @@ pub async fn update(
 
 pub async fn delete(
     state: State<BloggingState>,
-    user: AuthenticatedUser,
+    user: AuthenticatedJwtClaims,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .category_interactor
-        .delete(user.0, id)
+        .delete(user.into(), id)
         .await
         .map(Json)
         .map_err(map_error)

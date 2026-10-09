@@ -3,7 +3,6 @@ use starriver_identity_domain::{
     user::factory::UserFactory,
 };
 use starriver_shared_base::{
-    authentication::UserIdentifier,
     db::{Connection, Revision, Transaction},
     dto::{PageQuery, PageResult},
     error::RepositoryError,
@@ -13,7 +12,7 @@ use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{ChangeMyPasswordCmd, ResetPasswordCmd, UserRegisterCmd, UserRegisterEmailCmd},
+        req::{ChangeMyPasswordCmd, ResetPasswordCmd, UserRegisterCmd},
         res::UserDetailDto,
     },
     error::CtxError,
@@ -69,14 +68,13 @@ where
     ///// register user ///////////////////////////////////////////////////////////////////////
 
     /// 发送邮箱验证邮件，永远不返回失败以防暴力核验邮箱
-    pub async fn send_register_email(&self, cmd: UserRegisterEmailCmd) -> Result<(), Infallible> {
-        let email = cmd.email.as_str();
+    pub async fn send_register_email(&self, email: &str) -> Result<(), Infallible> {
         match self.user_query.exists_by_email(&self.conn, email).await {
-            Ok(found) => {
-                if found {
-                    warn!(to=%email, "email already registered, skipping verification");
-                    return Ok(());
-                }
+            Ok(true) => {
+                warn!(to=%email, "email already registered, skipping verification");
+                Ok(())
+            }
+            Ok(false) => {
                 if let Err(e) = self.verification_code_service.send_code(email).await {
                     error!(to=%email, error=%e, "send verification email failed");
                 }
@@ -173,40 +171,26 @@ where
     /// If no account matches, it silently returns `Ok(())` to prevent enumeration.
     ///
     /// # Arguments
-    /// * `user_identifier` - Either the username or the email of the target account.
+    /// * `email` - registed user's email.
     ///
     /// # Errors
     /// Returns `CtxError` if:
     /// - The verification code generation or caching fails.
     /// - The email delivery service returns an error.
-    pub async fn send_verification_code(&self, user_identifier: &str) -> Result<(), CtxError> {
-        // 把 username / email 统一解析为收件邮箱，两臂产出同一类型以便统一处理
-        let resolved = match UserIdentifier::new(user_identifier) {
-            UserIdentifier::Email(email) => self
-                .user_query
-                .exists_by_email(&self.conn, email)
-                .await
-                .map(|exists| exists.then(|| email.to_owned())),
-            UserIdentifier::Username(username) => {
-                self.user_query
-                    .find_email_by_username(&self.conn, username)
-                    .await
-            }
-        };
-
-        let email = match resolved {
-            Ok(Some(email)) => email,
-            Ok(None) => {
-                warn!(identifier = %user_identifier, "account not found, skip sending code");
+    pub async fn send_verification_code(&self, email: &str) -> Result<(), CtxError> {
+        let email = match self.user_query.exists_by_email(&self.conn, email).await {
+            Ok(true) => email,
+            Ok(false) => {
+                warn!(email = %email, "account not found, skip sending code");
                 return Ok(());
             }
             Err(e) => {
-                error!(identifier = %user_identifier, error = %e, "resolve email by identifier failed");
+                error!(email = %email, error = %e, "resolve email by identifier failed");
                 return Ok(());
             }
         };
 
-        if let Err(e) = self.verification_code_service.send_code(&email).await {
+        if let Err(e) = self.verification_code_service.send_code(email).await {
             error!(to = %email, error = %e, "send verification email failed");
         }
         Ok(())
@@ -229,28 +213,15 @@ where
                 "new password does not match".to_owned(),
             ));
         }
-        let user_identifier = &cmd.identifier;
-        let email_result = match UserIdentifier::new(user_identifier) {
-            UserIdentifier::Email(email) => self
-                .user_query
-                .exists_by_email(&self.conn, email)
-                .await
-                .map(|exists| exists.then(|| email.to_owned())),
-            UserIdentifier::Username(username) => {
-                self.user_query
-                    .find_email_by_username(&self.conn, username)
-                    .await
-            }
-        };
-
-        let email = &match email_result {
-            Ok(Some(email)) => email,
-            Ok(None) => {
-                warn!(identifier = %user_identifier, "account not found, skip sending code");
+        let email = &cmd.email;
+        let email = match self.user_query.exists_by_email(&self.conn, email).await {
+            Ok(true) => email,
+            Ok(false) => {
+                warn!(email = %email, "account not found, skip sending code");
                 return Ok(());
             }
             Err(e) => {
-                error!(identifier = %user_identifier, error = %e, "resolve email by identifier failed");
+                error!(email = %email, error = %e, "resolve email by identifier failed");
                 return Ok(());
             }
         };
@@ -282,14 +253,14 @@ where
                 match result {
                     Ok(_) => {
                         tx.commit().await.map_err(|e| {
-                            error!(identifier = %user_identifier, error=%e, "commit transaction failed");
+                            error!(email = %email, error=%e, "commit transaction failed");
                             CtxError::Internal
                         })?;
                         Ok(())
                     }
                     Err(e) => {
                         tx.rollback().await.map_err(|e| {
-                            error!(identifier = %user_identifier, error=%e, "rollback transaction failed");
+                            error!(email = %email, error=%e, "rollback transaction failed");
                             CtxError::Internal
                         })?;
                         Err(e)

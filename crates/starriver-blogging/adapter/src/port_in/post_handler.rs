@@ -3,7 +3,7 @@ use starriver_blogging_application::dto::post_dto::req::{PageQuery, SaveOrUpdate
 use starriver_shared_base::dto::PageSearch;
 use starriver_shared_framework::{
     extract::{Json, Path, Query},
-    middleware::authentication::default_impl::AuthenticatedUser,
+    middleware::authentication::default_impl::AuthenticatedJwtClaims,
     response::ApiError,
 };
 use uuid::Uuid;
@@ -48,12 +48,12 @@ pub async fn show(
 
 pub async fn create(
     state: State<BloggingState>,
-    user: AuthenticatedUser,
+    user: AuthenticatedJwtClaims,
     cmd: Json<SaveOrUpdatePostCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .post_interactor
-        .create(user.0, cmd.0)
+        .create(user.into(), cmd.0)
         .await
         .map_err(map_error)
         .map(Json)
@@ -62,12 +62,12 @@ pub async fn create(
 pub async fn update(
     state: State<BloggingState>,
     id: Path<Uuid>,
-    user: AuthenticatedUser,
+    user: AuthenticatedJwtClaims,
     cmd: Json<SaveOrUpdatePostCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .post_interactor
-        .update(user.0, id.0, cmd.0)
+        .update(user.into(), id.0, cmd.0)
         .await
         .map_err(map_error)
         .map(Json)
@@ -76,11 +76,11 @@ pub async fn update(
 pub async fn delete(
     state: State<BloggingState>,
     id: Path<Uuid>,
-    user: AuthenticatedUser,
+    user: AuthenticatedJwtClaims,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .post_interactor
-        .delete_by_id(user.0, id.0)
+        .delete_by_id(user.into(), id.0)
         .await
         .map_err(map_error)
         .map(Json)

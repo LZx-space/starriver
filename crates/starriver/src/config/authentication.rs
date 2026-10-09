@@ -9,23 +9,25 @@ use starriver_identity_adapter::{
         service::password_encoder::Argon2PasswordEncoder,
     },
 };
-use starriver_shared_base::{
-    authentication::{IdentifierPasswordCredentials, PrincipalClaims},
-    middleware::authentication::core::{authenticator::Authenticator, error::AuthenticationError},
+use starriver_shared_base::authentication::{
+    authentication_request::IdentifierPasswordRequest,
+    core::{
+        authentication_result::AuthenticationResult, authenticator::Authenticator,
+        error::AuthenticationError,
+    },
+    principal::DefaultUser,
 };
 use starriver_shared_framework::{
     config::Auth,
     db::DefaultConnection,
     middleware::authentication::{
         default_impl::{
-            AuthenticatedUser, DefaultAuthenticationFailureHandler,
-            DefaultAuthenticationSuccessHandler, DefaultCredentialsExtractor, LoginRequestMatcher,
-            TokioTimingAttackProtection,
+            DefaultAuthenticationFailureHandler, DefaultAuthenticationRequestExtractor,
+            DefaultAuthenticationSuccessHandler, LoginRequestMatcher, TokioTimingAttackProtection,
         },
         middleware::AuthenticationLayer,
     },
 };
-use time::Duration;
 
 pub struct IdentifierPasswordAuthenticator {
     pub auth_service: Arc<
@@ -36,25 +38,19 @@ pub struct IdentifierPasswordAuthenticator {
             Argon2PasswordEncoder,
         >,
     >,
-    pub cfg: Arc<Auth>,
 }
 
 impl Authenticator for IdentifierPasswordAuthenticator {
-    type Credentials = IdentifierPasswordCredentials;
-    type Principal = AuthenticatedUser;
+    type Request = IdentifierPasswordRequest;
+    type Principal = DefaultUser;
 
     async fn authenticate(
         &self,
-        credentials: &Self::Credentials,
-    ) -> Result<Self::Principal, AuthenticationError> {
-        let detail = self.auth_service.authenticate(credentials).await?;
-        let claims = PrincipalClaims::new(
-            Duration::hours(self.cfg.jws_exp_hours as i64),
-            detail.id,
-            detail.username,
-            detail.email,
-        );
-        Ok(AuthenticatedUser(claims))
+        req: &Self::Request,
+    ) -> Result<AuthenticationResult<Self::Principal>, AuthenticationError> {
+        let detail = self.auth_service.authenticate(req).await?;
+        let user = DefaultUser::new(detail.id, detail.username, detail.email);
+        Ok(AuthenticationResult::new(user))
     }
 }
 
@@ -65,20 +61,20 @@ pub fn build_authentication_layer<A>(
     cfg: Arc<Auth>,
 ) -> AuthenticationLayer<
     LoginRequestMatcher,
-    DefaultCredentialsExtractor,
+    DefaultAuthenticationRequestExtractor,
     A,
     TokioTimingAttackProtection,
     DefaultAuthenticationSuccessHandler,
     DefaultAuthenticationFailureHandler,
-    IdentifierPasswordCredentials,
-    AuthenticatedUser,
+    IdentifierPasswordRequest,
+    DefaultUser,
 >
 where
-    A: Authenticator<Credentials = IdentifierPasswordCredentials, Principal = AuthenticatedUser>,
+    A: Authenticator<Request = IdentifierPasswordRequest, Principal = DefaultUser>,
 {
     AuthenticationLayer::new(
         LoginRequestMatcher::default(),
-        DefaultCredentialsExtractor {},
+        DefaultAuthenticationRequestExtractor {},
         authenticator,
         TokioTimingAttackProtection::default(),
         DefaultAuthenticationSuccessHandler::new(cfg),

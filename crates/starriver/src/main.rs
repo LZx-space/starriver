@@ -92,7 +92,6 @@ async fn main() {
         .layer(build_authentication_layer(
             IdentifierPasswordAuthenticator {
                 auth_service: identity_state.authentication_interactor.clone(),
-                cfg: auth.clone(),
             },
             auth,
         ));

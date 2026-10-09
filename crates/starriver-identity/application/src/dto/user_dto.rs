@@ -20,12 +20,6 @@ pub mod req {
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    pub struct UserRegisterEmailCmd {
-        #[validate(email)]
-        pub email: String,
-    }
-
-    #[derive(Debug, Deserialize, Validate)]
     #[validate(context = UserValidateCxt)]
     pub struct ChangeMyPasswordCmd {
         pub cur_password: String,
@@ -37,15 +31,15 @@ pub mod req {
 
     #[derive(Debug, Deserialize, Validate)]
     pub struct SendVerificationCodeCmd {
-        /// username or email
-        pub identifier: String,
+        #[validate(email)]
+        pub email: String,
     }
 
     #[derive(Debug, Deserialize, Validate)]
     #[validate(context = UserValidateCxt)]
     pub struct ResetPasswordCmd {
-        /// username or email
-        pub identifier: String,
+        #[validate(email)]
+        pub email: String,
         #[validate(length(equal = 6))]
         pub verification_code: String,
         #[validate(custom(function = "validate_password", use_context))]

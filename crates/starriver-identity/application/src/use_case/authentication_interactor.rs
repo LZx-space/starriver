@@ -2,10 +2,10 @@ use starriver_identity_domain::{
     password_encoder::PasswordEncoder, password_service::PasswordDomainService,
 };
 use starriver_shared_base::{
-    authentication::{IdentifierPasswordCredentials, UserIdentifier},
+    authentication::authentication_request::{IdentifierPasswordRequest, UserIdentifier},
+    authentication::core::error::AuthenticationError,
     db::{Connection, Revision, Transaction},
     error::RepositoryError,
-    middleware::authentication::core::error::AuthenticationError,
 };
 use tracing::{error, info};
 
@@ -48,10 +48,10 @@ where
 
     pub async fn authenticate(
         &self,
-        credentials: &IdentifierPasswordCredentials,
+        req: &IdentifierPasswordRequest,
     ) -> Result<UserDetail, AuthenticationError> {
-        let identifier = credentials.identifier.as_str();
-        let password = credentials.password.as_str();
+        let identifier = req.identifier.as_str();
+        let password = req.password.as_str();
 
         let tx = self.conn.begin().await.map_err(|e| {
             error!(error = %e, "begin transaction failed");
@@ -61,20 +61,18 @@ where
         })?;
 
         match async {
-            let found = match UserIdentifier::new(identifier) {
+            let user_result = match UserIdentifier::new(identifier) {
                 UserIdentifier::Username(username) => {
                     self.user_repo.find_by_username(&tx, username).await
                 }
                 UserIdentifier::Email(email) => self.user_repo.find_by_email(&tx, email).await,
             };
-            let mut user = found.map_err(mapping_repo_error())?.ok_or_else(|| {
+            let mut user = user_result.map_err(mapping_repo_error())?.ok_or_else(|| {
                 info!(identifier = %identifier, "user not found");
                 AuthenticationError::UsernameNotFound
             })?;
 
-            let result = self.pwd_service.authenticate(&mut user, password);
-
-            match result {
+            match self.pwd_service.authenticate(&mut user, password) {
                 Ok(_) => Ok(user),
                 Err(AuthenticationError::BadPassword) => {
                     let original = user.clone();

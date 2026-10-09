@@ -29,8 +29,8 @@ pub enum CtxError {
 
 impl CtxError {
     /// 基础设施错误：带操作上下文记录日志后转为 Internal，细节不向客户端暴露
-    pub fn internal(context: &str, e: impl std::fmt::Display) -> Self {
-        error!(context=%context, error=%e, "operation failed");
+    pub fn internal(context: &str, err: impl std::fmt::Display) -> Self {
+        error!(context=%context, error=%err, "operation failed");
         CtxError::Internal
     }
 }

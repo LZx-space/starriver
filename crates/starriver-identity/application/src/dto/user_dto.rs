@@ -16,32 +16,32 @@ pub mod req {
         #[validate(email)]
         pub email: String,
         #[validate(length(equal = 6))]
-        pub email_code: String,
-    }
-
-    #[derive(Debug, Deserialize, Validate)]
-    pub struct UserRegisterEmailCmd {
-        #[validate(email)]
-        pub email: String,
-    }
-
-    #[derive(Debug, Deserialize, Validate)]
-    pub struct UserActiveEmailCmd {
-        pub user_id: Uuid,
-        #[validate(email)]
-        pub email: String,
-    }
-
-    #[derive(Debug, Deserialize, Validate)]
-    pub struct UserActiveCmd {
-        #[validate(length(equal = 6))]
-        pub email_code: String,
+        pub verification_code: String,
     }
 
     #[derive(Debug, Deserialize, Validate)]
     #[validate(context = UserValidateCxt)]
-    pub struct ChangePasswordCmd {
+    pub struct ChangeMyPasswordCmd {
         pub cur_password: String,
+        #[validate(custom(function = "validate_password", use_context))]
+        pub new_password: String,
+        #[validate(custom(function = "validate_password", use_context))]
+        pub new_password_confirm: String,
+    }
+
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct SendVerificationCodeCmd {
+        #[validate(email)]
+        pub email: String,
+    }
+
+    #[derive(Debug, Deserialize, Validate)]
+    #[validate(context = UserValidateCxt)]
+    pub struct ResetPasswordCmd {
+        #[validate(email)]
+        pub email: String,
+        #[validate(length(equal = 6))]
+        pub verification_code: String,
         #[validate(custom(function = "validate_password", use_context))]
         pub new_password: String,
         #[validate(custom(function = "validate_password", use_context))]

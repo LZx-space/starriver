@@ -1,4 +1,6 @@
-use crate::middleware::authentication::core::{error::AuthenticationError, principal::Principal};
+use crate::authentication::core::{
+    authentication_result::AuthenticationResult, error::AuthenticationError, principal::Principal,
+};
 
 pub trait AuthenticationSuccessHandler {
     type Response;
@@ -7,7 +9,7 @@ pub trait AuthenticationSuccessHandler {
 
     fn on_authentication_success(
         &self,
-        principal: Self::Principal,
+        result: AuthenticationResult<Self::Principal>,
     ) -> impl Future<Output = Self::Response> + Send;
 }
 

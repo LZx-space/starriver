@@ -1,6 +1,6 @@
 use starriver_blogging_domain::post::{entity::Post, params::PostUpdate, value_object::PostState};
 use starriver_shared_base::{
-    authentication::PrincipalClaims,
+    authentication::principal::DefaultUser,
     cache::Cache,
     db::{Connection, Revision, Transaction},
     dto::{PageResult, PageSearch},
@@ -88,10 +88,10 @@ where
 
     pub async fn create(
         &self,
-        author: PrincipalClaims,
+        author: DefaultUser,
         cmd: SaveOrUpdatePostCmd,
     ) -> Result<PostDetailDto, CtxError> {
-        let author_id = author.sub;
+        let author_id = author.id;
         let state = match cmd.publish {
             true => PostState::Published,
             false => PostState::Draft,
@@ -126,12 +126,12 @@ where
 
     pub async fn update(
         &self,
-        operator: PrincipalClaims,
+        operator: DefaultUser,
         id: Uuid,
         cmd: SaveOrUpdatePostCmd,
     ) -> Result<(), CtxError> {
         info!(
-            user_id = %operator.sub,
+            user_id = %operator.id,
             post_id = %id,
             "updating post"
         );
@@ -173,7 +173,7 @@ where
         match result {
             Ok(_) => {
                 tx.commit().await.map_err(|e| {
-                    error!(user_id=%operator.sub, error=%e, "commit transaction failed");
+                    error!(user_id=%operator.id, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
                 // 更新帖子后，清除所有帖子缓存
@@ -182,7 +182,7 @@ where
             }
             Err(e) => {
                 tx.rollback().await.map_err(|e| {
-                    error!(user_id=%operator.sub, error=%e, "rollback transaction failed");
+                    error!(user_id=%operator.id, error=%e, "rollback transaction failed");
                     CtxError::Internal
                 })?;
                 Err(e)
@@ -190,13 +190,9 @@ where
         }
     }
 
-    pub async fn delete_by_id(
-        &self,
-        operator: PrincipalClaims,
-        id: Uuid,
-    ) -> Result<bool, CtxError> {
+    pub async fn delete_by_id(&self, operator: DefaultUser, id: Uuid) -> Result<bool, CtxError> {
         info!(
-            user_id = %operator.sub,
+            user_id = %operator.id,
             post_id = %id,
             "deleting post"
         );

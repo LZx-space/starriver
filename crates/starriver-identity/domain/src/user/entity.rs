@@ -115,7 +115,7 @@ impl User {
         }
     }
 
-    pub fn change_password(&mut self, new_pwd: HashedPassword) {
+    pub(crate) fn change_password(&mut self, new_pwd: HashedPassword) {
         self.password = new_pwd;
     }
 }

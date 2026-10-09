@@ -1,7 +1,7 @@
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::cache::Cache;
 use starriver_shared_base::db::{Connection, Transaction};
-use starriver_shared_base::{authentication::PrincipalClaims, db::Revision};
+use starriver_shared_base::{authentication::principal::DefaultUser, db::Revision};
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -50,13 +50,9 @@ where
             .ok_or_else(|| CtxError::NotFound(format!("category[{}]not exist", id)))
     }
 
-    pub async fn create(
-        &self,
-        operator: PrincipalClaims,
-        name: String,
-    ) -> Result<Category, CtxError> {
+    pub async fn create(&self, operator: DefaultUser, name: String) -> Result<Category, CtxError> {
         info!(
-            user_id = %operator.sub,
+            user_id = %operator.id,
             category_name = %name,
             "creating category"
         );
@@ -69,12 +65,12 @@ where
 
     pub async fn update(
         &self,
-        operator: PrincipalClaims,
+        operator: DefaultUser,
         id: Uuid,
         name: String,
     ) -> Result<Category, CtxError> {
         info!(
-            user_id = %operator.sub,
+            user_id = %operator.id,
             category_id = %id,
             "updating category"
         );
@@ -102,7 +98,7 @@ where
         match result {
             Ok(val) => {
                 tx.commit().await.map_err(|e| {
-                    error!(user_id=%operator.sub, error=%e, "commit transaction failed");
+                    error!(user_id=%operator.id, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
                 // 提交成功后，缓存需要失效
@@ -111,7 +107,7 @@ where
             }
             Err(e) => {
                 tx.rollback().await.map_err(|e| {
-                    error!(user_id=%operator.sub, error=%e, "rollback transaction failed");
+                    error!(user_id=%operator.id, error=%e, "rollback transaction failed");
                     CtxError::Internal
                 })?;
                 Err(e)
@@ -119,9 +115,9 @@ where
         }
     }
 
-    pub async fn delete(&self, operator: PrincipalClaims, id: Uuid) -> Result<(), CtxError> {
+    pub async fn delete(&self, operator: DefaultUser, id: Uuid) -> Result<(), CtxError> {
         info!(
-            user_id = %operator.sub,
+            user_id = %operator.id,
             category_id = %id,
             "deleting category"
         );

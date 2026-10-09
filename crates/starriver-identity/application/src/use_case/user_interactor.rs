@@ -12,10 +12,7 @@ use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{
-            ChangePasswordCmd, UserActiveCmd, UserActiveEmailCmd, UserRegisterCmd,
-            UserRegisterEmailCmd,
-        },
+        req::{ChangeMyPasswordCmd, ResetPasswordCmd, UserRegisterCmd},
         res::UserDetailDto,
     },
     error::CtxError,
@@ -71,14 +68,13 @@ where
     ///// register user ///////////////////////////////////////////////////////////////////////
 
     /// 发送邮箱验证邮件，永远不返回失败以防暴力核验邮箱
-    pub async fn send_register_email(&self, cmd: UserRegisterEmailCmd) -> Result<(), Infallible> {
-        let email = cmd.email.as_str();
+    pub async fn send_register_email(&self, email: &str) -> Result<(), Infallible> {
         match self.user_query.exists_by_email(&self.conn, email).await {
-            Ok(found) => {
-                if found {
-                    warn!(to=%email, "email already registered, skipping verification");
-                    return Ok(());
-                }
+            Ok(true) => {
+                warn!(to=%email, "email already registered, skipping verification");
+                Ok(())
+            }
+            Ok(false) => {
                 if let Err(e) = self.verification_code_service.send_code(email).await {
                     error!(to=%email, error=%e, "send verification email failed");
                 }
@@ -92,11 +88,11 @@ where
     }
 
     pub async fn register_user(&self, cmd: UserRegisterCmd) -> Result<(), CtxError> {
-        let email_code = cmd.email_code.as_str();
+        let verification_code = cmd.verification_code.as_str();
         let email = cmd.email.as_str();
         let matches = self
             .verification_code_service
-            .validate_code(email, email_code)
+            .validate_code(email, verification_code)
             .await
             .inspect_err(|e| info!(email=%email, error=%e, "register user validate code failed"))?;
         if !matches {
@@ -114,93 +110,13 @@ where
         Ok(())
     }
 
-    ///// activate user by self ///////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////
 
-    /// 发送用户激活邮件，永远不返回失败以防暴力核验邮箱
-    pub async fn send_activation_email(&self, cmd: UserActiveEmailCmd) -> Result<(), Infallible> {
-        let email = cmd.email.as_str();
-        match self
-            .user_query
-            .find_email_by_user_id(&self.conn, cmd.user_id)
-            .await
-        {
-            Ok(found) => {
-                if found.is_some_and(|e| e != email) {
-                    warn!(email=%email, "incorrect email for user");
-                    return Ok(());
-                }
-                if let Err(e) = self.verification_code_service.send_code(email).await {
-                    error!(email=%email, error=%e, "send active email failed");
-                }
-                Ok(())
-            }
-            Err(e) => {
-                error!(email=%email, error=%e, "find email by user id failed");
-                Ok(())
-            }
-        }
-    }
-
-    pub async fn activate_user(
-        &self,
-        username: String,
-        cmd: UserActiveCmd,
-    ) -> Result<(), CtxError> {
-        let tx = self.conn.begin().await.map_err(|e| {
-            error!(error = %e, "begin transaction failed");
-            CtxError::Internal
-        })?;
-        let result: Result<(), CtxError> = async {
-            let email_code = cmd.email_code.as_str();
-            let found = self.user_repo.find_by_username(&tx, &username).await?;
-            let Some(mut found) = found else {
-                warn!(username=%username, "user not found");
-                return Ok(());
-            };
-            let email = found.email().as_str();
-            let matches = self
-                .verification_code_service
-                .validate_code(email, email_code)
-                .await
-                .inspect_err(
-                    |e| info!(email=%email, error=%e, "active user validate code failed"),
-                )?;
-            if !matches {
-                return Err(CtxError::InvalidInput("invalid email code".to_string()));
-            }
-            let original = found.clone();
-            found.activate();
-            self.user_repo
-                .update(&tx, Revision::new(original, found))
-                .await?;
-            Ok(())
-        }
-        .await;
-
-        match result {
-            Ok(val) => {
-                tx.commit().await.map_err(|e| {
-                    error!(username=%username, error=%e, "commit transaction failed");
-                    CtxError::Internal
-                })?;
-                Ok(val)
-            }
-            Err(e) => {
-                tx.rollback().await.map_err(|e| {
-                    error!(username=%username, error=%e, "rollback transaction failed");
-                    CtxError::Internal
-                })?;
-                Err(e)
-            }
-        }
-    }
-
-    ///// change_password by self ///////////////////////////////////////////////////////////////////////
-
-    pub async fn change_password(
+    /// change password for authenticated user
+    pub async fn change_my_password(
         &self,
         username: &str,
-        cmd: ChangePasswordCmd,
+        cmd: ChangeMyPasswordCmd,
     ) -> Result<(), CtxError> {
         if cmd.new_password != cmd.new_password_confirm {
             return Err(CtxError::InvalidInput(
@@ -218,7 +134,6 @@ where
                 user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
 
             let original = user.clone();
-            // todo anti timing attack
             self.pwd_service.change_password(
                 &mut user,
                 cmd.cur_password.as_str(),
@@ -247,6 +162,115 @@ where
                 })?;
                 Err(e)
             }
+        }
+    }
+
+    /// Generates a 6-digit verification code, stores it in the cache with TTL,
+    /// and sends it to the email of the account identified by `user_identifier`.
+    ///
+    /// If no account matches, it silently returns `Ok(())` to prevent enumeration.
+    ///
+    /// # Arguments
+    /// * `email` - registed user's email.
+    ///
+    /// # Errors
+    /// Returns `CtxError` if:
+    /// - The verification code generation or caching fails.
+    /// - The email delivery service returns an error.
+    pub async fn send_verification_code(&self, email: &str) -> Result<(), CtxError> {
+        let email = match self.user_query.exists_by_email(&self.conn, email).await {
+            Ok(true) => email,
+            Ok(false) => {
+                warn!(email = %email, "account not found, skip sending code");
+                return Ok(());
+            }
+            Err(e) => {
+                error!(email = %email, error = %e, "resolve email by identifier failed");
+                return Ok(());
+            }
+        };
+
+        if let Err(e) = self.verification_code_service.send_code(email).await {
+            error!(to = %email, error = %e, "send verification email failed");
+        }
+        Ok(())
+    }
+
+    /// Resets the user's password using a verification code.
+    ///
+    /// # Arguments
+    /// * `cmd` - Contains the target username/email, verification code, and the new password.
+    ///
+    /// # Errors
+    /// Returns `CtxError` if the username is invalid, the code is incorrect/expired,
+    /// or the password update fails.
+    pub async fn reset_password_with_verification_code(
+        &self,
+        cmd: ResetPasswordCmd,
+    ) -> Result<(), CtxError> {
+        if cmd.new_password.ne(&cmd.new_password_confirm) {
+            return Err(CtxError::InvalidInput(
+                "new password does not match".to_owned(),
+            ));
+        }
+        let email = &cmd.email;
+        let email = match self.user_query.exists_by_email(&self.conn, email).await {
+            Ok(true) => email,
+            Ok(false) => {
+                warn!(email = %email, "account not found, skip sending code");
+                return Ok(());
+            }
+            Err(e) => {
+                error!(email = %email, error = %e, "resolve email by identifier failed");
+                return Ok(());
+            }
+        };
+        match self
+            .verification_code_service
+            .validate_code(email, &cmd.verification_code)
+            .await
+        {
+            Ok(true) => {
+                let tx = self.conn.begin().await.map_err(|e| {
+                    error!(error = %e, "begin transaction failed");
+                    CtxError::Internal
+                })?;
+                let result = async {
+                    let Some(mut user) = self.user_repo.find_by_email(&self.conn, email).await?
+                    else {
+                        return Err(CtxError::NotFound(email.to_owned()));
+                    };
+                    let origin = user.clone();
+                    self.pwd_service
+                        .reset_password(&mut user, &cmd.new_password)?;
+                    self.user_repo
+                        .update(&self.conn, Revision::new(origin, user))
+                        .await?;
+                    Ok(())
+                }
+                .await;
+
+                match result {
+                    Ok(_) => {
+                        tx.commit().await.map_err(|e| {
+                            error!(email = %email, error=%e, "commit transaction failed");
+                            CtxError::Internal
+                        })?;
+                        Ok(())
+                    }
+                    Err(e) => {
+                        tx.rollback().await.map_err(|e| {
+                            error!(email = %email, error=%e, "rollback transaction failed");
+                            CtxError::Internal
+                        })?;
+                        Err(e)
+                    }
+                }
+            }
+            Ok(false) => Err(CtxError::InvalidInput(
+                "verification code invalid".to_owned(),
+            )),
+            Err(e) => Err(CtxError::internal("reset password", e)),
         }
     }
 }

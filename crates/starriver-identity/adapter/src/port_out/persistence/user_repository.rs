@@ -48,6 +48,32 @@ impl DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
+    async fn find_by_email(
+        &self,
+        conn: &impl ConnectionTrait,
+        email: &str,
+    ) -> Result<Option<User>, RepositoryError> {
+        Entity::find()
+            .filter(Column::Email.eq(email))
+            .one(conn)
+            .await
+            .map(|e| {
+                e.map(|e| {
+                    User::from_repo(
+                        e.id,
+                        e.username,
+                        e.password,
+                        e.email,
+                        e.life_cycle.into(),
+                        e.password_locked_until,
+                        e.password_window_start,
+                        e.password_attempts as u8,
+                    )
+                })
+            })
+            .map_err(db_2_repo_error)
+    }
+
     async fn insert(
         &self,
         conn: &impl ConnectionTrait,
@@ -204,6 +230,14 @@ impl UserRepository<DefaultConnection> for DefaultUserRepository {
     ) -> Result<bool, RepositoryError> {
         self.delete(conn, user_id).await
     }
+
+    fn find_by_email(
+        &self,
+        conn: &DefaultConnection,
+        email: &str,
+    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send {
+        self.find_by_email(conn, email)
+    }
 }
 
 impl UserRepository<DefaultTransaction> for DefaultUserRepository {
@@ -233,5 +267,13 @@ impl UserRepository<DefaultTransaction> for DefaultUserRepository {
         user_id: uuid::Uuid,
     ) -> Result<bool, RepositoryError> {
         self.delete(conn, user_id).await
+    }
+
+    fn find_by_email(
+        &self,
+        conn: &DefaultTransaction,
+        email: &str,
+    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send {
+        self.find_by_email(conn, email)
     }
 }

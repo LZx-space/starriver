@@ -2,18 +2,17 @@ use axum::extract::State;
 use axum::response::IntoResponse;
 
 use starriver_identity_application::dto::user_dto::req::{
-    ChangePasswordCmd, UserActiveCmd, UserActiveEmailCmd, UserRegisterCmd, UserRegisterEmailCmd,
+    ChangeMyPasswordCmd, ResetPasswordCmd, SendVerificationCodeCmd, UserRegisterCmd,
 };
 use starriver_shared_base::dto::PageQuery;
-use starriver_shared_base::middleware::authentication::core::principal::Principal;
-use starriver_shared_framework::extract::{Json, JsonEx, Path, Query};
-use starriver_shared_framework::middleware::authentication::default_impl::AuthenticatedUser;
+use starriver_shared_framework::extract::{Json, JsonEx, Query};
+use starriver_shared_framework::middleware::authentication::default_impl::AuthenticatedJwtClaims;
 use starriver_shared_framework::response::ApiError;
 
 use crate::error_mapping::map_error;
 use crate::port_in::state::IdentityState;
 
-pub async fn me(user: AuthenticatedUser) -> Result<impl IntoResponse, ApiError> {
+pub async fn me(user: AuthenticatedJwtClaims) -> Result<impl IntoResponse, ApiError> {
     Ok(Json(user))
 }
 
@@ -21,7 +20,7 @@ pub async fn me(user: AuthenticatedUser) -> Result<impl IntoResponse, ApiError> 
 
 pub async fn paginate(
     state: State<IdentityState>,
-    _: AuthenticatedUser,
+    _: AuthenticatedJwtClaims,
     q: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
@@ -34,13 +33,13 @@ pub async fn paginate(
 
 ////////////////////////////////////////////////////////////////////
 
-pub async fn send_register_email(
+pub async fn send_email_verification_code(
     state: State<IdentityState>,
-    cmd: Json<UserRegisterEmailCmd>,
+    cmd: Json<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
         .user_interactor
-        .send_register_email(cmd.0)
+        .send_register_email(&cmd.0.email)
         .await
         .map_err(|e| e.into())
 }
@@ -60,40 +59,37 @@ pub async fn register_user(
 
 ////////////////////////////////////////////////////////////////////
 
-pub async fn send_activation_email(
+pub async fn change_my_password(
     state: State<IdentityState>,
-    cmd: Json<UserActiveEmailCmd>,
+    user: AuthenticatedJwtClaims,
+    cmd: JsonEx<ChangeMyPasswordCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let username = &user.username;
     state
         .user_interactor
-        .send_activation_email(cmd.0)
-        .await
-        .map_err(|e| e.into())
-}
-
-pub async fn activate_user(
-    state: State<IdentityState>,
-    username: Path<String>,
-    cmd: Json<UserActiveCmd>,
-) -> Result<impl IntoResponse, ApiError> {
-    state
-        .user_interactor
-        .activate_user(username.0, cmd.0)
+        .change_my_password(username, cmd.0)
         .await
         .map_err(map_error)
 }
 
-////////////////////////////////////////////////////////////////////
-
-pub async fn change_password(
+pub async fn send_reset_password_verification_code(
     state: State<IdentityState>,
-    user: AuthenticatedUser,
-    cmd: JsonEx<ChangePasswordCmd>,
+    cmd: Json<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let username = user.id();
     state
         .user_interactor
-        .change_password(username, cmd.0)
+        .send_verification_code(&cmd.0.email)
+        .await
+        .map_err(map_error)
+}
+
+pub async fn reset_password_with_verification_code(
+    state: State<IdentityState>,
+    cmd: JsonEx<ResetPasswordCmd>,
+) -> Result<impl IntoResponse, ApiError> {
+    state
+        .user_interactor
+        .reset_password_with_verification_code(cmd.0)
         .await
         .map_err(map_error)
 }

@@ -6,7 +6,7 @@ use starriver_shared_base::upload_file::UploadLocationResolver;
 use starriver_shared_framework::{
     extract::{Json, Multipart},
     io::{MultipartFieldAsyncReader, TokioFileAsyncWriter},
-    middleware::authentication::default_impl::AuthenticatedUser,
+    middleware::authentication::default_impl::AuthenticatedJwtClaims,
     response::ApiError,
 };
 use tracing::{error, info};
@@ -18,7 +18,7 @@ use crate::port_in::state::BloggingState;
 #[axum::debug_handler]
 pub async fn upload_attachment(
     state: State<BloggingState>,
-    _: AuthenticatedUser,
+    _: AuthenticatedJwtClaims,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut attachments = Vec::new();

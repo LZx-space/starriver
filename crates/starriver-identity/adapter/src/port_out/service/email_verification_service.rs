@@ -5,6 +5,7 @@ use lettre::{
     transport::smtp::authentication::Credentials,
 };
 use moka::future::Cache;
+use rand::random_range;
 use starriver_identity_application::{
     error::EmailVerificationError, port::email_verification_service::EmailVerificationService,
 };
@@ -49,10 +50,7 @@ impl EmailVerificationService for SmtpVerificationService {
             .parse::<Mailbox>()
             .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
 
-        let code: String = (0..6)
-            .map(|_| rand::random::<u8>() % 10 + b'0')
-            .map(|b| b as char)
-            .collect();
+        let code: String = (0..6).map(|_| random_range(b'0'..=b'9') as char).collect();
 
         let message = Message::builder()
             .subject("Starriver User's Email Verification")
@@ -75,7 +73,13 @@ impl EmailVerificationService for SmtpVerificationService {
 
     async fn validate_code(&self, email: &str, code: &str) -> Result<bool, EmailVerificationError> {
         match self.code_cache.get(email).await {
-            Some(cached_code) => Ok(cached_code == code),
+            Some(cached_code) => {
+                let eq = cached_code == code;
+                if eq {
+                    self.code_cache.invalidate(email).await;
+                }
+                Ok(eq)
+            }
             None => Ok(false),
         }
     }

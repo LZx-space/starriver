@@ -1,4 +1,5 @@
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 use starriver_identity_application::dto::user_dto::req::{
@@ -41,7 +42,7 @@ pub async fn send_email_verification_code(
         .user_interactor
         .send_register_email(&cmd.0.email)
         .await
-        .map_err(|e| e.into())
+        .map_err(|_| ApiError::new(StatusCode::OK, String::new()))
 }
 
 #[axum::debug_handler]
@@ -80,7 +81,7 @@ pub async fn send_reset_password_verification_code(
         .user_interactor
         .send_verification_code(&cmd.0.email)
         .await
-        .map_err(map_error)
+        .map_err(|_| ApiError::new(StatusCode::OK, String::new()))
 }
 
 pub async fn reset_password_with_verification_code(

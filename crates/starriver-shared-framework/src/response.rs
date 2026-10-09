@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Response;
@@ -25,11 +23,5 @@ impl IntoResponse for ApiError {
         let status_code =
             StatusCode::from_u16(self.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         (status_code, self.message).into_response()
-    }
-}
-
-impl From<Infallible> for ApiError {
-    fn from(error: Infallible) -> Self {
-        Self::new(StatusCode::OK, error.to_string())
     }
 }

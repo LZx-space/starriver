@@ -135,7 +135,7 @@ where
 
 fn mapping_repo_error() -> impl FnOnce(RepositoryError) -> AuthenticationError {
     |e| {
-        error!(error=%e, "handle bad password event failed");
+        error!(error=%e, "query repository error when authentication");
         AuthenticationError::InnerError {
             message: e.to_string(),
         }

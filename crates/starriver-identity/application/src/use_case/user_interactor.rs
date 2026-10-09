@@ -166,18 +166,13 @@ where
     }
 
     /// Generates a 6-digit verification code, stores it in the cache with TTL,
-    /// and sends it to the email of the account identified by `user_identifier`.
+    /// and sends it to the email of the account.
     ///
     /// If no account matches, it silently returns `Ok(())` to prevent enumeration.
     ///
     /// # Arguments
     /// * `email` - registed user's email.
-    ///
-    /// # Errors
-    /// Returns `CtxError` if:
-    /// - The verification code generation or caching fails.
-    /// - The email delivery service returns an error.
-    pub async fn send_verification_code(&self, email: &str) -> Result<(), CtxError> {
+    pub async fn send_verification_code(&self, email: &str) -> Result<(), Infallible> {
         let email = match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(true) => email,
             Ok(false) => {
@@ -217,11 +212,11 @@ where
         let email = match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(true) => email,
             Ok(false) => {
-                warn!(email = %email, "account not found, skip sending code");
+                warn!(email = %email, "account not found, skip reset password");
                 return Ok(());
             }
             Err(e) => {
-                error!(email = %email, error = %e, "resolve email by identifier failed");
+                error!(email = %email, error = %e, "find user by email failed");
                 return Ok(());
             }
         };
@@ -236,15 +231,14 @@ where
                     CtxError::Internal
                 })?;
                 let result = async {
-                    let Some(mut user) = self.user_repo.find_by_email(&self.conn, email).await?
-                    else {
+                    let Some(mut user) = self.user_repo.find_by_email(&tx, email).await? else {
                         return Err(CtxError::NotFound(email.to_owned()));
                     };
                     let origin = user.clone();
                     self.pwd_service
                         .reset_password(&mut user, &cmd.new_password)?;
                     self.user_repo
-                        .update(&self.conn, Revision::new(origin, user))
+                        .update(&tx, Revision::new(origin, user))
                         .await?;
                     Ok(())
                 }

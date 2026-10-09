@@ -19,10 +19,4 @@ pub trait UserQuery<T: Executor> {
         conn: &T,
         email: &str,
     ) -> impl Future<Output = Result<bool, QueryError>>;
-
-    fn find_email_by_username(
-        &self,
-        conn: &T,
-        username: &str,
-    ) -> impl Future<Output = Result<Option<String>, QueryError>>;
 }

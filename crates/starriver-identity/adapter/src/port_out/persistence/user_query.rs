@@ -1,6 +1,6 @@
 use sea_orm::{
-    ColumnTrait, EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
-    SelectExt, sea_query::NullOrdering,
+    ColumnTrait, EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, SelectExt,
+    sea_query::NullOrdering,
 };
 use starriver_identity_application::{
     dto::user_dto::res::UserDetailDto, port::user_query::UserQuery,
@@ -56,20 +56,5 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
             .exists(conn)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))
-    }
-
-    async fn find_email_by_username(
-        &self,
-        conn: &DefaultConnection,
-        username: &str,
-    ) -> Result<Option<String>, QueryError> {
-        Entity::find()
-            .select_only()
-            .column(user_po::Column::Email)
-            .filter(user_po::Column::Username.eq(username))
-            .one(conn)
-            .await
-            .map_err(|e| QueryError::DbError(e.to_string()))
-            .map(|e| e.map(|e| e.email))
     }
 }

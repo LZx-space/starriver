@@ -1,5 +1,5 @@
 [package]
-name = "starriver-shared-framework"
+name = "starriver-shared-infra"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

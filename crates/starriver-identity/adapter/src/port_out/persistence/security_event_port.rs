@@ -10,7 +10,7 @@ use starriver_shared_base::{
     dto::{PageQuery, PageResult},
     error::{QueryError, RepositoryError},
 };
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     db::{DefaultConnection, DefaultTransaction},
     error_mapping::db_2_repo_error,
 };

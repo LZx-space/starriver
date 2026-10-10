@@ -5,8 +5,8 @@ use starriver_identity_application::dto::user_dto::req::{
     ChangeMyPasswordCmd, ResetPasswordCmd, SendVerificationCodeCmd, UserRegisterCmd,
 };
 use starriver_shared_base::dto::PageQuery;
-use starriver_shared_framework::extract::{Json, JsonEx, Query};
-use starriver_shared_framework::middleware::authentication::default_impl::AuthenticatedJwtClaims;
+use starriver_shared_infra::extract::{Json, JsonEx, Query};
+use starriver_shared_infra::middleware::authentication::default_impl::AuthenticatedJwtClaims;
 
 use crate::api_error::ApiError;
 use crate::port_in::state::IdentityState;

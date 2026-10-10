@@ -1,7 +1,7 @@
 use axum::{extract::State, response::IntoResponse};
 use starriver_blogging_application::dto::post_dto::req::{PageQuery, SaveOrUpdatePostCmd};
 use starriver_shared_base::dto::PageSearch;
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     extract::{Json, Path, Query},
     middleware::authentication::default_impl::AuthenticatedJwtClaims,
 };

@@ -10,7 +10,7 @@ use starriver_shared_base::{
     dto::{PageQuery, PageResult},
     error::QueryError,
 };
-use starriver_shared_framework::db::DefaultConnection;
+use starriver_shared_infra::db::DefaultConnection;
 
 use crate::port_out::persistence::po::user_po::{self, Column, Entity};
 

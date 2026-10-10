@@ -3,31 +3,22 @@ use starriver_blogging_application::dto::category_dto::req::CreateOrUpdateCatego
 use starriver_shared_framework::{
     extract::{Json, Path},
     middleware::authentication::default_impl::AuthenticatedJwtClaims,
-    response::ApiError,
 };
 use uuid::Uuid;
 
-use crate::{error_mapping::map_error, port_in::state::BloggingState};
+use crate::{api_error::ApiError, port_in::state::BloggingState};
 
 pub async fn list_all(state: State<BloggingState>) -> Result<impl IntoResponse, ApiError> {
-    state
-        .category_interactor
-        .list_all()
-        .await
-        .map(Json)
-        .map_err(map_error)
+    let categories = state.category_interactor.list_all().await?;
+    Ok(Json(categories))
 }
 
 pub async fn show(
     state: State<BloggingState>,
     id: Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
-        .category_interactor
-        .find(id.0)
-        .await
-        .map(Json)
-        .map_err(map_error)
+    let category = state.category_interactor.find(id.0).await?;
+    Ok(Json(category))
 }
 
 pub async fn create(
@@ -35,12 +26,11 @@ pub async fn create(
     user: AuthenticatedJwtClaims,
     cmd: Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
+    let created = state
         .category_interactor
         .create(user.into(), cmd.0.name)
-        .await
-        .map(Json)
-        .map_err(map_error)
+        .await?;
+    Ok(Json(created))
 }
 
 pub async fn update(
@@ -49,12 +39,11 @@ pub async fn update(
     Path(id): Path<Uuid>,
     Json(cmd): Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
+    let updated = state
         .category_interactor
         .update(user.into(), id, cmd.name)
-        .await
-        .map(Json)
-        .map_err(map_error)
+        .await?;
+    Ok(Json(updated))
 }
 
 pub async fn delete(
@@ -62,10 +51,6 @@ pub async fn delete(
     user: AuthenticatedJwtClaims,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
-        .category_interactor
-        .delete(user.into(), id)
-        .await
-        .map(Json)
-        .map_err(map_error)
+    state.category_interactor.delete(user.into(), id).await?;
+    Ok(Json(()))
 }

@@ -35,7 +35,7 @@ impl UsernameSpec {
 }
 
 /// 原始密码格式规范，面向用户输入的明文密码。
-/// 仅被 UserFactory 在校验原始密码时消费。
+/// 被 UserFactory、PasswordDomainService（改密/重置）及应用层 UserValidateCxt 消费。
 #[derive(Clone)]
 pub struct PasswordSpec(RegexValidator);
 

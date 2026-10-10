@@ -44,35 +44,6 @@ impl IntoResponse for ApiError {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn serializes_without_details() {
-        let error = ApiError::new(StatusCode::BAD_REQUEST, "bad request".to_string());
-        let json = serde_json::to_value(&error).expect("serializable");
-        assert_eq!(
-            json,
-            serde_json::json!({"status": 400, "message": "bad request"})
-        );
-    }
-
-    #[test]
-    fn serializes_with_details() {
-        let error = ApiError::with_details(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation failed".to_string(),
-            serde_json::json!({"email": [{"code": "invalid_email"}]}),
-        );
-        let json = serde_json::to_value(&error).expect("serializable");
-        assert_eq!(json["status"], 422);
-        assert_eq!(json["details"]["email"][0]["code"], "invalid_email");
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// panic 时的响应：panic 详情只进服务端日志，客户端收到与其它错误一致的 500。
 ///
 /// 用法：`CatchPanicLayer::custom(PanicResponse)`。
@@ -100,5 +71,34 @@ impl ResponseForPanic for PanicResponse {
             "internal server error".to_string(),
         )
         .into_response()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serializes_without_details() {
+        let error = ApiError::new(StatusCode::BAD_REQUEST, "bad request".to_string());
+        let json = serde_json::to_value(&error).expect("serializable");
+        assert_eq!(
+            json,
+            serde_json::json!({"status": 400, "message": "bad request"})
+        );
+    }
+
+    #[test]
+    fn serializes_with_details() {
+        let error = ApiError::with_details(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation failed".to_string(),
+            serde_json::json!({"email": [{"code": "invalid_email"}]}),
+        );
+        let json = serde_json::to_value(&error).expect("serializable");
+        assert_eq!(json["status"], 422);
+        assert_eq!(json["details"]["email"][0]["code"], "invalid_email");
     }
 }

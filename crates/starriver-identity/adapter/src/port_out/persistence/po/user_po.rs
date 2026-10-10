@@ -19,7 +19,6 @@ pub struct Model {
     pub life_cycle: UserLifeCycle,
     pub password_locked_until: Option<OffsetDateTime>,
     pub password_window_start: Option<OffsetDateTime>,
-    // 注意sea-orm不支持u8,这里用i16接受以不污染外部配置文件及实体
     pub password_attempts: i16,
     pub created_at: OffsetDateTime,
     pub updated_at: Option<OffsetDateTime>,

@@ -201,7 +201,7 @@ where
             .await
             .map_err(CtxError::from)
             .inspect(|_| {
-                // 更新帖子后，清除所有帖子缓存
+                // 删除帖子后，清除所有帖子缓存
                 self.cache.invalidate_all();
             })
     }

@@ -1,5 +1,4 @@
 use axum::extract::State;
-use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 use starriver_identity_application::dto::user_dto::req::{
@@ -38,11 +37,12 @@ pub async fn send_email_verification_code(
     state: State<IdentityState>,
     cmd: Json<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
+    // 不会失败：错误已记录在用例内部（防枚举）
+    let _ = state
         .user_interactor
         .send_register_email(&cmd.0.email)
-        .await
-        .map_err(|_| ApiError::new(StatusCode::OK, String::new()))
+        .await;
+    Ok(())
 }
 
 #[axum::debug_handler]
@@ -77,11 +77,12 @@ pub async fn send_reset_password_verification_code(
     state: State<IdentityState>,
     cmd: Json<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state
+    // 不会失败：错误已记录在用例内部（防枚举）
+    let _ = state
         .user_interactor
         .send_verification_code(&cmd.0.email)
-        .await
-        .map_err(|_| ApiError::new(StatusCode::OK, String::new()))
+        .await;
+    Ok(())
 }
 
 pub async fn reset_password_with_verification_code(

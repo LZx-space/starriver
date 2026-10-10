@@ -1,18 +1,18 @@
 use std::path::Path;
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::State, response::IntoResponse};
+use starriver_blogging_application::error::CtxError;
 use starriver_blogging_domain::attachment::{entity::Attachment, value_object::Extension};
 use starriver_shared_base::upload_file::UploadLocationResolver;
 use starriver_shared_framework::{
     extract::{Json, Multipart},
     io::{MultipartFieldAsyncReader, TokioFileAsyncWriter},
     middleware::authentication::default_impl::AuthenticatedJwtClaims,
-    response::ApiError,
 };
 use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::error_mapping::map_error;
+use crate::api_error::ApiError;
 use crate::port_in::state::BloggingState;
 
 #[axum::debug_handler]
@@ -22,12 +22,7 @@ pub async fn upload_attachment(
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut attachments = Vec::new();
-    while let Some(mut field) = multipart
-        .0
-        .next_field()
-        .await
-        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?
-    {
+    while let Some(mut field) = multipart.0.next_field().await? {
         let file_name = field.file_name().unwrap_or_default();
         info!(filename=%file_name, "processing field");
 
@@ -38,7 +33,7 @@ pub async fn upload_attachment(
                 .and_then(|e| e.to_str())
                 .unwrap_or_default(),
         )
-        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+        .map_err(CtxError::from)?;
         info!(claimed_extension=%claimed_extension.as_str());
 
         let attachment_id = Uuid::now_v7(); // 附件ID生成附件名
@@ -50,7 +45,7 @@ pub async fn upload_attachment(
         info!("new async writer");
         let async_writer = TokioFileAsyncWriter::new(&save_path)
             .await
-            .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, e.to_string()))?;
+            .map_err(|e| CtxError::internal("create attachment file", e))?;
 
         info!("new async reader");
         let async_reader = MultipartFieldAsyncReader::new(&mut field);
@@ -65,7 +60,6 @@ pub async fn upload_attachment(
                 async_writer,
             )
             .await
-            .map_err(map_error)
         {
             Ok(attachment) => {
                 attachments.push(attachment);
@@ -74,7 +68,7 @@ pub async fn upload_attachment(
                 if let Err(rm_err) = tokio::fs::remove_file(&save_path).await {
                     error!(error=%rm_err, "remove file error");
                 }
-                return Err(err);
+                return Err(err.into());
             }
         };
     }

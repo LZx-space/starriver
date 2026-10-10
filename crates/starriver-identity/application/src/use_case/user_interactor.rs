@@ -289,4 +289,113 @@ where
             }
         }
     }
+
+    /// Generates a 6-digit verification code, stores it in the cache with TTL,
+    /// and sends it to the email of the account identified by `user_identifier`.
+    ///
+    /// If no account matches, it silently returns `Ok(())` to prevent enumeration.
+    ///
+    /// # Arguments
+    /// * `email` - registed user's email.
+    ///
+    /// # Errors
+    /// Returns `CtxError` if:
+    /// - The verification code generation or caching fails.
+    /// - The email delivery service returns an error.
+    pub async fn send_verification_code(&self, email: &str) -> Result<(), CtxError> {
+        let email = match self.user_query.exists_by_email(&self.conn, email).await {
+            Ok(true) => email,
+            Ok(false) => {
+                warn!(email = %email, "account not found, skip sending code");
+                return Ok(());
+            }
+            Err(e) => {
+                error!(email = %email, error = %e, "resolve email by identifier failed");
+                return Ok(());
+            }
+        };
+
+        if let Err(e) = self.verification_code_service.send_code(email).await {
+            error!(to = %email, error = %e, "send verification email failed");
+        }
+        Ok(())
+    }
+
+    /// Resets the user's password using a verification code.
+    ///
+    /// # Arguments
+    /// * `cmd` - Contains the target username/email, verification code, and the new password.
+    ///
+    /// # Errors
+    /// Returns `CtxError` if the username is invalid, the code is incorrect/expired,
+    /// or the password update fails.
+    pub async fn reset_password_with_verification_code(
+        &self,
+        cmd: ResetPasswordCmd,
+    ) -> Result<(), CtxError> {
+        if cmd.new_password.ne(&cmd.new_password_confirm) {
+            return Err(CtxError::InvalidInput(
+                "new password does not match".to_owned(),
+            ));
+        }
+        let email = &cmd.email;
+        let email = match self.user_query.exists_by_email(&self.conn, email).await {
+            Ok(true) => email,
+            Ok(false) => {
+                warn!(email = %email, "account not found, skip sending code");
+                return Ok(());
+            }
+            Err(e) => {
+                error!(email = %email, error = %e, "resolve email by identifier failed");
+                return Ok(());
+            }
+        };
+        match self
+            .verification_code_service
+            .validate_code(email, &cmd.verification_code)
+            .await
+        {
+            Ok(true) => {
+                let tx = self.conn.begin().await.map_err(|e| {
+                    error!(error = %e, "begin transaction failed");
+                    CtxError::Internal
+                })?;
+                let result = async {
+                    let Some(mut user) = self.user_repo.find_by_email(&self.conn, email).await?
+                    else {
+                        return Err(CtxError::NotFound(email.to_owned()));
+                    };
+                    let origin = user.clone();
+                    self.pwd_service
+                        .reset_password(&mut user, &cmd.new_password)?;
+                    self.user_repo
+                        .update(&self.conn, Revision::new(origin, user))
+                        .await?;
+                    Ok(())
+                }
+                .await;
+
+                match result {
+                    Ok(_) => {
+                        tx.commit().await.map_err(|e| {
+                            error!(email = %email, error=%e, "commit transaction failed");
+                            CtxError::Internal
+                        })?;
+                        Ok(())
+                    }
+                    Err(e) => {
+                        tx.rollback().await.map_err(|e| {
+                            error!(email = %email, error=%e, "rollback transaction failed");
+                            CtxError::Internal
+                        })?;
+                        Err(e)
+                    }
+                }
+            }
+            Ok(false) => Err(CtxError::InvalidInput(
+                "verification code invalid".to_owned(),
+            )),
+            Err(e) => Err(CtxError::internal("reset password", e)),
+        }
+    }
 }

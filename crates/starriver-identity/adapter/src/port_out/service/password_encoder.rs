@@ -20,9 +20,8 @@ impl PasswordEncoder for Argon2PasswordEncoder {
         raw_password: &str,
         encoded_password: &str,
     ) -> Result<bool, PasswordEncoderError> {
-        // todo anti timing attack
         let password_hash = PasswordHash::new(encoded_password)
-            .map_err(|e| PasswordEncoderError::EncodingFailed(e.to_string()))?;
+            .map_err(|e| PasswordEncoderError::VerificationFailed(e.to_string()))?;
         match self
             .argon2
             .verify_password(raw_password.as_bytes(), &password_hash)

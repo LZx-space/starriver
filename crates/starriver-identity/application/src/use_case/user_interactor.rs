@@ -190,7 +190,7 @@ where
     /// If no account matches, it silently returns `Ok(())` to prevent enumeration.
     ///
     /// # Arguments
-    /// * `email` - registed user's email.
+    /// * `email` - registered user's email.
     pub async fn send_verification_code(&self, email: &str) -> Result<(), Infallible> {
         let email = match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(true) => email,
@@ -199,7 +199,7 @@ where
                 return Ok(());
             }
             Err(e) => {
-                error!(email = %email, error = %e, "resolve email by identifier failed");
+                error!(email = %email, error = %e, "find user by email failed");
                 return Ok(());
             }
         };

@@ -213,11 +213,10 @@ where
     /// Resets the user's password using a verification code.
     ///
     /// # Arguments
-    /// * `cmd` - Contains the target username/email, verification code, and the new password.
+    /// * `cmd` - Contains the target email, verification code, and the new password.
     ///
     /// # Errors
-    /// Returns `CtxError` if the username is invalid, the code is incorrect/expired,
-    /// or the password update fails.
+    /// Returns `CtxError` if the code is invalid/expired, or the password update fails.
     pub async fn reset_password_with_verification_code(
         &self,
         cmd: ResetPasswordCmd,
@@ -228,73 +227,66 @@ where
             ));
         }
         let email = &cmd.email;
-        let email = match self.user_query.exists_by_email(&self.conn, email).await {
-            Ok(true) => email,
-            Ok(false) => {
-                warn!(email = %email, "account not found, skip reset password");
-                return Ok(());
-            }
-            Err(e) => {
-                error!(email = %email, error = %e, "find user by email failed");
-                return Ok(());
-            }
-        };
-        match self
+        // 先验码后查库：验证码无效时零 DB 访问，且“账号不存在”与“验证码错误”响应完全一致，防枚举
+        let matches = self
             .verification_code_service
             .validate_code(email, &cmd.verification_code)
             .await
-        {
-            Ok(true) => {
-                let tx = self.conn.begin().await.map_err(|e| {
-                    error!(error = %e, "begin transaction failed");
+            .map_err(|e| CtxError::internal("reset password", e))?;
+        if !matches {
+            return Err(CtxError::InvalidInput(
+                "verification code invalid".to_owned(),
+            ));
+        }
+
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+        let result = async {
+            let Some(mut user) = self.user_repo.find_by_email(&tx, email).await? else {
+                // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
+                warn!(email = %email, "account not found after code validation");
+                return Err(CtxError::InvalidInput(
+                    "verification code invalid".to_owned(),
+                ));
+            };
+            let user_id = *user.id();
+            let origin = user.clone();
+            self.pwd_service
+                .reset_password(&mut user, &cmd.new_password)?;
+            self.user_repo
+                .update(&tx, Revision::new(origin, user))
+                .await?;
+            self.security_event_port
+                .insert(
+                    &tx,
+                    SecurityEventCmd {
+                        user_id,
+                        event_type: SecurityEventType::PasswordChanged,
+                        payload: "password reset with verification code".to_string(),
+                    },
+                )
+                .await?;
+            Ok(())
+        }
+        .await;
+
+        match result {
+            Ok(_) => {
+                tx.commit().await.map_err(|e| {
+                    error!(email = %email, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
-                let result = async {
-                    let Some(mut user) = self.user_repo.find_by_email(&tx, email).await? else {
-                        return Err(CtxError::NotFound(email.to_owned()));
-                    };
-                    let user_id = *user.id();
-                    let origin = user.clone();
-                    self.pwd_service
-                        .reset_password(&mut user, &cmd.new_password)?;
-                    self.user_repo
-                        .update(&tx, Revision::new(origin, user))
-                        .await?;
-                    self.security_event_port
-                        .insert(
-                            &tx,
-                            SecurityEventCmd {
-                                user_id,
-                                event_type: SecurityEventType::PasswordChanged,
-                                payload: "password reset with verification code".to_string(),
-                            },
-                        )
-                        .await?;
-                    Ok(())
-                }
-                .await;
-
-                match result {
-                    Ok(_) => {
-                        tx.commit().await.map_err(|e| {
-                            error!(email = %email, error=%e, "commit transaction failed");
-                            CtxError::Internal
-                        })?;
-                        Ok(())
-                    }
-                    Err(e) => {
-                        tx.rollback().await.map_err(|e| {
-                            error!(email = %email, error=%e, "rollback transaction failed");
-                            CtxError::Internal
-                        })?;
-                        Err(e)
-                    }
-                }
+                Ok(())
             }
-            Ok(false) => Err(CtxError::InvalidInput(
-                "verification code invalid".to_owned(),
-            )),
-            Err(e) => Err(CtxError::internal("reset password", e)),
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(email = %email, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
         }
     }
 }

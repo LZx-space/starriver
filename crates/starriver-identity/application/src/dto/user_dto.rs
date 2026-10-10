@@ -2,7 +2,10 @@ pub mod req {
     use std::{fmt::Display, sync::Arc};
 
     use serde::Deserialize;
-    use starriver_identity_domain::user::specification::{PasswordSpec, UsernameSpec};
+    use starriver_identity_domain::user::{
+        specification::{EmailSpec, PasswordSpec, UsernameSpec},
+        value_object::Email,
+    };
     use uuid::Uuid;
     use validator::{Validate, ValidationError};
 
@@ -13,7 +16,7 @@ pub mod req {
         pub username: String,
         #[validate(custom(function = "validate_password", use_context))]
         pub password: String,
-        #[validate(email)]
+        #[validate(custom(function = "validate_email", use_context))]
         pub email: String,
         #[validate(length(equal = 6))]
         pub verification_code: String,
@@ -30,15 +33,16 @@ pub mod req {
     }
 
     #[derive(Debug, Deserialize, Validate)]
+    #[validate(context = UserValidateCxt)]
     pub struct SendVerificationCodeCmd {
-        #[validate(email)]
+        #[validate(custom(function = "validate_email", use_context))]
         pub email: String,
     }
 
     #[derive(Debug, Deserialize, Validate)]
     #[validate(context = UserValidateCxt)]
     pub struct ResetPasswordCmd {
-        #[validate(email)]
+        #[validate(custom(function = "validate_email", use_context))]
         pub email: String,
         #[validate(length(equal = 6))]
         pub verification_code: String,
@@ -78,6 +82,7 @@ pub mod req {
     pub struct UserValidateCxt {
         pub username_spec: Arc<UsernameSpec>,
         pub password_spec: Arc<PasswordSpec>,
+        pub email_spec: Arc<EmailSpec>,
     }
 
     fn validate_username(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
@@ -90,6 +95,14 @@ pub mod req {
     fn validate_password(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
         ctx.password_spec.validate(value).map_err(|e| {
             ValidationError::new("invalid_password").with_message(e.to_string().into())
+        })?;
+        Ok(())
+    }
+
+    fn validate_email(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
+        let email = Email::normalize(value);
+        ctx.email_spec.validate(&email).map_err(|e| {
+            ValidationError::new("invalid_email").with_message(e.to_string().into())
         })?;
         Ok(())
     }

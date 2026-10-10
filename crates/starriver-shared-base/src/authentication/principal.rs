@@ -1,9 +1,7 @@
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::authentication::core::principal::Principal;
 /// todo, impl principal by config
-#[derive(Deserialize, Serialize)]
 pub struct DefaultUser {
     pub id: Uuid,
     pub username: String,
@@ -21,9 +19,9 @@ impl DefaultUser {
 }
 
 impl Principal for DefaultUser {
-    type Id = String;
+    type Id = Uuid;
 
     fn id(&self) -> &Self::Id {
-        &self.username
+        &self.id
     }
 }

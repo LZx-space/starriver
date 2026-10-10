@@ -155,26 +155,20 @@ where
         let failure_handler = self.failure_handler.clone();
         Box::pin(async move {
             if request_matcher.matches(&req).await {
-                let credentials = credentials_extractor.extract(req).await;
-                let credentials = match credentials {
-                    Ok(credentials) => credentials,
-                    Err(err) => {
-                        return Ok(failure_handler.on_authentication_failure(err).await);
-                    }
-                };
+                // 计时保护从解析开始，保证格式错误与正常认证失败的响应时长一致
                 let start_at = Instant::now();
-                let principal = authenticator.authenticate(&credentials).await;
+                let authenticated = async {
+                    let credentials = credentials_extractor.extract(req).await?;
+                    authenticator.authenticate(&credentials).await
+                }
+                .await;
                 timing_attack_protection
                     .fixed_duration_delay(start_at)
                     .await;
-                match principal {
-                    Ok(principal) => {
-                        return Ok(success_handler.on_authentication_success(principal).await);
-                    }
-                    Err(err) => {
-                        return Ok(failure_handler.on_authentication_failure(err).await);
-                    }
-                }
+                return match authenticated {
+                    Ok(result) => Ok(success_handler.on_authentication_success(result).await),
+                    Err(err) => Ok(failure_handler.on_authentication_failure(err).await),
+                };
             }
             service.call(req).await
         })

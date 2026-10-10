@@ -1,10 +1,11 @@
 use sea_orm::{
-    ColumnTrait, EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
-    SelectExt, sea_query::NullOrdering,
+    ColumnTrait, EntityTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, SelectExt,
+    sea_query::NullOrdering,
 };
 use starriver_identity_application::{
     dto::user_dto::res::UserDetailDto, port::user_query::UserQuery,
 };
+use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::{
     dto::{PageQuery, PageResult},
     error::QueryError,
@@ -51,25 +52,11 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
         conn: &DefaultConnection,
         email: &str,
     ) -> Result<bool, QueryError> {
+        let email = Email::normalize(email);
         Entity::find()
-            .filter(user_po::Column::Email.eq(email))
+            .filter(user_po::Column::Email.eq(email.as_str()))
             .exists(conn)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))
-    }
-
-    async fn find_email_by_username(
-        &self,
-        conn: &DefaultConnection,
-        username: &str,
-    ) -> Result<Option<String>, QueryError> {
-        Entity::find()
-            .select_only()
-            .column(user_po::Column::Email)
-            .filter(user_po::Column::Username.eq(username))
-            .one(conn)
-            .await
-            .map_err(|e| QueryError::DbError(e.to_string()))
-            .map(|e| e.map(|e| e.email))
     }
 }

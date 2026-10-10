@@ -12,30 +12,36 @@ use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{ChangeMyPasswordCmd, ResetPasswordCmd, UserRegisterCmd},
+        req::{
+            ChangeMyPasswordCmd, ResetPasswordCmd, SecurityEventCmd, SecurityEventType,
+            UserRegisterCmd,
+        },
         res::UserDetailDto,
     },
     error::CtxError,
     port::{
-        email_verification_service::EmailVerificationService, user_query::UserQuery,
+        email_verification_service::EmailVerificationService,
+        security_event_port::SecurityEventPort, user_query::UserQuery,
         user_repository::UserRepository,
     },
 };
 
-pub struct UserInteractor<Conn, UQ, UR, VCS, PE> {
+pub struct UserInteractor<Conn, UQ, UR, SEP, VCS, PE> {
     conn: Conn,
     user_query: UQ,
     user_repo: UR,
+    security_event_port: SEP,
     user_factory: UserFactory<PE>,
     verification_code_service: VCS,
     pwd_service: PasswordDomainService<PE>,
 }
 
-impl<Conn, UQ, UR, VCS, PE> UserInteractor<Conn, UQ, UR, VCS, PE>
+impl<Conn, UQ, UR, SEP, VCS, PE> UserInteractor<Conn, UQ, UR, SEP, VCS, PE>
 where
     Conn: Connection,
     UQ: UserQuery<Conn> + Sync,
     UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
+    SEP: SecurityEventPort<<Conn as Connection>::Transaction> + Sync,
     VCS: EmailVerificationService + Send + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
@@ -44,6 +50,7 @@ where
         conn: Conn,
         user_query: UQ,
         user_repo: UR,
+        security_event_port: SEP,
         user_factory: UserFactory<PE>,
         verification_code_service: VCS,
         pwd_service: PasswordDomainService<PE>,
@@ -52,6 +59,7 @@ where
             conn,
             user_query,
             user_repo,
+            security_event_port,
             verification_code_service,
             user_factory,
             pwd_service,
@@ -133,6 +141,7 @@ where
             let mut user =
                 user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
 
+            let user_id = *user.id();
             let original = user.clone();
             self.pwd_service.change_password(
                 &mut user,
@@ -142,6 +151,16 @@ where
 
             self.user_repo
                 .update(&tx, Revision::new(original, user))
+                .await?;
+            self.security_event_port
+                .insert(
+                    &tx,
+                    SecurityEventCmd {
+                        user_id,
+                        event_type: SecurityEventType::PasswordChanged,
+                        payload: "password changed".to_string(),
+                    },
+                )
                 .await?;
             Ok(())
         }
@@ -166,18 +185,13 @@ where
     }
 
     /// Generates a 6-digit verification code, stores it in the cache with TTL,
-    /// and sends it to the email of the account identified by `user_identifier`.
+    /// and sends it to the email of the account.
     ///
     /// If no account matches, it silently returns `Ok(())` to prevent enumeration.
     ///
     /// # Arguments
-    /// * `email` - registed user's email.
-    ///
-    /// # Errors
-    /// Returns `CtxError` if:
-    /// - The verification code generation or caching fails.
-    /// - The email delivery service returns an error.
-    pub async fn send_verification_code(&self, email: &str) -> Result<(), CtxError> {
+    /// * `email` - registered user's email.
+    pub async fn send_verification_code(&self, email: &str) -> Result<(), Infallible> {
         let email = match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(true) => email,
             Ok(false) => {
@@ -185,7 +199,7 @@ where
                 return Ok(());
             }
             Err(e) => {
-                error!(email = %email, error = %e, "resolve email by identifier failed");
+                error!(email = %email, error = %e, "find user by email failed");
                 return Ok(());
             }
         };
@@ -199,11 +213,10 @@ where
     /// Resets the user's password using a verification code.
     ///
     /// # Arguments
-    /// * `cmd` - Contains the target username/email, verification code, and the new password.
+    /// * `cmd` - Contains the target email, verification code, and the new password.
     ///
     /// # Errors
-    /// Returns `CtxError` if the username is invalid, the code is incorrect/expired,
-    /// or the password update fails.
+    /// Returns `CtxError` if the code is invalid/expired, or the password update fails.
     pub async fn reset_password_with_verification_code(
         &self,
         cmd: ResetPasswordCmd,
@@ -214,63 +227,66 @@ where
             ));
         }
         let email = &cmd.email;
-        let email = match self.user_query.exists_by_email(&self.conn, email).await {
-            Ok(true) => email,
-            Ok(false) => {
-                warn!(email = %email, "account not found, skip sending code");
-                return Ok(());
-            }
-            Err(e) => {
-                error!(email = %email, error = %e, "resolve email by identifier failed");
-                return Ok(());
-            }
-        };
-        match self
+        // 先验码后查库：验证码无效时零 DB 访问，且“账号不存在”与“验证码错误”响应完全一致，防枚举
+        let matches = self
             .verification_code_service
             .validate_code(email, &cmd.verification_code)
             .await
-        {
-            Ok(true) => {
-                let tx = self.conn.begin().await.map_err(|e| {
-                    error!(error = %e, "begin transaction failed");
+            .map_err(|e| CtxError::internal("reset password", e))?;
+        if !matches {
+            return Err(CtxError::InvalidInput(
+                "verification code invalid".to_owned(),
+            ));
+        }
+
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+        let result = async {
+            let Some(mut user) = self.user_repo.find_by_email(&tx, email).await? else {
+                // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
+                warn!(email = %email, "account not found after code validation");
+                return Err(CtxError::InvalidInput(
+                    "verification code invalid".to_owned(),
+                ));
+            };
+            let user_id = *user.id();
+            let origin = user.clone();
+            self.pwd_service
+                .reset_password(&mut user, &cmd.new_password)?;
+            self.user_repo
+                .update(&tx, Revision::new(origin, user))
+                .await?;
+            self.security_event_port
+                .insert(
+                    &tx,
+                    SecurityEventCmd {
+                        user_id,
+                        event_type: SecurityEventType::PasswordChanged,
+                        payload: "password reset with verification code".to_string(),
+                    },
+                )
+                .await?;
+            Ok(())
+        }
+        .await;
+
+        match result {
+            Ok(_) => {
+                tx.commit().await.map_err(|e| {
+                    error!(email = %email, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
-                let result = async {
-                    let Some(mut user) = self.user_repo.find_by_email(&self.conn, email).await?
-                    else {
-                        return Err(CtxError::NotFound(email.to_owned()));
-                    };
-                    let origin = user.clone();
-                    self.pwd_service
-                        .reset_password(&mut user, &cmd.new_password)?;
-                    self.user_repo
-                        .update(&self.conn, Revision::new(origin, user))
-                        .await?;
-                    Ok(())
-                }
-                .await;
-
-                match result {
-                    Ok(_) => {
-                        tx.commit().await.map_err(|e| {
-                            error!(email = %email, error=%e, "commit transaction failed");
-                            CtxError::Internal
-                        })?;
-                        Ok(())
-                    }
-                    Err(e) => {
-                        tx.rollback().await.map_err(|e| {
-                            error!(email = %email, error=%e, "rollback transaction failed");
-                            CtxError::Internal
-                        })?;
-                        Err(e)
-                    }
-                }
+                Ok(())
             }
-            Ok(false) => Err(CtxError::InvalidInput(
-                "verification code invalid".to_owned(),
-            )),
-            Err(e) => Err(CtxError::internal("reset password", e)),
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(email = %email, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
         }
     }
 }

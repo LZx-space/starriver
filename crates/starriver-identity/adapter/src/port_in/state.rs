@@ -47,6 +47,7 @@ pub struct IdentityState {
             DefaultConnection,
             DefaultUserQuery,
             DefaultUserRepository,
+            DefaultSecurityEventPort,
             SmtpVerificationService,
             Argon2PasswordEncoder,
         >,
@@ -108,6 +109,7 @@ impl IdentityState {
             conn.clone(),
             DefaultUserQuery,
             DefaultUserRepository,
+            DefaultSecurityEventPort,
             user_factory,
             verification_code_service,
             pwd_service.clone(),
@@ -142,6 +144,7 @@ impl FromRef<IdentityState> for UserValidateCxt {
         UserValidateCxt {
             username_spec: state.username_spec.clone(),
             password_spec: state.password_spec.clone(),
+            email_spec: state.email_spec.clone(),
         }
     }
 }

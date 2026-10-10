@@ -69,7 +69,7 @@ where
             };
             let mut user = user_result.map_err(mapping_repo_error())?.ok_or_else(|| {
                 info!(identifier = %identifier, "user not found");
-                AuthenticationError::UsernameNotFound
+                AuthenticationError::IdentifierNotFound
             })?;
 
             match self.pwd_service.authenticate(&mut user, password) {
@@ -135,7 +135,7 @@ where
 
 fn mapping_repo_error() -> impl FnOnce(RepositoryError) -> AuthenticationError {
     |e| {
-        error!(error=%e, "handle bad password event failed");
+        error!(error=%e, "query repository error when authentication");
         AuthenticationError::InnerError {
             message: e.to_string(),
         }

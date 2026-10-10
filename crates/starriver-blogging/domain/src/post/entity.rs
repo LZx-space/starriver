@@ -74,7 +74,7 @@ impl Post {
         }
     }
 
-    /// 非附件属性更新
+    /// 更新标题、内容、分类与附件，并按 published 同步发布/草稿状态
     pub fn update(&mut self, update: PostUpdate) -> Result<(), DomainError> {
         self.title = Title::new(update.title)?;
         self.content = Content::new(update.content)?;

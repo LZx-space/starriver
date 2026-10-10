@@ -25,10 +25,10 @@ All ports are traits defined in domain or application. All implementations live 
 
 - Shared Kernel
 
-| Crate              | What it holds                               |
-| ------------------ | ------------------------------------------- |
-| `shared-base`      | `Patterns`, `IO traits`... — zero framework |
-| `shared-framework` | `ApiError`, `middleware`, `extractors`...   |
+| Crate          | What it holds                               |
+| -------------- | ------------------------------------------- |
+| `shared-base`  | `Patterns`, `IO traits`... — zero framework |
+| `shared-infra` | `ApiError`, `Middleware`, `Extractors`...   |
 
 - Bounded Contexts
 
@@ -37,7 +37,7 @@ All ports are traits defined in domain or application. All implementations live 
 | Identity | `starriver-identity/*` — users, authentication, security events |
 | Blogging | `starriver-blogging/*` — posts, categories, attachments         |
 
-Contexts isolated; cross-context shared through `shared-base` & `shared-framework`.
+Contexts isolated; cross-context shared through `shared-base` & `shared-infra`.
 
 ## Installation
 

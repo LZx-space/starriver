@@ -8,7 +8,7 @@ use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum CtxError {
-    /// 输入校验失败（用户名格式、密码强度、邮箱格式等）
+    /// 输入校验失败（标题/内容为空或过长、附件扩展名或大小非法等）
     #[error("输入无效: {0}")]
     InvalidInput(String),
 
@@ -16,7 +16,7 @@ pub enum CtxError {
     #[error("资源不存在: {0}")]
     NotFound(String),
 
-    /// 资源冲突（重复注册等）
+    /// 资源冲突（唯一约束冲突）
     #[error("资源冲突: {0}")]
     Conflict(String),
 

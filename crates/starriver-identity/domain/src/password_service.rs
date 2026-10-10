@@ -37,8 +37,9 @@ where
     /// - `Ok(())` - 密码匹配，用户认证成功
     /// - `Err(AuthenticationError::UserLocked)` - 用户被锁定
     /// - `Err(AuthenticationError::UserDisabled)` - 用户被禁用
-    /// - `Err(AuthenticationError::BadPassword)` - 密码不匹配，且修改状态
-    /// - `Err(AuthenticationError::InnerError)` - 密码编码失败
+    /// - `Err(AuthenticationError::UserDeleted)` - 用户已删除
+    /// - `Err(AuthenticationError::BadPassword)` - 密码不匹配，并记录失败次数（达上限锁定）
+    /// - `Err(AuthenticationError::InnerError)` - 密码校验失败（编码器故障）
     pub fn authenticate(
         &self,
         user: &mut User,

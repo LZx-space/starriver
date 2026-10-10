@@ -35,7 +35,7 @@ pub async fn paginate(
 
 pub async fn send_email_verification_code(
     state: State<IdentityState>,
-    cmd: Json<SendVerificationCodeCmd>,
+    cmd: JsonEx<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     // 不会失败：错误已记录在用例内部（防枚举）
     let _ = state
@@ -75,7 +75,7 @@ pub async fn change_my_password(
 
 pub async fn send_reset_password_verification_code(
     state: State<IdentityState>,
-    cmd: Json<SendVerificationCodeCmd>,
+    cmd: JsonEx<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     // 不会失败：错误已记录在用例内部（防枚举）
     let _ = state

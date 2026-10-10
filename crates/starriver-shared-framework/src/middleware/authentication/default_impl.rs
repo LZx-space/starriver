@@ -250,6 +250,13 @@ impl AuthenticationRequestExtractor for DefaultAuthenticationRequestExtractor {
                 warn!(error = %e, "failed to parse login form");
                 AuthenticationError::MalformedRequest
             })?;
+        // 空值前置拒绝：避免无意义的 DB 查询与密码校验
+        if form.0.identifier.trim().is_empty() {
+            return Err(AuthenticationError::IdentifierEmpty);
+        }
+        if form.0.password.is_empty() {
+            return Err(AuthenticationError::PasswordEmpty);
+        }
         info!(identifier = %form.0.identifier, "login request received and parsed");
         Ok(form.0)
     }

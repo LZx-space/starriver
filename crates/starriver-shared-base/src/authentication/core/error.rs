@@ -2,14 +2,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AuthenticationError {
-    #[error("username not found")]
-    UsernameNotFound,
+    #[error("identifier not found")]
+    IdentifierNotFound,
 
-    #[error("username is empty")]
-    UsernameEmpty,
-
-    #[error("password not found")]
-    PasswordNotFound,
+    #[error("identifier is empty")]
+    IdentifierEmpty,
 
     #[error("password is empty")]
     PasswordEmpty,

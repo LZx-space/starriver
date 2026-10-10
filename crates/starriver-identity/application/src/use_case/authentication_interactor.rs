@@ -69,7 +69,7 @@ where
             };
             let mut user = user_result.map_err(mapping_repo_error())?.ok_or_else(|| {
                 info!(identifier = %identifier, "user not found");
-                AuthenticationError::UsernameNotFound
+                AuthenticationError::IdentifierNotFound
             })?;
 
             match self.pwd_service.authenticate(&mut user, password) {

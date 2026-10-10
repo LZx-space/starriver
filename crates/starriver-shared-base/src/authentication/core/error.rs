@@ -14,6 +14,9 @@ pub enum AuthenticationError {
     #[error("password is empty")]
     PasswordEmpty,
 
+    #[error("malformed authentication request")]
+    MalformedRequest,
+
     #[error("bad password")]
     BadPassword,
 

@@ -24,7 +24,7 @@ use starriver_shared_base::authentication::{
     },
 };
 use time::UtcDateTime;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use core::time::Duration;
@@ -108,10 +108,15 @@ where
             })?
             .value();
 
+        let validator = Validation {
+            validate_nbf: true,
+            ..Default::default()
+        };
+
         decode::<AuthenticatedJwtClaims>(
             jws,
             &DecodingKey::from_secret(cfg.jws_secret_as_ref()),
-            &Validation::default(),
+            &validator,
         )
         .map(|data| data.claims)
         .map_err(|e| {
@@ -210,6 +215,11 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
                     "internal server error".to_string(),
                 )
             }
+            // 请求格式错误（无法解析）：400，同样不泄漏账号信息
+            AuthenticationError::MalformedRequest => (
+                StatusCode::BAD_REQUEST,
+                "invalid authentication request".to_string(),
+            ),
             // 其余所有失败（未找到/空/密码错/锁定/禁用/删除）统一文案，防止账号状态枚举
             _ => (
                 StatusCode::BAD_REQUEST,
@@ -236,8 +246,9 @@ impl AuthenticationRequestExtractor for DefaultAuthenticationRequestExtractor {
         // 提取表单数据
         let form = Form::<IdentifierPasswordRequest>::from_request(req, &())
             .await
-            .map_err(|e| AuthenticationError::InnerError {
-                message: e.to_string(),
+            .map_err(|e| {
+                warn!(error = %e, "failed to parse login form");
+                AuthenticationError::MalformedRequest
             })?;
         info!(identifier = %form.0.identifier, "login request received and parsed");
         Ok(form.0)

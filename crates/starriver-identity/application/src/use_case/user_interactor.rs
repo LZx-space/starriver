@@ -12,30 +12,36 @@ use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{ChangeMyPasswordCmd, ResetPasswordCmd, UserRegisterCmd},
+        req::{
+            ChangeMyPasswordCmd, ResetPasswordCmd, SecurityEventCmd, SecurityEventType,
+            UserRegisterCmd,
+        },
         res::UserDetailDto,
     },
     error::CtxError,
     port::{
-        email_verification_service::EmailVerificationService, user_query::UserQuery,
+        email_verification_service::EmailVerificationService,
+        security_event_port::SecurityEventPort, user_query::UserQuery,
         user_repository::UserRepository,
     },
 };
 
-pub struct UserInteractor<Conn, UQ, UR, VCS, PE> {
+pub struct UserInteractor<Conn, UQ, UR, SEP, VCS, PE> {
     conn: Conn,
     user_query: UQ,
     user_repo: UR,
+    security_event_port: SEP,
     user_factory: UserFactory<PE>,
     verification_code_service: VCS,
     pwd_service: PasswordDomainService<PE>,
 }
 
-impl<Conn, UQ, UR, VCS, PE> UserInteractor<Conn, UQ, UR, VCS, PE>
+impl<Conn, UQ, UR, SEP, VCS, PE> UserInteractor<Conn, UQ, UR, SEP, VCS, PE>
 where
     Conn: Connection,
     UQ: UserQuery<Conn> + Sync,
     UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
+    SEP: SecurityEventPort<<Conn as Connection>::Transaction> + Sync,
     VCS: EmailVerificationService + Send + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
@@ -44,6 +50,7 @@ where
         conn: Conn,
         user_query: UQ,
         user_repo: UR,
+        security_event_port: SEP,
         user_factory: UserFactory<PE>,
         verification_code_service: VCS,
         pwd_service: PasswordDomainService<PE>,
@@ -52,6 +59,7 @@ where
             conn,
             user_query,
             user_repo,
+            security_event_port,
             verification_code_service,
             user_factory,
             pwd_service,
@@ -133,6 +141,7 @@ where
             let mut user =
                 user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
 
+            let user_id = *user.id();
             let original = user.clone();
             self.pwd_service.change_password(
                 &mut user,
@@ -142,6 +151,16 @@ where
 
             self.user_repo
                 .update(&tx, Revision::new(original, user))
+                .await?;
+            self.security_event_port
+                .insert(
+                    &tx,
+                    SecurityEventCmd {
+                        user_id,
+                        event_type: SecurityEventType::PasswordChanged,
+                        payload: "password changed".to_string(),
+                    },
+                )
                 .await?;
             Ok(())
         }
@@ -234,11 +253,22 @@ where
                     let Some(mut user) = self.user_repo.find_by_email(&tx, email).await? else {
                         return Err(CtxError::NotFound(email.to_owned()));
                     };
+                    let user_id = *user.id();
                     let origin = user.clone();
                     self.pwd_service
                         .reset_password(&mut user, &cmd.new_password)?;
                     self.user_repo
                         .update(&tx, Revision::new(origin, user))
+                        .await?;
+                    self.security_event_port
+                        .insert(
+                            &tx,
+                            SecurityEventCmd {
+                                user_id,
+                                event_type: SecurityEventType::PasswordChanged,
+                                payload: "password reset with verification code".to_string(),
+                            },
+                        )
                         .await?;
                     Ok(())
                 }

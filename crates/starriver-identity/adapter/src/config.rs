@@ -29,4 +29,5 @@ pub struct SmtpVerification {
     pub smtp_port: u16,
     pub code_cache_max_capacity: u64,
     pub code_cache_ttl_hours: u64,
+    pub code_send_cooldown_secs: u64,
 }

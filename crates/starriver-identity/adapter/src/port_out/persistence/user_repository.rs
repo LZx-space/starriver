@@ -8,6 +8,7 @@ use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
 use starriver_identity_application::port::user_repository::UserRepository;
 use starriver_identity_domain::user::entity::User;
+use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::db::Revision;
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_framework::db::DefaultConnection;
@@ -53,8 +54,9 @@ impl DefaultUserRepository {
         conn: &impl ConnectionTrait,
         email: &str,
     ) -> Result<Option<User>, RepositoryError> {
+        let email = Email::normalize(email);
         Entity::find()
-            .filter(Column::Email.eq(email))
+            .filter(Column::Email.eq(email.as_str()))
             .one(conn)
             .await
             .map(|e| {

@@ -9,6 +9,7 @@ use rand::random_range;
 use starriver_identity_application::{
     error::EmailVerificationError, port::email_verification_service::EmailVerificationService,
 };
+use starriver_identity_domain::user::value_object::Email;
 
 use crate::config::SmtpVerification;
 
@@ -41,6 +42,8 @@ impl SmtpVerificationService {
 
 impl EmailVerificationService for SmtpVerificationService {
     async fn send_code(&self, email_to: &str) -> Result<(), EmailVerificationError> {
+        let email_to = Email::normalize(email_to);
+
         let from = self
             .smtp_username
             .parse::<Mailbox>()
@@ -65,18 +68,17 @@ impl EmailVerificationService for SmtpVerificationService {
             .map(|_| ())
             .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
 
-        self.code_cache
-            .insert(email_to.to_string(), code.clone())
-            .await;
+        self.code_cache.insert(email_to, code).await;
         Ok(())
     }
 
     async fn validate_code(&self, email: &str, code: &str) -> Result<bool, EmailVerificationError> {
-        match self.code_cache.get(email).await {
+        let email = Email::normalize(email);
+        match self.code_cache.get(&email).await {
             Some(cached_code) => {
                 let eq = cached_code == code;
                 if eq {
-                    self.code_cache.invalidate(email).await;
+                    self.code_cache.invalidate(&email).await;
                 }
                 Ok(eq)
             }

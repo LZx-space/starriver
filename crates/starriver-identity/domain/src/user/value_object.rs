@@ -82,9 +82,18 @@ impl Display for HashedPassword {
 pub struct Email(pub(crate) String);
 
 impl Email {
+    /// 邮箱身份的唯一规范形式：trim + lowercase。
+    ///
+    /// 写入（[`Email::new`]）与所有把邮箱当查询/缓存键的地方必须一致使用此函数，
+    /// 保证仅大小写不同的邮箱被视为同一身份。
+    pub fn normalize(raw: &str) -> String {
+        raw.trim().to_lowercase()
+    }
+
     pub fn new(email: &str, spec: &EmailSpec) -> Result<Self, DomainError> {
-        spec.validate(email)?;
-        Ok(Self(email.to_string()))
+        let email = Self::normalize(email);
+        spec.validate(&email)?;
+        Ok(Self(email))
     }
 
     pub(crate) fn from_repo(email: String) -> Self {
@@ -173,6 +182,32 @@ mod email_masking_tests {
             Email::from_repo("no_at_sign".into()).masking(),
             "no_at_sign"
         );
+    }
+}
+
+#[cfg(test)]
+mod email_normalization_tests {
+    use super::*;
+    use crate::user::specification::EmailSpec;
+    use regex::Regex;
+
+    fn dummy_spec() -> EmailSpec {
+        EmailSpec::new(Regex::new(r"^.+@.+$").expect("valid test regex"))
+    }
+
+    #[test]
+    fn normalize_trims_and_lowercases() {
+        assert_eq!(
+            Email::normalize("  Alice@Example.COM "),
+            "alice@example.com"
+        );
+        assert_eq!(Email::normalize("alice@example.com"), "alice@example.com");
+    }
+
+    #[test]
+    fn new_stores_normalized_email() {
+        let email = Email::new("  Alice@Example.COM ", &dummy_spec()).expect("valid email");
+        assert_eq!(email.as_str(), "alice@example.com");
     }
 }
 

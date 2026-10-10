@@ -5,6 +5,7 @@ use sea_orm::{
 use starriver_identity_application::{
     dto::user_dto::res::UserDetailDto, port::user_query::UserQuery,
 };
+use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::{
     dto::{PageQuery, PageResult},
     error::QueryError,
@@ -51,8 +52,9 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
         conn: &DefaultConnection,
         email: &str,
     ) -> Result<bool, QueryError> {
+        let email = Email::normalize(email);
         Entity::find()
-            .filter(user_po::Column::Email.eq(email))
+            .filter(user_po::Column::Email.eq(email.as_str()))
             .exists(conn)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))

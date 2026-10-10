@@ -4,7 +4,7 @@ use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 use starriver_blogging_adapter::config::BloggingConfig;
 use starriver_identity_adapter::config::IdentityConfig;
-use starriver_shared_framework::config::{Auth, Uploads};
+use starriver_shared_infra::config::{Auth, Uploads};
 
 const APP_CONFIG_PATH_ENV: &str = "APP_CONFIG_PATH";
 

@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use starriver_identity_application::error::CtxError;
-use starriver_shared_framework::response::ApiError as Inner;
+use starriver_shared_infra::response::ApiError as Inner;
 
 /// 本上下文唯一的 HTTP 错误出口：用例错误经 `From<CtxError>` 映射为状态码与文案。
 /// handler 直接 `?` 抛出 `CtxError` 即可，无需逐点 `map_err`。

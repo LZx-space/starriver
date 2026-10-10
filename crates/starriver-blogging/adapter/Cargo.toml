@@ -5,10 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-starriver-shared-base = { workspace = true }
-starriver-shared-framework = { workspace = true }
 starriver-blogging-application = { path = "../application" }
 starriver-blogging-domain = { path = "../domain" }
+starriver-shared-base = { workspace = true }
+starriver-shared-infra = { workspace = true }
 
 argon2 = { workspace = true }
 axum = { workspace = true }

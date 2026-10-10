@@ -11,9 +11,9 @@ use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::db::Revision;
 use starriver_shared_base::error::RepositoryError;
-use starriver_shared_framework::db::DefaultConnection;
-use starriver_shared_framework::db::DefaultTransaction;
-use starriver_shared_framework::error_mapping::db_2_repo_error;
+use starriver_shared_infra::db::DefaultConnection;
+use starriver_shared_infra::db::DefaultTransaction;
+use starriver_shared_infra::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
 use crate::port_out::persistence::po::user_po::ActiveModel;

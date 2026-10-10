@@ -2,7 +2,7 @@ use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait, EntityTrait};
 use starriver_blogging_application::port::attachment_repository::AttachmentRepository;
 use starriver_blogging_domain::attachment::entity::Attachment;
 use starriver_shared_base::error::RepositoryError;
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     db::{DefaultConnection, DefaultTransaction},
     error_mapping::db_2_repo_error,
 };

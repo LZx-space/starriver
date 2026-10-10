@@ -4,7 +4,7 @@ members = [
     "crates/starriver-identity/*",
     "crates/starriver-blogging/*",
     "crates/starriver-shared-base",
-    "crates/starriver-shared-framework",
+    "crates/starriver-shared-infra",
 ]
 resolver = "3"
 
@@ -20,7 +20,7 @@ unwrap_used = "deny"
 starriver-identity-adapter = { path = "crates/starriver-identity/adapter" }
 starriver-blogging-adapter = { path = "crates/starriver-blogging/adapter" }
 starriver-shared-base = { path = "crates/starriver-shared-base" }
-starriver-shared-framework = { path = "crates/starriver-shared-framework" }
+starriver-shared-infra = { path = "crates/starriver-shared-infra" }
 
 ammonia = { version = "^4" }
 axum = { version = "^0", features = ["macros", "multipart"] }

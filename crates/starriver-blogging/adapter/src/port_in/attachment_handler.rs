@@ -4,7 +4,7 @@ use axum::{extract::State, response::IntoResponse};
 use starriver_blogging_application::error::CtxError;
 use starriver_blogging_domain::attachment::{entity::Attachment, value_object::Extension};
 use starriver_shared_base::upload_file::UploadLocationResolver;
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     extract::{Json, Multipart},
     io::{MultipartFieldAsyncReader, TokioFileAsyncWriter},
     middleware::authentication::default_impl::AuthenticatedJwtClaims,

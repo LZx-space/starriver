@@ -5,8 +5,8 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-starriver-shared-base = { workspace = true }
 starriver-blogging-domain = {path = "../domain"}
+starriver-shared-base = { workspace = true }
 
 moka = { workspace = true }
 serde = { workspace = true }

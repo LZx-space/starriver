@@ -17,7 +17,7 @@ use starriver_shared_base::authentication::{
     },
     principal::DefaultUser,
 };
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     config::Auth,
     db::DefaultConnection,
     middleware::authentication::{

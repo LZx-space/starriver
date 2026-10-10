@@ -6,7 +6,7 @@ use sea_orm::{
 use starriver_blogging_application::port::category_repository::CategoryRepository;
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::{db::Revision, error::RepositoryError};
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     db::{DefaultConnection, DefaultTransaction},
     error_mapping::db_2_repo_error,
 };

@@ -1,6 +1,6 @@
 use axum::{extract::State, response::IntoResponse};
 use starriver_shared_base::dto::PageQuery;
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     extract::{Json, Query},
     middleware::authentication::default_impl::AuthenticatedJwtClaims,
 };

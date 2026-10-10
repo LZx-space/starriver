@@ -11,7 +11,7 @@ workspace = true
 starriver-identity-adapter = { workspace = true }
 starriver-blogging-adapter = { workspace = true }
 starriver-shared-base = { workspace = true }
-starriver-shared-framework = { workspace = true }
+starriver-shared-infra = { workspace = true }
 
 axum = { workspace = true }
 axum-extra = { workspace = true }

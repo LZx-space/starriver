@@ -19,9 +19,7 @@ use starriver_shared_base::{
     error::QueryError,
     upload_file::UploadLocationResolver,
 };
-use starriver_shared_framework::{
-    db::DefaultConnection, upload_file::DefaultUploadLocationResolver,
-};
+use starriver_shared_infra::{db::DefaultConnection, upload_file::DefaultUploadLocationResolver};
 use uuid::Uuid;
 
 use crate::port_out::persistence::{

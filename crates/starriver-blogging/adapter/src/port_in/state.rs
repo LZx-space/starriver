@@ -10,7 +10,7 @@ use starriver_blogging_application::{
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_base::{dto::PageResult, random::duration_with_jitter};
-use starriver_shared_framework::{
+use starriver_shared_infra::{
     cache::DefaultCache,
     config::{Auth, Uploads},
     db::DefaultConnection,

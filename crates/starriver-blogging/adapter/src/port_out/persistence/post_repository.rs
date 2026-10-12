@@ -40,7 +40,7 @@ impl DefaultPostRepository {
         Ok(Some(Post::from_repo(
             id,
             post.title,
-            post.content,
+            post.content_html,
             post.state.into(),
             post.author_id,
             post.category_id,
@@ -51,13 +51,15 @@ impl DefaultPostRepository {
 
     async fn add(&self, conn: &impl ConnectionTrait, post: Post) -> Result<Post, RepositoryError> {
         let excerpt = post.content_excerpt();
+        let content_text = post.content_strip_html_tags();
         let (id, title, content, state, author_id, category_id, attachments, published_at) =
             post.dissolve();
         // 插入 Post 实体
         let model = ActiveModel {
             id: Set(id),
             title: Set(title.to_string()),
-            content: Set(content.to_string()),
+            content_html: Set(content.to_string()),
+            content_text: Set(content_text),
             excerpt: Set(excerpt),
             state: Set(state.into()),
             author_id: Set(author_id),
@@ -77,7 +79,7 @@ impl DefaultPostRepository {
         Ok(Post::from_repo(
             model.id,
             model.title,
-            model.content,
+            model.content_html,
             model.state.into(),
             model.author_id,
             model.category_id,
@@ -106,9 +108,11 @@ impl DefaultPostRepository {
         let (original, modified) = post.dissolve();
 
         let original_excerpt = original.content_excerpt();
+        let original_content_text = original.content_strip_html_tags();
         let (id, title, content, state, author_id, category_id, old_attachments, published_at) =
             original.dissolve();
         let modified_excerpt = modified.content_excerpt();
+        let modified_content_text = modified.content_strip_html_tags();
         let (
             _,
             new_title,
@@ -124,8 +128,11 @@ impl DefaultPostRepository {
         let mut title = Unchanged(title.to_string());
         title.set_if_not_equals(new_title.to_string());
 
-        let mut content = Unchanged(content.to_string());
-        content.set_if_not_equals(new_content.to_string());
+        let mut content_html = Unchanged(content.to_string());
+        content_html.set_if_not_equals(new_content.to_string());
+
+        let mut content_text = Unchanged(original_content_text);
+        content_text.set_if_not_equals(modified_content_text);
 
         let mut excerpt = Unchanged(original_excerpt);
         excerpt.set_if_not_equals(modified_excerpt);
@@ -145,7 +152,8 @@ impl DefaultPostRepository {
         let updated = ActiveModel {
             id: Unchanged(id),
             title,
-            content,
+            content_html,
+            content_text,
             excerpt,
             state,
             author_id,
@@ -184,7 +192,7 @@ impl DefaultPostRepository {
         Ok(Post::from_repo(
             updated.id,
             updated.title,
-            updated.content,
+            updated.content_html,
             updated.state.into(),
             updated.author_id,
             updated.category_id,

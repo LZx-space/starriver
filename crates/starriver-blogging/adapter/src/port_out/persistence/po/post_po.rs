@@ -11,8 +11,12 @@ pub struct Model {
     pub id: Uuid,
     #[sea_orm(indexed)]
     pub title: String,
+    /// for display
     #[sea_orm(column_type = "Text")]
-    pub content: String,
+    pub content_html: String,
+    /// for PGroonga full-text search (HTML tags stripped).
+    #[sea_orm(column_type = "Text")]
+    pub content_text: String,
     #[sea_orm(column_type = "Text")]
     pub excerpt: String,
     pub state: PostStatePo,

@@ -98,13 +98,14 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .columns([
                 Column::Id,
                 Column::Title,
-                Column::Content,
+                Column::ContentHtml,
                 Column::State,
                 Column::PublishedAt,
                 Column::CreatedAt,
                 Column::UpdatedAt,
             ])
             .join(JoinType::LeftJoin, Relation::Category.def())
+            .column_as(Column::ContentHtml, "content")
             .column_as(category_po::Column::Id, "category_id")
             .column_as(category_po::Column::Name, "category_name")
             .into_model::<PostDetailRow>()
@@ -170,7 +171,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                	    SELECT
              			id,
              			title,
-             			content,
+             			content_text,
              			published_at,
              			category_id,
              			pgroonga_score(tableoid, ctid) AS score
@@ -182,14 +183,14 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                	    SELECT
              			id,
              			title,
-             			content,
+             			content_text,
              			published_at,
              			category_id,
              			pgroonga_score(tableoid, ctid) AS score
               		FROM
              			post
               		WHERE
-             			state = 1 AND content &@~ $3
+             			state = 1 AND content_text &@~ $3
                	),
                	ranked AS (
                	    SELECT
@@ -202,7 +203,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                	    SELECT
                	        id,
                	        title,
-               	        regexp_replace(content, '<[^>]*>', '', 'g') AS clean_content,
+               	        content_text,
 					    published_at,
                         category_id,
                         score
@@ -216,10 +217,10 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                 filtered.title,
                 COALESCE(
                     NULLIF(
-                        (pgroonga_snippet_html(filtered.clean_content, (SELECT kw FROM search_kw), 100))[1],
+                        (pgroonga_snippet_html(filtered.content_text, (SELECT kw FROM search_kw), 100))[1],
                         ''
                     ),
-                    left(filtered.clean_content, 100)
+                    left(filtered.content_text, 100)
                 ) AS snippet,
                 filtered.published_at,
                 filtered.score,

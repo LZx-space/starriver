@@ -12,6 +12,7 @@ derive-getters = { workspace = true }
 html-escape = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
+striptags = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
 uuid = { workspace = true }

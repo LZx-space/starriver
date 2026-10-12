@@ -117,4 +117,9 @@ impl Post {
     pub fn content_excerpt(&self) -> String {
         self.content.excerpt()
     }
+
+    /// 正文剥离HTML标签
+    pub fn content_strip_html_tags(&self) -> String {
+        self.content.strip_html_tags()
+    }
 }

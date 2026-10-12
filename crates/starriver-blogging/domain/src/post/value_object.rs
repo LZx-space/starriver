@@ -1,11 +1,8 @@
-use std::{
-    fmt::{Display, Formatter},
-    sync::LazyLock,
-};
+use std::fmt::{Display, Formatter};
 
 use ammonia::clean;
 use html_escape::{decode_html_entities, encode_text};
-use regex::Regex;
+use striptags::strip_tags;
 
 use crate::shared_error::DomainError;
 
@@ -48,9 +45,6 @@ impl Display for Title {
     }
 }
 
-static TAG_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"<[^>]*>").expect("html tag regex error"));
-
 #[derive(Clone, Debug)]
 pub struct Content(pub(crate) String);
 
@@ -69,7 +63,7 @@ impl Content {
         // 若先剥标签，实体化的标签会逃过正则、解码后又还原成可执行标签（存储型 XSS）。
         let decoded = decode_html_entities(&self.0);
         // 再剥标签
-        let no_tags = TAG_REGEX.replace_all(&decoded, "");
+        let no_tags = strip_tags(&decoded);
         // 转义剩余文本中的 <>&：摘要契约是“可直接按 HTML 渲染的文本”，
         // 防止解码残留（如双重编码 &amp;lt;）被浏览器二次解析成标签
         let escaped = encode_text(&no_tags);
@@ -110,6 +104,10 @@ impl Content {
         }
 
         format!("{}...", chars[..end].iter().collect::<String>())
+    }
+
+    pub(crate) fn strip_html_tags(&self) -> String {
+        strip_tags(&self.0)
     }
 }
 

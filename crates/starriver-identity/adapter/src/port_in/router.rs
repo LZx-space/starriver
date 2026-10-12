@@ -21,12 +21,12 @@ pub fn create_router(state: IdentityState) -> impl Into<Router> {
             get(user_handler::paginate).post(user_handler::register_user),
         )
         .route(
-            "/password-reset/verification-codes",
+            "/password-resets/verification-codes",
             post(user_handler::send_reset_password_verification_code),
         )
         .route(
-            "/password-reset",
-            patch(user_handler::reset_password_with_verification_code),
+            "/password-resets",
+            post(user_handler::reset_password_with_verification_code),
         )
         .route("/security-events", get(security_event_handler::paginate))
         .with_state(state)

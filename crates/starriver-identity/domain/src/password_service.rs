@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use starriver_shared_base::authentication::core::error::AuthenticationError;
+use time::OffsetDateTime;
 
 use crate::error::DomainError;
 use crate::password_encoder::PasswordEncoder;
@@ -62,7 +63,7 @@ where
                 message: e.to_string(),
             })?;
         if !matches {
-            user.record_bad_password_and_attempt_lock(&self.pwd_policy);
+            user.record_password_attempts(&self.pwd_policy, OffsetDateTime::now_utc());
             return Err(AuthenticationError::BadPassword);
         }
         Ok(())

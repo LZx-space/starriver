@@ -85,16 +85,25 @@ impl User {
             .is_some_and(|time| time > OffsetDateTime::now_utc())
     }
 
-    pub fn clean_password_state(&mut self) {
+    /// 是否存在待清理的密码失败状态（失败计数/计数窗口/锁定）
+    pub fn has_password_attempts(&self) -> bool {
+        self.password_attempts != 0
+            || self.password_window_start.is_some()
+            || self.password_locked_until.is_some()
+    }
+
+    pub fn reset_password_attempts(&mut self) {
         self.password_locked_until = None;
         self.password_window_start = None;
         self.password_attempts = 0;
     }
 
-    pub fn record_bad_password_and_attempt_lock(&mut self, policy: &BadPasswordPolicy) {
-        let now = OffsetDateTime::now_utc();
-        let window_duration = Duration::minutes(policy.window_minutes.into());
+    pub fn record_password_attempts(&mut self, policy: &BadPasswordPolicy, now: OffsetDateTime) {
+        if self.is_locked() {
+            return;
+        }
 
+        let window_duration = Duration::minutes(policy.window_minutes.into());
         let within_window = self
             .password_window_start
             .is_some_and(|start| now - start <= window_duration);

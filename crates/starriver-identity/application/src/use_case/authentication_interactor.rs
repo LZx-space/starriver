@@ -72,10 +72,23 @@ where
                 AuthenticationError::IdentifierNotFound
             })?;
 
+            let original = user.clone();
             match self.pwd_service.authenticate(&mut user, password) {
-                Ok(_) => Ok(user),
+                Ok(_) => {
+                    // 认证成功：清理失败计数/计数窗口/锁定（若有）并持久化
+                    if user.has_password_attempts() {
+                        user.reset_password_attempts();
+                        let user = self
+                            .user_repo
+                            .update(&tx, Revision::new(original, user))
+                            .await
+                            .map_err(mapping_repo_error())?;
+                        Ok(user)
+                    } else {
+                        Ok(user)
+                    }
+                }
                 Err(AuthenticationError::BadPassword) => {
-                    let original = user.clone();
                     let user = self
                         .user_repo
                         .update(&tx, Revision::new(original, user))

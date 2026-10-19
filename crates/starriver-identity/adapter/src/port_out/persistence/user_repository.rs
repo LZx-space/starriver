@@ -192,7 +192,7 @@ impl DefaultUserRepository {
 
         // 保证原子性，避免事务1更新前事务2拿到相同值然后设置一个相同值
         // 当前方案：但是N并发一起请求，其中任一流程在运行update前可能N-1都等着update，全部update完可能出现password_attempts > 边界值
-        // 行锁方案：让线程池和数据库兜底，高并发下数据库压力大，其他查询受影响
+        // 行锁方案：让连接池和数据库承压，高并发连接挂起影响其它查询，并且数据库压力大
         let attempts_expr_opt = if password_attempts == new_password_attempts {
             None
         } else {

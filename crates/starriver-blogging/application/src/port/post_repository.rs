@@ -14,7 +14,7 @@ pub trait PostRepository<T: Executor> {
         id: Uuid,
     ) -> impl Future<Output = Result<Option<Post>, RepositoryError>> + Send;
 
-    /// 新增
+    /// 新增，内含附件处理，注意事务性
     fn add(
         &self,
         conn: &T,
@@ -28,7 +28,7 @@ pub trait PostRepository<T: Executor> {
         id: Uuid,
     ) -> impl Future<Output = Result<bool, RepositoryError>> + Send;
 
-    /// 修改
+    /// 修改，内含附件处理，注意事务性
     fn update(
         &self,
         conn: &T,

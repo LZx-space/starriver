@@ -237,7 +237,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             LIMIT
                	$2;
             "#,
-            [q.page.into(), q.page_size.into(), q.q.into()],
+            [(q.page * q.page_size).into(), q.page_size.into(), q.q.into()],
         ))
         .all(conn)
         .await

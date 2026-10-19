@@ -33,6 +33,7 @@ use std::{sync::Arc, time::Instant};
 use tokio::time::sleep;
 
 use crate::config::Auth;
+use crate::response::ApiError;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -91,20 +92,29 @@ where
     Arc<Auth>: FromRef<S>,
     S: Send + Sync,
 {
-    type Rejection = StatusCode;
+    type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let cfg = Arc::<Auth>::from_ref(state);
 
-        let cookie_jar = CookieJar::from_request_parts(parts, state)
-            .await
-            .map_err(|_infallible| StatusCode::UNAUTHORIZED)?;
+        let cookie_jar =
+            CookieJar::from_request_parts(parts, state)
+                .await
+                .map_err(|_infallible| {
+                    ApiError::new(
+                        StatusCode::UNAUTHORIZED,
+                        "authentication required".to_string(),
+                    )
+                })?;
 
         let jws = cookie_jar
             .get(&cfg.jws_cookie_name)
             .ok_or_else(|| {
                 info!("authentication cookie not found in request");
-                StatusCode::UNAUTHORIZED
+                ApiError::new(
+                    StatusCode::UNAUTHORIZED,
+                    "authentication required".to_string(),
+                )
             })?
             .value();
 
@@ -121,7 +131,10 @@ where
         .map(|data| data.claims)
         .map_err(|e| {
             error!(error = %e, "JWS token decode failed");
-            StatusCode::UNAUTHORIZED
+            ApiError::new(
+                StatusCode::UNAUTHORIZED,
+                "authentication required".to_string(),
+            )
         })
     }
 }
@@ -206,7 +219,7 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
 
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
         info!(error=%err, "authentication failed");
-        match err {
+        let (status, message) = match err {
             // 内部错误：状态码 500，但绝不向客户端泄漏内部细节
             AuthenticationError::InnerError { message } => {
                 error!(error=%message, "authentication failed inner error");
@@ -225,8 +238,8 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
                 StatusCode::BAD_REQUEST,
                 "username or password incorrect".to_string(),
             ),
-        }
-        .into_response()
+        };
+        ApiError::new(status, message).into_response()
     }
 }
 

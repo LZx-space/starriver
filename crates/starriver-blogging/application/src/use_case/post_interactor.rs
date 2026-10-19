@@ -96,6 +96,7 @@ where
             true => PostState::Published,
             false => PostState::Draft,
         };
+
         if !self
             .category_repo
             .exists_by_id(&self.conn, cmd.category_id)
@@ -106,7 +107,6 @@ where
                 cmd.category_id
             )));
         }
-
         let post = Post::new(
             cmd.title,
             cmd.content,
@@ -115,13 +115,33 @@ where
             cmd.category_id,
             cmd.attachments,
         )?;
-        let created = self.post_repo.add(&self.conn, post).await?;
 
-        // 新增帖子后，清除所有帖子缓存
-        self.cache.invalidate_all();
+        // post_repo.add() 包含post与附件关联的写入，需事务
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+        let result = self.post_repo.add(&tx, post).await.map_err(CtxError::from);
 
-        let post_id = created.id().to_owned();
-        self.find(post_id).await
+        match result {
+            Ok(created) => {
+                tx.commit().await.map_err(|e| {
+                    error!(error = %e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                // 提交成功后，清除所有帖子缓存
+                self.cache.invalidate_all();
+                let post_id = created.id().to_owned();
+                self.find(post_id).await
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(error = %e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
+        }
     }
 
     pub async fn update(
@@ -135,21 +155,24 @@ where
             post_id = %id,
             "updating post"
         );
+
+        if !self
+            .category_repo
+            .exists_by_id(&self.conn, cmd.category_id)
+            .await?
+        {
+            return Err(CtxError::NotFound(format!(
+                "category [{}] not exist",
+                cmd.category_id
+            )));
+        }
+
         let tx = self.conn.begin().await.map_err(|e| {
             error!(error = %e, "begin transaction failed");
             CtxError::Internal
         })?;
         let result = async {
-            if !self
-                .category_repo
-                .exists_by_id(&tx, cmd.category_id)
-                .await?
-            {
-                return Err(CtxError::NotFound(format!(
-                    "category [{}] not exist",
-                    cmd.category_id
-                )));
-            }
+            // 读-改-写必须留在同一事务内
             let post = self.post_repo.find_by_id(&tx, id).await?;
             let Some(mut found) = post else {
                 return Err(CtxError::NotFound(format!("post [{}] not exist", id)));

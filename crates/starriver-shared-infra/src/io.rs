@@ -1,6 +1,6 @@
 use std::io;
 
-use axum::{body::Bytes, extract::multipart::Field};
+use axum::{body::Bytes, extract::multipart::Field, http::StatusCode};
 use starriver_shared_base::io::{AsyncReader, AsyncReaderError, AsyncWriter, AsyncWriterError};
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -27,7 +27,13 @@ impl<'a> AsyncReader for MultipartFieldAsyncReader<'a> {
             None => match self.field.chunk().await {
                 Ok(Some(chunk)) => chunk,
                 Ok(None) => return Ok(0),
-                Err(e) => return Err(AsyncReaderError::Other(e.to_string())),
+                Err(e) => {
+                    return Err(if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
+                        AsyncReaderError::TooLarge
+                    } else {
+                        AsyncReaderError::Other(e.to_string())
+                    });
+                }
             },
         };
 

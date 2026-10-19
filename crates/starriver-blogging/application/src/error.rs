@@ -20,6 +20,10 @@ pub enum CtxError {
     #[error("资源冲突: {0}")]
     Conflict(String),
 
+    /// 请求体/上传内容超出大小限制
+    #[error("请求体过大: {0}")]
+    PayloadTooLarge(String),
+
     /// 内部错误（基础设施故障，不暴露细节给客户端）
     #[error("内部服务器错误")]
     Internal,
@@ -55,7 +59,7 @@ impl From<RepositoryError> for CtxError {
     fn from(e: RepositoryError) -> Self {
         match e {
             RepositoryError::NotFound(_) => CtxError::NotFound(e.to_string()),
-            RepositoryError::UniqueViolation { .. } => CtxError::Conflict(e.to_string()),
+            RepositoryError::UniqueViolation(_) => CtxError::Conflict(e.to_string()),
             // 其他基础设施错误不暴露细节
             _ => {
                 error!(error=%e, "database error");
@@ -74,8 +78,15 @@ impl From<QueryError> for CtxError {
 
 impl From<AsyncReaderError> for CtxError {
     fn from(value: AsyncReaderError) -> Self {
-        error!(error=%value, "IO error");
-        CtxError::Internal
+        match value {
+            AsyncReaderError::TooLarge => {
+                CtxError::PayloadTooLarge("uploaded payload exceeds the size limit".to_string())
+            }
+            other => {
+                error!(error=%other, "IO error");
+                CtxError::Internal
+            }
+        }
     }
 }
 

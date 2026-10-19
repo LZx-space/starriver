@@ -12,6 +12,8 @@ pub trait AsyncReader {
 
 pub enum AsyncReaderError {
     IO(io::Error),
+    /// 读取的数据超出允许上限（如上传请求体大小限制）
+    TooLarge,
     Other(String),
 }
 
@@ -19,6 +21,7 @@ impl Display for AsyncReaderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AsyncReaderError::IO(e) => write!(f, "IO error: {}", e),
+            AsyncReaderError::TooLarge => write!(f, "payload too large"),
             AsyncReaderError::Other(e) => write!(f, "Other error: {}", e),
         }
     }

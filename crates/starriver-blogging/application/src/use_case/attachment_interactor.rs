@@ -68,7 +68,7 @@ where
 
             // 超限立即中止：不写入这一块，磁盘上已写部分由调用方清理
             if !FileSize::allows(total, n as i64) {
-                return Err(CtxError::InvalidInput(format!(
+                return Err(CtxError::PayloadTooLarge(format!(
                     "attachment size {} bytes exceeds max size of {} bytes",
                     total + n as i64,
                     FileSize::MAX_SIZE

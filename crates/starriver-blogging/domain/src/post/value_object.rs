@@ -69,16 +69,17 @@ impl Content {
         let escaped = encode_text(&no_tags);
         let len = escaped.chars().count();
 
-        const MAX_LEN: usize = 200;
-        const EXTRA_SEARCH: usize = 50; // 允许向后多找50个字符的边界
+        const TARGET_LEN: usize = 200;
+        const MAX_EXCERPT_LEN: usize = 250; // 与 post.excerpt 列宽 varchar(250) 保持一致
+        const ELLIPSIS: &str = "...";
 
-        if len <= MAX_LEN {
+        if len <= TARGET_LEN {
             return escaped.to_string();
         }
 
-        // 在 [MAX_LEN, MAX_LEN + EXTRA_SEARCH] 区间内查找第一个分隔符
-        let mut end = MAX_LEN;
-        let search_limit = (MAX_LEN + EXTRA_SEARCH).min(len);
+        // 文本长度大于TARGET_LEN，在 [TARGET_LEN, MAX_EXCERPT_LEN) 区间内查找第一个分隔符
+        let mut end = TARGET_LEN;
+        let search_limit = MAX_EXCERPT_LEN.min(len);
         let chars: Vec<char> = escaped.chars().collect();
 
         while end < search_limit {
@@ -98,16 +99,40 @@ impl Content {
             end += 1;
         }
 
-        // 如果没找到，则截断到 MAX_LEN
+        // 如果没找到分隔符，则截断到 TARGET_LEN
         if end == search_limit {
-            end = MAX_LEN;
+            end = TARGET_LEN;
         }
 
-        format!("{}...", chars[..end].iter().collect::<String>())
+        // 截断内容加上省略号不得超过列宽，否则合法内容写库会报错
+        let end = end.min(MAX_EXCERPT_LEN - ELLIPSIS.len());
+
+        format!("{}{}", chars[..end].iter().collect::<String>(), ELLIPSIS)
     }
 
     pub(crate) fn strip_html_tags(&self) -> String {
         strip_tags(&self.0)
+    }
+}
+
+#[cfg(test)]
+mod excerpt_tests {
+    use super::*;
+
+    #[test]
+    fn excerpt_with_delimiter_fits_column_width() {
+        // 分隔符位于可搜索区间内：247 字符 + "..." = 250，恰好等于列宽
+        let content = format!("{}。{}", "a".repeat(247), "b".repeat(20));
+        let excerpt = Content::new(content).expect("valid content").excerpt();
+        assert_eq!(excerpt.chars().count(), 250);
+    }
+
+    #[test]
+    fn excerpt_beyond_column_width_is_capped() {
+        // 分隔符位于 249：旧实现会产出 252 字符，超出 varchar(250)
+        let content = format!("{}.", "a".repeat(249));
+        let excerpt = Content::new(content).expect("valid content").excerpt();
+        assert!(excerpt.chars().count() <= 250);
     }
 }
 

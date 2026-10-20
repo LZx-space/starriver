@@ -67,10 +67,10 @@ impl TokioFileAsyncWriter {
 
 impl AsyncWriter for TokioFileAsyncWriter {
     async fn write(&mut self, buf: &[u8]) -> Result<usize, AsyncWriterError> {
-        let n = self.file.write(buf).await.map_err(AsyncWriterError::IO)?;
-        if n == 0 {
-            self.file.flush().await.map_err(AsyncWriterError::IO)?;
-        }
-        Ok(n)
+        self.file.write(buf).await.map_err(AsyncWriterError::IO)
+    }
+
+    async fn flush(&mut self) -> Result<(), AsyncWriterError> {
+        self.file.flush().await.map_err(AsyncWriterError::IO)
     }
 }

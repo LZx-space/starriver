@@ -5,8 +5,14 @@ use tracing::warn;
 pub fn db_2_repo_error(err: DbErr) -> RepositoryError {
     warn!(error=%err, "db error");
 
-    if let Some(SqlErr::UniqueConstraintViolation(detail)) = err.sql_err() {
-        return RepositoryError::UniqueViolation(detail);
+    match err.sql_err() {
+        Some(SqlErr::UniqueConstraintViolation(detail)) => {
+            return RepositoryError::UniqueViolation(detail);
+        }
+        Some(SqlErr::ForeignKeyConstraintViolation(detail)) => {
+            return RepositoryError::ForeignKeyViolation(detail);
+        }
+        _ => {}
     }
     match err {
         DbErr::ConnectionAcquire(e) => RepositoryError::ConnectionFailed(e.to_string()),

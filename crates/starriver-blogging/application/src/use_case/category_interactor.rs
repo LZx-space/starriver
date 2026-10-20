@@ -1,6 +1,7 @@
 use starriver_blogging_domain::category::entity::Category;
 use starriver_shared_base::cache::Cache;
 use starriver_shared_base::db::{Connection, Transaction};
+use starriver_shared_base::error::RepositoryError;
 use starriver_shared_base::{authentication::principal::DefaultUser, db::Revision};
 use tracing::{error, info};
 use uuid::Uuid;
@@ -121,9 +122,18 @@ where
             category_id = %id,
             "deleting category"
         );
-        self.repo.delete(&self.conn, id).await?;
-        // 删除成功后，缓存需要失效
-        self.cache.invalidate_all();
-        Ok(())
+        match self.repo.delete(&self.conn, id).await {
+            Ok(true) => {
+                // 删除成功后，缓存需要失效
+                self.cache.invalidate_all();
+                Ok(())
+            }
+            Ok(false) => Err(CtxError::NotFound(format!("category[{}]not exist", id))),
+            Err(RepositoryError::ForeignKeyViolation(_)) => Err(CtxError::Conflict(format!(
+                "category[{}] is referenced by posts and cannot be deleted",
+                id
+            ))),
+            Err(e) => Err(e.into()),
+        }
     }
 }

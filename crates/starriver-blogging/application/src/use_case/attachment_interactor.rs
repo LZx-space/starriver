@@ -5,7 +5,7 @@ use starriver_blogging_domain::attachment::{
 };
 use starriver_shared_base::{
     db::Connection,
-    io::{AsyncReader, AsyncWriter},
+    io::{AsyncReader, AsyncWriter, CopyStreamError, copy_stream_with_hook},
     upload_file::UploadLocationResolver,
 };
 use uuid::Uuid;
@@ -52,31 +52,38 @@ where
     ) -> Result<AttachmentDto, CtxError> {
         let mut buf = [0u8; 4096];
         let mut magic_checker_buf = vec![0u8; FC::MAGIC_CHECKER_HEADER_SIZE];
-        let mut magic_filled = 0; // 已收集的字节数
-        let mut total: i64 = 0; // 已写入的字节数
-        loop {
-            let n = async_reader.read(&mut buf).await?;
-            if n == 0 {
-                break;
-            }
-            // 未收满时，从 buf 继续收集
-            let remaining = FC::MAGIC_CHECKER_HEADER_SIZE - magic_filled;
-            let to_copy = n.min(remaining);
-            magic_checker_buf[magic_filled..magic_filled + to_copy]
-                .copy_from_slice(&buf[..to_copy]);
-            magic_filled += to_copy;
+        let mut magic_filled = 0usize; // 已收集的字节数
 
-            // 超限立即中止：不写入这一块，磁盘上已写部分由调用方清理
-            if !FileSize::allows(total, n as i64) {
-                return Err(CtxError::InvalidInput(format!(
-                    "attachment size {} bytes exceeds max size of {} bytes",
-                    total + n as i64,
-                    FileSize::MAX_SIZE
-                )));
-            }
-            async_writer.write(&buf[..n]).await?;
-            total += n as i64;
-        }
+        let total = copy_stream_with_hook(
+            &mut async_reader,
+            &mut async_writer,
+            &mut buf,
+            |chunk, written| {
+                // 未收满时，从本块继续收集 MIME 头
+                let remaining = FC::MAGIC_CHECKER_HEADER_SIZE - magic_filled;
+                let to_copy = chunk.len().min(remaining);
+                magic_checker_buf[magic_filled..magic_filled + to_copy]
+                    .copy_from_slice(&chunk[..to_copy]);
+                magic_filled += to_copy;
+
+                // 超限立即中止：返回 Err 时本块不会被写入
+                if !FileSize::allows(written as i64, chunk.len() as i64) {
+                    return Err(CtxError::PayloadTooLarge(format!(
+                        "attachment size {} bytes exceeds max size of {} bytes",
+                        written + chunk.len() as u64,
+                        FileSize::MAX_SIZE
+                    )));
+                }
+                Ok(())
+            },
+        )
+        .await
+        .map_err(|e| match e {
+            CopyStreamError::Reader(e) => e.into(),
+            CopyStreamError::Writer(e) => e.into(),
+            CopyStreamError::Hook(e) => e,
+        })?;
+
         // 文件太小，不足以检测 MIME
         if magic_filled < FC::MAGIC_CHECKER_HEADER_SIZE {
             return Err(CtxError::InvalidInput(
@@ -84,7 +91,7 @@ where
             ));
         }
 
-        let file_size = FileSize::new(total)?;
+        let file_size = FileSize::new(total as i64)?;
         let attachment = self.factory.create_attachment(
             attachment_id,
             &magic_checker_buf,

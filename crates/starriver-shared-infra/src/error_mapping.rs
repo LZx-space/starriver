@@ -1,17 +1,27 @@
-use sea_orm::DbErr;
+use sea_orm::{DbErr, SqlErr};
 use starriver_shared_base::error::{QueryError, RepositoryError};
 use tracing::warn;
 
 pub fn db_2_repo_error(err: DbErr) -> RepositoryError {
     warn!(error=%err, "db error");
+
+    match err.sql_err() {
+        Some(SqlErr::UniqueConstraintViolation(detail)) => {
+            return RepositoryError::UniqueViolation(detail);
+        }
+        Some(SqlErr::ForeignKeyConstraintViolation(detail)) => {
+            return RepositoryError::ForeignKeyViolation(detail);
+        }
+        _ => {}
+    }
     match err {
         DbErr::ConnectionAcquire(e) => RepositoryError::ConnectionFailed(e.to_string()),
         DbErr::TryIntoErr { from, into, source } => RepositoryError::BadData(format!(
             "TryIntoErr: from={from:?} into={into:?} source={source:?}"
         )),
-        DbErr::Conn(runtime_err) => RepositoryError::ConnectionFailed(runtime_err.to_string()),
-        DbErr::Exec(runtime_err) => RepositoryError::Infrastructure(runtime_err.to_string()),
-        DbErr::Query(runtime_err) => RepositoryError::Infrastructure(runtime_err.to_string()),
+        DbErr::Conn(e) => RepositoryError::ConnectionFailed(e.to_string()),
+        DbErr::Exec(e) => RepositoryError::Infrastructure(e.to_string()),
+        DbErr::Query(e) => RepositoryError::Infrastructure(e.to_string()),
         DbErr::ConvertFromU64(e) => RepositoryError::BadData(e.to_string()),
         DbErr::UnpackInsertId => RepositoryError::BadData("unpack insert id".to_string()),
         DbErr::UpdateGetPrimaryKey => {

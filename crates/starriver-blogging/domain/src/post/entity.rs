@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use derive_getters::{Dissolve, Getters};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -44,7 +46,7 @@ impl Post {
             state,
             author_id,
             category_id,
-            attachments,
+            attachments: dedup_attachments(attachments),
             published_at,
         })
     }
@@ -79,7 +81,7 @@ impl Post {
         self.title = Title::new(update.title)?;
         self.content = Content::new(update.content)?;
         self.category_id = update.category_id;
-        self.attachments = update.attachments;
+        self.attachments = dedup_attachments(update.attachments);
         if update.published {
             self.publish()?;
         } else {
@@ -121,5 +123,35 @@ impl Post {
     /// 正文剥离HTML标签
     pub fn content_strip_html_tags(&self) -> String {
         self.content.strip_html_tags()
+    }
+}
+
+/// 附件列表是集合：重复 ID 会产生重复关联行并触发主键冲突
+fn dedup_attachments(attachments: Vec<Uuid>) -> Vec<Uuid> {
+    let mut seen = HashSet::with_capacity(attachments.len());
+    attachments
+        .into_iter()
+        .filter(|id| seen.insert(*id))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_deduplicates_attachments() {
+        let attachment_id = Uuid::now_v7();
+        let post = Post::new(
+            "title".to_string(),
+            "content".to_string(),
+            PostState::Draft,
+            Uuid::now_v7(),
+            Uuid::now_v7(),
+            vec![attachment_id, attachment_id],
+        )
+        .expect("valid post");
+
+        assert_eq!(post.attachments(), &vec![attachment_id]);
     }
 }

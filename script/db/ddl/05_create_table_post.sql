@@ -10,7 +10,9 @@ CREATE TABLE public.post
     category_id   uuid                     NOT NULL,
     published_at  timestamp with time zone,
     created_at    timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    timestamp with time zone
+    updated_at    timestamp with time zone,
+    CONSTRAINT fk_post_category
+        FOREIGN KEY (category_id) REFERENCES public.category (id) ON DELETE RESTRICT
 );
 
 COMMENT ON TABLE  public.post IS '博文';

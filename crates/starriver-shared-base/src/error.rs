@@ -7,18 +7,12 @@ pub enum RepositoryError {
     NotFound(String),
 
     /// 唯一约束冲突，例如重复插入唯一键
-    #[error("唯一约束冲突: {constraint} value={value}")]
-    UniqueViolation {
-        constraint: &'static str,
-        value: &'static str,
-    },
+    #[error("唯一约束冲突: {0}")]
+    UniqueViolation(String),
 
-    /// 外键约束失败，引用的父记录不存在
-    #[error("外键约束失败: {constraint} foreign_key={foreign_key}")]
-    ForeignKeyViolation {
-        constraint: &'static str,
-        foreign_key: String,
-    },
+    /// 外键约束失败（例如删除仍被引用的父记录）
+    #[error("外键约束失败: {0}")]
+    ForeignKeyViolation(String),
 
     /// 数据完整性错误（如字段过长、非空违反、类型不匹配）
     /// 注：最好由领域层提前校验，但数据库可能仍有触发

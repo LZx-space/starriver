@@ -14,6 +14,7 @@ impl From<CtxError> for ApiError {
             CtxError::InvalidInput(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg),
             CtxError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             CtxError::Conflict(msg) => (StatusCode::CONFLICT, msg),
+            CtxError::PayloadTooLarge(msg) => (StatusCode::PAYLOAD_TOO_LARGE, msg),
             CtxError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
         };
         Self(Inner::new(status, message))
@@ -23,7 +24,7 @@ impl From<CtxError> for ApiError {
 /// 传输层错误：multipart 解析失败
 impl From<MultipartError> for ApiError {
     fn from(error: MultipartError) -> Self {
-        Self(Inner::new(StatusCode::BAD_REQUEST, error.to_string()))
+        Self(Inner::new(error.status(), error.body_text()))
     }
 }
 

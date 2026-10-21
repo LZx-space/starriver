@@ -4,8 +4,12 @@ use sea_orm::ActiveValue::Set;
 use sea_orm::ActiveValue::Unchanged;
 use sea_orm::ColumnTrait;
 use sea_orm::ConnectionTrait;
+use sea_orm::DbErr;
 use sea_orm::EntityTrait;
+use sea_orm::ExprTrait;
 use sea_orm::QueryFilter;
+use sea_orm::QueryTrait;
+use sea_orm::sea_query::Expr;
 use starriver_identity_application::port::user_repository::UserRepository;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::value_object::Email;
@@ -16,6 +20,7 @@ use starriver_shared_infra::db::DefaultTransaction;
 use starriver_shared_infra::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
+use crate::port_out::persistence::po::user_po;
 use crate::port_out::persistence::po::user_po::ActiveModel;
 use crate::port_out::persistence::po::user_po::Column;
 use crate::port_out::persistence::po::user_po::Entity;
@@ -149,7 +154,7 @@ impl DefaultUserRepository {
             password_attempts,
         ) = original.dissolve();
         let (
-            _,
+            _user_id,
             new_username,
             new_password,
             new_email,
@@ -171,10 +176,8 @@ impl DefaultUserRepository {
         password_locked_until.set_if_not_equals(new_password_locked_until);
         let mut password_window_start = Unchanged(password_window_start);
         password_window_start.set_if_not_equals(new_password_window_start);
-        let mut password_attempts = Unchanged(password_attempts as i16);
-        password_attempts.set_if_not_equals(new_password_attempts as i16);
 
-        ActiveModel {
+        let model = ActiveModel {
             id: Unchanged(user_id),
             username,
             password,
@@ -182,25 +185,50 @@ impl DefaultUserRepository {
             life_cycle,
             password_locked_until,
             password_window_start,
-            password_attempts,
+            password_attempts: NotSet,
             created_at: NotSet,
             updated_at: Set(Some(OffsetDateTime::now_utc())),
-        }
-        .update(conn)
-        .await
-        .map_err(db_2_repo_error)
-        .map(|m| {
-            User::from_repo(
-                m.id,
-                m.username,
-                m.password,
-                m.email,
-                m.life_cycle.into(),
-                m.password_locked_until,
-                m.password_window_start,
-                m.password_attempts as u8,
+        };
+
+        // 保证原子性，避免事务1更新前事务2拿到相同值然后设置一个相同值
+        // 当前方案：但是N并发一起请求，其中任一流程在运行update前可能N-1都等着update，全部update完可能出现password_attempts > 边界值
+        // 行锁方案：让连接池和数据库承压，高并发连接挂起影响其它查询，并且数据库压力大
+        let attempts_expr_opt = if password_attempts == new_password_attempts {
+            None
+        } else {
+            let attempts_expr = Expr::case(
+                Expr::value(new_password_attempts).eq(0), // WHEN new = 0
+                Expr::value(0),                           // THEN 0
             )
-        })
+            .finally(Expr::col(Column::PasswordAttempts).add(1)) // ELSE +1
+            .into();
+            Some(attempts_expr)
+        };
+
+        user_po::Entity::update_many()
+            .set(model)
+            .apply_if(attempts_expr_opt, |update, expr| {
+                update.col_expr(Column::PasswordAttempts, expr)
+            })
+            .filter(Column::Id.eq(user_id))
+            .exec_with_returning(conn)
+            .await
+            .map_err(db_2_repo_error)?
+            .into_iter()
+            .next()
+            .ok_or_else(|| db_2_repo_error(DbErr::RecordNotFound("user not found".into())))
+            .map(|m| {
+                User::from_repo(
+                    m.id,
+                    m.username,
+                    m.password,
+                    m.email,
+                    m.life_cycle.into(),
+                    m.password_locked_until,
+                    m.password_window_start,
+                    m.password_attempts as u8,
+                )
+            })
     }
 }
 

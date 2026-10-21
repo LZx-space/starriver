@@ -65,8 +65,9 @@ pub async fn upload_attachment(
                 attachments.push(attachment);
             }
             Err(err) => {
+                info!("uploading err, delete attachment");
                 if let Err(rm_err) = tokio::fs::remove_file(&save_path).await {
-                    error!(error=%rm_err, "remove file error");
+                    error!(error=%rm_err, "delete file error");
                 }
                 return Err(err.into());
             }

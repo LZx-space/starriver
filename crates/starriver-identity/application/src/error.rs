@@ -79,7 +79,8 @@ impl From<RepositoryError> for CtxError {
     fn from(e: RepositoryError) -> Self {
         match e {
             RepositoryError::NotFound(_) => CtxError::NotFound(e.to_string()),
-            RepositoryError::UniqueViolation { .. } => CtxError::Conflict(e.to_string()),
+            RepositoryError::UniqueViolation(_) => CtxError::Conflict(e.to_string()),
+            RepositoryError::ForeignKeyViolation(_) => CtxError::Conflict(e.to_string()),
             // 其他基础设施错误不暴露细节
             _ => {
                 error!(error=%e, "repository error");

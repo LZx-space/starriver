@@ -1,6 +1,6 @@
 use std::io;
 
-use axum::{body::Bytes, extract::multipart::Field};
+use axum::{body::Bytes, extract::multipart::Field, http::StatusCode};
 use starriver_shared_base::io::{AsyncReader, AsyncReaderError, AsyncWriter, AsyncWriterError};
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -27,7 +27,13 @@ impl<'a> AsyncReader for MultipartFieldAsyncReader<'a> {
             None => match self.field.chunk().await {
                 Ok(Some(chunk)) => chunk,
                 Ok(None) => return Ok(0),
-                Err(e) => return Err(AsyncReaderError::Other(e.to_string())),
+                Err(e) => {
+                    return Err(if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
+                        AsyncReaderError::TooLarge
+                    } else {
+                        AsyncReaderError::Other(e.to_string())
+                    });
+                }
             },
         };
 
@@ -61,10 +67,10 @@ impl TokioFileAsyncWriter {
 
 impl AsyncWriter for TokioFileAsyncWriter {
     async fn write(&mut self, buf: &[u8]) -> Result<usize, AsyncWriterError> {
-        let n = self.file.write(buf).await.map_err(AsyncWriterError::IO)?;
-        if n == 0 {
-            self.file.flush().await.map_err(AsyncWriterError::IO)?;
-        }
-        Ok(n)
+        self.file.write(buf).await.map_err(AsyncWriterError::IO)
+    }
+
+    async fn flush(&mut self) -> Result<(), AsyncWriterError> {
+        self.file.flush().await.map_err(AsyncWriterError::IO)
     }
 }

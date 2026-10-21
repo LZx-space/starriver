@@ -13,10 +13,8 @@ use sea_orm::sea_query::Expr;
 use starriver_identity_application::port::user_repository::UserRepository;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::value_object::Email;
-use starriver_shared_base::db::Revision;
+use starriver_shared_base::db::{Executor, Revision};
 use starriver_shared_base::error::RepositoryError;
-use starriver_shared_infra::db::DefaultConnection;
-use starriver_shared_infra::db::DefaultTransaction;
 use starriver_shared_infra::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
@@ -27,10 +25,13 @@ use crate::port_out::persistence::po::user_po::Entity;
 
 pub struct DefaultUserRepository;
 
-impl DefaultUserRepository {
+impl<T> UserRepository<T> for DefaultUserRepository
+where
+    T: Executor + ConnectionTrait,
+{
     async fn find_by_username(
         &self,
-        conn: &impl ConnectionTrait,
+        conn: &T,
         username: &str,
     ) -> Result<Option<User>, RepositoryError> {
         Entity::find()
@@ -54,11 +55,7 @@ impl DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn find_by_email(
-        &self,
-        conn: &impl ConnectionTrait,
-        email: &str,
-    ) -> Result<Option<User>, RepositoryError> {
+    async fn find_by_email(&self, conn: &T, email: &str) -> Result<Option<User>, RepositoryError> {
         let email = Email::normalize(email);
         Entity::find()
             .filter(Column::Email.eq(email.as_str()))
@@ -81,11 +78,7 @@ impl DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn insert(
-        &self,
-        conn: &impl ConnectionTrait,
-        user: User,
-    ) -> Result<User, RepositoryError> {
+    async fn insert(&self, conn: &T, user: User) -> Result<User, RepositoryError> {
         let (
             id,
             username,
@@ -125,11 +118,7 @@ impl DefaultUserRepository {
         })
     }
 
-    async fn delete(
-        &self,
-        conn: &impl ConnectionTrait,
-        user_id: uuid::Uuid,
-    ) -> Result<bool, RepositoryError> {
+    async fn delete(&self, conn: &T, user_id: uuid::Uuid) -> Result<bool, RepositoryError> {
         Entity::delete_by_id(user_id)
             .exec(conn)
             .await
@@ -137,11 +126,7 @@ impl DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn update(
-        &self,
-        conn: &impl ConnectionTrait,
-        user: Revision<User>,
-    ) -> Result<User, RepositoryError> {
+    async fn update(&self, conn: &T, user: Revision<User>) -> Result<User, RepositoryError> {
         let (original, modified) = user.dissolve();
         let (
             user_id,
@@ -229,81 +214,5 @@ impl DefaultUserRepository {
                     m.password_attempts as u8,
                 )
             })
-    }
-}
-
-impl UserRepository<DefaultConnection> for DefaultUserRepository {
-    async fn find_by_username(
-        &self,
-        conn: &DefaultConnection,
-        username: &str,
-    ) -> Result<Option<User>, RepositoryError> {
-        self.find_by_username(conn, username).await
-    }
-
-    async fn insert(&self, conn: &DefaultConnection, user: User) -> Result<User, RepositoryError> {
-        self.insert(conn, user).await
-    }
-
-    async fn update(
-        &self,
-        conn: &DefaultConnection,
-        user: Revision<User>,
-    ) -> Result<User, RepositoryError> {
-        self.update(conn, user).await
-    }
-
-    async fn delete(
-        &self,
-        conn: &DefaultConnection,
-        user_id: uuid::Uuid,
-    ) -> Result<bool, RepositoryError> {
-        self.delete(conn, user_id).await
-    }
-
-    fn find_by_email(
-        &self,
-        conn: &DefaultConnection,
-        email: &str,
-    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send {
-        self.find_by_email(conn, email)
-    }
-}
-
-impl UserRepository<DefaultTransaction> for DefaultUserRepository {
-    async fn find_by_username(
-        &self,
-        conn: &DefaultTransaction,
-        username: &str,
-    ) -> Result<Option<User>, RepositoryError> {
-        self.find_by_username(conn, username).await
-    }
-
-    async fn insert(&self, conn: &DefaultTransaction, user: User) -> Result<User, RepositoryError> {
-        self.insert(conn, user).await
-    }
-
-    async fn update(
-        &self,
-        conn: &DefaultTransaction,
-        user: Revision<User>,
-    ) -> Result<User, RepositoryError> {
-        self.update(conn, user).await
-    }
-
-    async fn delete(
-        &self,
-        conn: &DefaultTransaction,
-        user_id: uuid::Uuid,
-    ) -> Result<bool, RepositoryError> {
-        self.delete(conn, user_id).await
-    }
-
-    fn find_by_email(
-        &self,
-        conn: &DefaultTransaction,
-        email: &str,
-    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send {
-        self.find_by_email(conn, email)
     }
 }

@@ -19,6 +19,8 @@ impl DefaultConnection {
     }
 }
 
+impl Executor for DefaultConnection {}
+
 impl Connection for DefaultConnection {
     type Transaction = DefaultTransaction;
     type Error = DbErr;
@@ -28,7 +30,6 @@ impl Connection for DefaultConnection {
     }
 }
 
-impl Executor for DefaultConnection {}
 impl ConnectionTrait for DefaultConnection {
     #[doc = " Get the database backend for the connection. This depends on feature flags enabled."]
     fn get_database_backend(&self) -> DbBackend {
@@ -129,6 +130,8 @@ impl DefaultTransaction {
     }
 }
 
+impl Executor for DefaultTransaction {}
+
 impl Transaction for DefaultTransaction {
     type Error = DbErr;
 
@@ -141,7 +144,6 @@ impl Transaction for DefaultTransaction {
     }
 }
 
-impl Executor for DefaultTransaction {}
 impl ConnectionTrait for DefaultTransaction {
     #[doc = " Get the database backend for the connection. This depends on feature flags enabled."]
     fn get_database_backend(&self) -> DbBackend {

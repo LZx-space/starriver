@@ -5,8 +5,9 @@ pub trait Executor {}
 
 /// an executor that can create transactions
 pub trait Connection: Executor {
-    type Transaction: Transaction;
     type Error: Display;
+    type Transaction: Transaction<Error = Self::Error>;
+
     fn begin(&self) -> impl Future<Output = Result<Self::Transaction, Self::Error>>;
 }
 

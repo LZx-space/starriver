@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::dto::category_dto::res::CategoryDetailDto;
 use crate::error::CtxError;
-use crate::port::category_cache::CACHE_KEY_CATEGORY_LIST;
+use crate::port::category_cache::{CACHE_KEY_CATEGORY_LIST, CategoryListKey};
 use crate::port::category_query::CategoryQuery;
 use crate::port::category_repository::CategoryRepository;
 
@@ -24,7 +24,7 @@ where
     Conn: Connection,
     Q: CategoryQuery<Conn>,
     R: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
-    C: Cache<(), Vec<CategoryDetailDto>>,
+    C: Cache<CategoryListKey, Vec<CategoryDetailDto>>,
 {
     pub fn new(conn: Conn, query: Q, repo: R, cache: C) -> Self {
         Self {

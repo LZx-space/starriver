@@ -56,18 +56,27 @@ where
         }
     }
 
+    pub const CACHE_PAGE_LIMIT: u64 = 3;
+
     pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, CtxError> {
-        let key = PostPageKey {
-            page: q.page,
-            page_size: q.page_size,
-            published_only: q.published_only,
-            category_id: q.category_id,
-        };
-        self.cache
-            .page_cache()
-            .try_get_with(key, async { self.query.paginate(&self.conn, q).await })
-            .await
-            .map_err(|e| CtxError::internal("paginate posts failed", e))
+        if q.page >= Self::CACHE_PAGE_LIMIT {
+            self.query
+                .paginate(&self.conn, q)
+                .await
+                .map_err(|e| CtxError::internal("paginate posts failed", e))
+        } else {
+            let key = PostPageKey {
+                page: q.page,
+                page_size: q.page_size,
+                published_only: q.published_only,
+                category_id: q.category_id,
+            };
+            self.cache
+                .page_cache()
+                .try_get_with(key, async { self.query.paginate(&self.conn, q).await })
+                .await
+                .map_err(|e| CtxError::internal("paginate posts failed", e))
+        }
     }
 
     pub async fn search(&self, q: PageSearch) -> Result<PageResult<PostSearchDto>, CtxError> {

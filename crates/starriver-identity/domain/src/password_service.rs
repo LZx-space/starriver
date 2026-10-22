@@ -75,11 +75,19 @@ where
         cur_pwd: &str,
         new_pwd: &str,
     ) -> Result<(), DomainError> {
+        match user.life_cycle() {
+            LifeCycle::Active => {}
+            LifeCycle::Disabled | LifeCycle::Deleted => return Err(DomainError::UserDisabled),
+        }
+        if user.is_locked() {
+            return Err(DomainError::UserLocked);
+        }
         if cur_pwd == new_pwd {
             return Err(DomainError::SamePassword);
         }
         let matches = self.pwd_encoder.verify(cur_pwd, user.password().as_str())?;
         if !matches {
+            user.record_password_attempts(&self.pwd_policy, OffsetDateTime::now_utc());
             return Err(DomainError::BadPassword);
         }
         self.pwd_spec.validate(new_pwd)?;
@@ -87,6 +95,7 @@ where
         let password = HashedPassword::new(hashed_pwd)?;
 
         user.change_password(password);
+        user.reset_password_attempts();
         Ok(())
     }
 

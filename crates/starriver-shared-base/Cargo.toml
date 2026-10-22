@@ -8,6 +8,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+equivalent = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }
 thiserror = { workspace = true }

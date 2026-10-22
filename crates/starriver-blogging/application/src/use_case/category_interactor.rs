@@ -1,5 +1,5 @@
 use starriver_blogging_domain::category::entity::Category;
-use starriver_shared_base::cache::Cache;
+use starriver_shared_base::cache::{Cache, Invalidator};
 use starriver_shared_base::db::{Connection, Transaction};
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_base::{authentication::principal::DefaultUser, db::Revision};
@@ -11,27 +11,41 @@ use crate::error::CtxError;
 use crate::port::category_cache::{CACHE_KEY_CATEGORY_LIST, CategoryListKey};
 use crate::port::category_query::CategoryQuery;
 use crate::port::category_repository::CategoryRepository;
+use crate::port::post_cache::PostPageKey;
 
-pub struct CategoryInteractor<Conn, Q, R, C> {
+pub struct CategoryInteractor<Conn, Q, R, C, PPI, PII> {
     conn: Conn,
     query: Q,
     repo: R,
     cache: C,
+    post_page_cache_invalidator: PPI,
+    post_item_cache_invalidator: PII,
 }
 
-impl<Conn, Q, R, C> CategoryInteractor<Conn, Q, R, C>
+impl<Conn, Q, R, C, PPI, PII> CategoryInteractor<Conn, Q, R, C, PPI, PII>
 where
     Conn: Connection,
     Q: CategoryQuery<Conn>,
     R: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
     C: Cache<CategoryListKey, Vec<CategoryDetailDto>>,
+    PPI: Invalidator<PostPageKey>,
+    PII: Invalidator<Uuid>,
 {
-    pub fn new(conn: Conn, query: Q, repo: R, cache: C) -> Self {
+    pub fn new(
+        conn: Conn,
+        query: Q,
+        repo: R,
+        cache: C,
+        post_page_cache_invalidator: PPI,
+        post_item_cache_invalidator: PII,
+    ) -> Self {
         Self {
             conn,
             query,
             repo,
             cache,
+            post_page_cache_invalidator,
+            post_item_cache_invalidator,
         }
     }
 
@@ -104,6 +118,8 @@ where
                 })?;
                 // 提交成功后，缓存需要失效
                 self.cache.invalidate_all();
+                self.post_page_cache_invalidator.invalidate_all();
+                self.post_item_cache_invalidator.invalidate_all();
                 Ok(val)
             }
             Err(e) => {

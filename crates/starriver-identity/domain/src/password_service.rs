@@ -69,6 +69,20 @@ where
         Ok(())
     }
 
+    /// # params
+    /// - `cur_pwd` is the current password of the user
+    /// - `new_pwd` is the new password that the user wants to use
+    ///
+    /// # returns
+    /// - `Ok(())` - password changed successfully
+    /// - `Err(DomainError::UserDisabled)` - user is disabled or deleted
+    /// - `Err(DomainError::UserLocked)` - user is locked
+    /// - `Err(DomainError::SamePassword)` - new password is same as current password
+    /// - `Err(DomainError::BadPassword)` - incorrect current password
+    /// - `Err(DomainError::InvalidPasswordFormat)` - invalid password format
+    /// - `Err(DomainError::PasswordEncoding(_))` - password verification or encoding failed
+    /// - `Err(DomainError::InvalidPasswordHash)` - encoder produced an invalid hash
+    ///
     pub fn change_password(
         &self,
         user: &mut User,

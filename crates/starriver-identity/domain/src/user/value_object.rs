@@ -49,6 +49,9 @@ impl Display for Username {
 pub struct HashedPassword(pub(crate) String);
 
 impl HashedPassword {
+    /// # returns
+    ///  -  `Ok(HashedPassword)`
+    ///  - `Err(DomainError::InvalidPasswordHash)`
     pub fn new(hashed_password: &str) -> Result<Self, DomainError> {
         if hashed_password.is_empty() {
             return Err(DomainError::InvalidPasswordHash);

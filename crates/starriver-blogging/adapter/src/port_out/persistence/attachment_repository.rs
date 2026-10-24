@@ -1,4 +1,8 @@
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait, EntityTrait};
+use sea_orm::{
+    ActiveModelTrait,
+    ActiveValue::{NotSet, Set},
+    ConnectionTrait, EntityTrait,
+};
 use starriver_blogging_application::port::attachment_repository::AttachmentRepository;
 use starriver_blogging_domain::attachment::entity::Attachment;
 use starriver_shared_base::{db::Executor, error::RepositoryError};
@@ -27,7 +31,7 @@ where
             file_name: Set(file_name),
             file_size: Set(file_size),
             created_at: Set(OffsetDateTime::now_utc()),
-            updated_at: Set(None),
+            updated_at: NotSet,
         }
         .insert(conn)
         .await

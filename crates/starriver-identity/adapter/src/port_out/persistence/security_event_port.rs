@@ -68,7 +68,6 @@ impl DefaultSecurityEventPort {
             event_type: Set(event.event_type.into()),
             message: Set(event.payload),
             created_at: Set(OffsetDateTime::now_utc()),
-            updated_at: Set(None),
             user_id: Set(event.user_id),
         }
         .insert(conn)

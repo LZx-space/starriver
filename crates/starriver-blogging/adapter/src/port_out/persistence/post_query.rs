@@ -46,18 +46,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         conn: &DefaultConnection,
         q: PageQuery,
     ) -> Result<PageResult<PostExcerptDto>, QueryError> {
-        let mut cond = Condition::all();
-        let order;
-        if q.published_only {
-            cond = cond.add(Column::State.eq(PostStatePo::Published));
-            order = Column::PublishedAt;
-        } else {
-            order = Column::UpdatedAt;
-        }
-        if let Some(category_id) = q.category_id {
-            cond = cond.add(Column::CategoryId.eq(category_id));
-        }
-        let paginator = Entity::find()
+        let mut select = Entity::find()
             .select_only()
             .columns([
                 Column::Id,
@@ -69,9 +58,24 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                 Column::UpdatedAt,
             ])
             .join(JoinType::LeftJoin, Relation::Category.def())
-            .column_as(category_po::Column::Name, "category")
+            .column_as(category_po::Column::Name, "category");
+
+        let mut cond = Condition::all();
+        if q.published_only {
+            cond = cond.add(Column::State.eq(PostStatePo::Published));
+            select =
+                select.order_by_with_nulls(Column::PublishedAt, Order::Desc, NullOrdering::Last);
+        } else {
+            select = select.order_by(Column::UpdatedAt, Order::Desc);
+        };
+
+        if let Some(category_id) = q.category_id {
+            cond = cond.add(Column::CategoryId.eq(category_id));
+        }
+
+        let paginator = select
+            .order_by(Column::Id, Order::Desc)
             .filter(cond)
-            .order_by_with_nulls(order, Order::Desc, NullOrdering::Last)
             .into_model::<PostExcerptRow>()
             .paginate(conn, q.page_size);
         let posts = paginator
@@ -231,7 +235,8 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                	LEFT JOIN category ON filtered.category_id = category.id
             ORDER BY
                	score DESC,
-                published_at DESC NULLS LAST
+                published_at DESC NULLS LAST,
+                filtered.id DESC
             OFFSET
                 $1
             LIMIT

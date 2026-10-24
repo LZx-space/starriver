@@ -54,6 +54,7 @@ where
         let (id, title, content, state, author_id, category_id, attachments, published_at) =
             post.dissolve();
         // 插入 Post 实体
+        let now = OffsetDateTime::now_utc();
         let model = ActiveModel {
             id: Set(id),
             title: Set(title.to_string()),
@@ -64,8 +65,8 @@ where
             author_id: Set(author_id),
             category_id: Set(category_id),
             published_at: Set(published_at),
-            created_at: Set(OffsetDateTime::now_utc()),
-            updated_at: NotSet,
+            created_at: Set(now),
+            updated_at: Set(now),
         }
         .insert(conn)
         .await
@@ -155,7 +156,7 @@ where
             category_id,
             published_at,
             created_at: NotSet,
-            updated_at: Set(Some(OffsetDateTime::now_utc())),
+            updated_at: Set(OffsetDateTime::now_utc()),
         }
         .update(conn)
         .await
@@ -213,7 +214,6 @@ impl DefaultPostRepository {
                 post_id: Set(post_id),
                 attachment_id: Set(*att_id),
                 created_at: Set(OffsetDateTime::now_utc()),
-                updated_at: Set(None),
             }
         }))
         .exec(conn)

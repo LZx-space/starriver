@@ -19,6 +19,6 @@ pub mod res {
         pub id: Uuid,
         pub name: String,
         pub created_at: OffsetDateTime,
-        pub updated_at: Option<OffsetDateTime>,
+        pub updated_at: OffsetDateTime,
     }
 }

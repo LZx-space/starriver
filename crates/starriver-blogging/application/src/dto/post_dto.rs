@@ -53,7 +53,7 @@ pub mod res {
         pub attachments: Vec<AttachmentDto>,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
-        pub updated_at: Option<OffsetDateTime>,
+        pub updated_at: OffsetDateTime,
     }
 
     #[derive(Clone, Serialize)]
@@ -65,7 +65,7 @@ pub mod res {
         pub category: String,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
-        pub updated_at: Option<OffsetDateTime>,
+        pub updated_at: OffsetDateTime,
     }
 
     #[derive(Clone, Serialize)]

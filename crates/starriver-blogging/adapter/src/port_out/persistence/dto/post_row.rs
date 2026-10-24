@@ -16,7 +16,7 @@ pub struct PostExcerptRow {
     pub category: String,
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 /// cuz：Left Join Category
@@ -30,7 +30,7 @@ pub struct PostDetailRow {
     pub category_name: String,
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 /// cuz：snippet

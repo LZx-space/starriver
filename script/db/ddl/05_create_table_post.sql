@@ -10,7 +10,7 @@ CREATE TABLE public.post
     category_id   uuid                     NOT NULL,
     published_at  timestamp with time zone,
     created_at    timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    timestamp with time zone,
+    updated_at    timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_post_category
         FOREIGN KEY (category_id) REFERENCES public.category (id) ON DELETE RESTRICT
 );
@@ -39,5 +39,5 @@ CREATE INDEX idx_post_content_text_pgroonga
 
 CREATE INDEX idx_post_author_id          ON public.post (author_id);
 CREATE INDEX idx_post_category_id        ON public.post (category_id);
-CREATE INDEX idx_post_updated_at         ON public.post (updated_at DESC NULLS LAST);
+CREATE INDEX idx_post_updated_at         ON public.post (updated_at DESC);
 CREATE INDEX idx_post_state_published_at ON public.post (state, published_at DESC NULLS LAST);

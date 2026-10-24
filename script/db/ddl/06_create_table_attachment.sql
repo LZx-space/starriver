@@ -4,7 +4,7 @@ CREATE TABLE public.attachment
     file_name  character varying(50)    NOT NULL,
     file_size  bigint                   NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table comment

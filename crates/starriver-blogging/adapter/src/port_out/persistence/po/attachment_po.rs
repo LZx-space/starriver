@@ -9,7 +9,7 @@ pub struct Model {
     pub file_name: String,
     pub file_size: i64,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

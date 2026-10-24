@@ -65,7 +65,7 @@ where
             id: Unchanged(id),
             name: Set(name),
             created_at: NotSet,
-            updated_at: Set(Some(OffsetDateTime::now_utc())),
+            updated_at: Set(OffsetDateTime::now_utc()),
         }
         .update(conn)
         .await

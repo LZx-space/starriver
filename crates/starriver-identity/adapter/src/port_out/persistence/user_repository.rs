@@ -176,7 +176,7 @@ where
             password_window_start,
             password_attempts: NotSet,
             created_at: NotSet,
-            updated_at: Set(Some(OffsetDateTime::now_utc())),
+            updated_at: Set(OffsetDateTime::now_utc()),
         };
 
         // 保证原子性，避免事务1更新前事务2拿到相同值然后设置一个相同值

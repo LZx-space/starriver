@@ -4,8 +4,7 @@ CREATE TABLE public.security_event
     user_id     uuid                     NOT NULL,  -- 不同聚合不定义为FK
     event_type  smallint                 NOT NULL,
     message     character varying(100)   NOT NULL,
-    created_at  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  timestamp with time zone
+    created_at  timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table comment

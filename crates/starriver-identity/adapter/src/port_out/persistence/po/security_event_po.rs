@@ -12,7 +12,6 @@ pub struct Model {
     pub event_type: SecurityEventTypePo,
     pub message: String,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

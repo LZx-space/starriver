@@ -7,10 +7,19 @@ pub trait EmailVerificationService {
         email_to: &str,
     ) -> impl Future<Output = Result<(), EmailVerificationError>> + Send;
 
-    /// 验证提交的验证码是否有效（匹配、未过期、未超尝试次数）
-    fn validate_code(
+    /// 校验验证码是否有效（匹配、未过期、未超尝试次数），**不消费**。
+    /// 错误尝试的计数在这里累加；达到上限时作废验证码。
+    fn check_code(
         &self,
         email_to: &str,
         code: &str,
     ) -> impl Future<Output = Result<bool, EmailVerificationError>> + Send;
+
+    /// 业务成功后消费验证码。只删除仍然匹配的那一个码，
+    /// 避免误删校验与消费之间新发的验证码。
+    fn consume_code(
+        &self,
+        email_to: &str,
+        code: &str,
+    ) -> impl Future<Output = Result<(), EmailVerificationError>> + Send;
 }

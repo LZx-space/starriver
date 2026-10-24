@@ -100,9 +100,9 @@ where
         let email = cmd.email.as_str();
         let matches = self
             .verification_code_service
-            .validate_code(email, verification_code)
+            .check_code(email, verification_code)
             .await
-            .inspect_err(|e| info!(email=%email, error=%e, "register user validate code failed"))?;
+            .inspect_err(|e| info!(email=%email, error=%e, "register user check code failed"))?;
         if !matches {
             return Err(CtxError::InvalidInput("invalid email code".to_string()));
         }
@@ -115,6 +115,15 @@ where
             .insert(&self.conn, user)
             .await
             .inspect_err(|e| error!(email=%email, error=%e, "repository insert user failed"))?;
+
+        // 业务成功后再消费验证码；消费失败只记日志，用户已经创建成功
+        if let Err(e) = self
+            .verification_code_service
+            .consume_code(email, verification_code)
+            .await
+        {
+            error!(email=%email, error=%e, "consume verification code failed");
+        }
         Ok(())
     }
 
@@ -243,7 +252,7 @@ where
         // 先验码后查库：验证码无效时零 DB 访问，且“账号不存在”与“验证码错误”响应完全一致，防枚举
         let matches = self
             .verification_code_service
-            .validate_code(email, &cmd.verification_code)
+            .check_code(email, &cmd.verification_code)
             .await
             .map_err(|e| CtxError::internal("reset password", e))?;
         if !matches {
@@ -291,6 +300,15 @@ where
                     error!(email = %email, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
+
+                // 业务提交成功后再消费验证码；消费失败只记日志
+                if let Err(e) = self
+                    .verification_code_service
+                    .consume_code(email, &cmd.verification_code)
+                    .await
+                {
+                    error!(email=%email, error=%e, "consume verification code failed");
+                }
                 Ok(())
             }
             Err(e) => {

@@ -96,7 +96,7 @@ impl EmailVerificationService for SmtpVerificationService {
         Ok(())
     }
 
-    async fn validate_code(&self, email: &str, code: &str) -> Result<bool, EmailVerificationError> {
+    async fn check_code(&self, email: &str, code: &str) -> Result<bool, EmailVerificationError> {
         let email = Email::normalize(email);
 
         let Some(cached_code) = self.code_cache.get(&email).await else {
@@ -104,9 +104,7 @@ impl EmailVerificationService for SmtpVerificationService {
         };
 
         if cached_code == code {
-            // 成功即消费：验证码与尝试计数一并清掉
-            self.code_cache.invalidate(&email).await;
-            self.validate_attempts_cache.invalidate(&email).await;
+            // 校验通过不消费；业务成功后再调用 consume_code
             return Ok(true);
         }
 
@@ -123,5 +121,16 @@ impl EmailVerificationService for SmtpVerificationService {
             self.validate_attempts_cache.insert(email, attempts).await;
         }
         Ok(false)
+    }
+
+    async fn consume_code(&self, email: &str, code: &str) -> Result<(), EmailVerificationError> {
+        let email = Email::normalize(email);
+
+        // 只消费仍然匹配的码；期间没有被新码覆盖时才清理
+        if self.code_cache.get(&email).await.as_deref() == Some(code) {
+            self.code_cache.invalidate(&email).await;
+            self.validate_attempts_cache.invalidate(&email).await;
+        }
+        Ok(())
     }
 }

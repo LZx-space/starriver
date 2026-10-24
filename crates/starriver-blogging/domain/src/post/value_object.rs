@@ -26,7 +26,7 @@ impl Display for PostState {
 
 //////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Title(pub(crate) String);
 
 impl Title {
@@ -45,7 +45,7 @@ impl Display for Title {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Content(pub(crate) String);
 
 impl Content {

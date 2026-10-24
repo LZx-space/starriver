@@ -96,6 +96,10 @@ where
     }
 
     async fn update(&self, conn: &T, post: Revision<Post>) -> Result<Post, RepositoryError> {
+        if !post.is_changed() {
+            return Ok(post.dissolve().0);
+        }
+
         let (original, modified) = post.dissolve();
 
         let original_excerpt = original.content_excerpt();

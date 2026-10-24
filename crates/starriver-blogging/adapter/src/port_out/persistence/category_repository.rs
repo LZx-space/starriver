@@ -56,6 +56,10 @@ where
         conn: &T,
         category: Revision<Category>,
     ) -> Result<Category, RepositoryError> {
+        if !category.is_changed() {
+            return Ok(category.dissolve().0);
+        }
+
         let (id, name) = category.dissolve().1.dissolve();
         ActiveModel {
             id: Unchanged(id),

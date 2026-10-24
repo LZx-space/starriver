@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::shared_error::DomainError;
 
-#[derive(Clone, Debug, Getters, Dissolve, Serialize)]
+#[derive(Clone, Debug, Getters, Dissolve, PartialEq, Serialize)]
 pub struct Category {
     id: Uuid,
     name: String,

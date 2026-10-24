@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// The post aggregate
-#[derive(Clone, Debug, Getters, Dissolve)]
+#[derive(Clone, Debug, Getters, Dissolve, PartialEq)]
 pub struct Post {
     id: Uuid,
     title: Title,

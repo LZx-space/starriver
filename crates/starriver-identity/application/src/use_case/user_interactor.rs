@@ -143,26 +143,32 @@ where
 
             let user_id = *user.id();
             let original = user.clone();
-            self.pwd_service.change_password(
+            let changed = self.pwd_service.change_password(
                 &mut user,
                 cmd.cur_password.as_str(),
                 cmd.new_password.as_str(),
-            )?;
+            );
 
             self.user_repo
                 .update(&tx, Revision::new(original, user))
                 .await?;
-            self.security_event_port
-                .insert(
-                    &tx,
-                    SecurityEventCmd {
-                        user_id,
-                        event_type: SecurityEventType::PasswordChanged,
-                        payload: "password changed".to_string(),
-                    },
-                )
-                .await?;
-            Ok(())
+
+            match changed {
+                Ok(_) => {
+                    self.security_event_port
+                        .insert(
+                            &tx,
+                            SecurityEventCmd {
+                                user_id,
+                                event_type: SecurityEventType::PasswordChanged,
+                                payload: "password changed".to_string(),
+                            },
+                        )
+                        .await?;
+                    Ok(())
+                }
+                Err(e) => Err(CtxError::from(e)),
+            }
         }
         .await;
 
@@ -173,6 +179,13 @@ where
                     CtxError::Internal
                 })?;
                 Ok(())
+            }
+            Err(CtxError::AuthenticationFailed(msg)) => {
+                tx.commit().await.map_err(|e| {
+                    error!(error=%e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(CtxError::AuthenticationFailed(msg))
             }
             Err(e) => {
                 tx.rollback().await.map_err(|e| {

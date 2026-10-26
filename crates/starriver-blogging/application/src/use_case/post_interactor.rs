@@ -228,17 +228,34 @@ where
             post_id = %id,
             "deleting post"
         );
-        let deleted = self
-            .post_repo
-            .delete(&self.conn, id)
-            .await
-            .map_err(CtxError::from)?;
 
-        if deleted {
-            self.page_cache.invalidate_all();
-            self.item_cache.invalidate(&id).await;
+        // 帖子与附件关联的删除必须同属一个事务
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+
+        let result = self.post_repo.delete(&tx, id).await.map_err(CtxError::from);
+
+        match result {
+            Ok(deleted) => {
+                tx.commit().await.map_err(|e| {
+                    error!(user_id=%operator.id, error=%e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                if deleted {
+                    self.page_cache.invalidate_all();
+                    self.item_cache.invalidate(&id).await;
+                }
+                Ok(deleted)
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(user_id=%operator.id, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
         }
-
-        Ok(deleted)
     }
 }

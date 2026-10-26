@@ -89,6 +89,13 @@ where
     }
 
     async fn delete(&self, conn: &T, id: uuid::Uuid) -> Result<bool, RepositoryError> {
+        // post_attachment 未定义为 FK，必须显式清理关联行，否则删除帖子会留下孤儿数据
+        post_attachment_po::Entity::delete_many()
+            .filter(post_attachment_po::Column::PostId.eq(id))
+            .exec(conn)
+            .await
+            .map_err(db_2_repo_error)?;
+
         Entity::delete_by_id(id)
             .exec(conn)
             .await

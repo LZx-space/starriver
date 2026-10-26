@@ -79,7 +79,7 @@ impl BloggingState {
 
         let cache_cfg = &cfg.cache;
         let post_page_cache = DefaultCache::new(
-            PostInteractor::CACHE_PAGE_LIMIT,
+            cache_cfg.post_page_cache_max_capacity,
             cache_jitter_ttl(cache_cfg),
         );
         let post_item_cache = DefaultCache::new(100, cache_jitter_ttl(cache_cfg));

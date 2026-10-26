@@ -85,6 +85,9 @@ impl Display for HashedPassword {
 pub struct Email(pub(crate) String);
 
 impl Email {
+    /// 与 `user.email` 列宽 `varchar(254)` 保持一致（RFC 5321 的上限）。
+    pub const MAX_LEN: usize = 254;
+
     /// 邮箱身份的唯一规范形式：trim + lowercase。
     ///
     /// 写入（[`Email::new`]）与所有把邮箱当查询/缓存键的地方必须一致使用此函数，
@@ -95,6 +98,10 @@ impl Email {
 
     pub fn new(email: &str, spec: &EmailSpec) -> Result<Self, DomainError> {
         let email = Self::normalize(email);
+
+        if email.chars().count() > Self::MAX_LEN {
+            return Err(DomainError::InvalidEmailFormat);
+        }
         spec.validate(&email)?;
         Ok(Self(email))
     }
@@ -211,6 +218,23 @@ mod email_normalization_tests {
     fn new_stores_normalized_email() {
         let email = Email::new("  Alice@Example.COM ", &dummy_spec()).expect("valid email");
         assert_eq!(email.as_str(), "alice@example.com");
+    }
+
+    #[test]
+    fn new_accepts_email_at_column_width() {
+        let email = format!("{}@example.com", "a".repeat(Email::MAX_LEN - 12));
+        assert_eq!(email.chars().count(), Email::MAX_LEN);
+        assert!(Email::new(&email, &dummy_spec()).is_ok());
+    }
+
+    #[test]
+    fn new_rejects_email_beyond_column_width() {
+        let email = format!("{}@example.com", "a".repeat(Email::MAX_LEN - 11));
+        assert_eq!(email.chars().count(), Email::MAX_LEN + 1);
+        assert!(matches!(
+            Email::new(&email, &dummy_spec()),
+            Err(DomainError::InvalidEmailFormat)
+        ));
     }
 }
 

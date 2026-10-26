@@ -31,10 +31,11 @@ pub struct Title(pub(crate) String);
 
 impl Title {
     pub(crate) fn new(value: String) -> Result<Self, DomainError> {
+        // 清洗会把 `<`/`&` 转义为实体，长度可能变长；必须对最终入库的字符串限长
+        let value = clean(&value);
         if value.chars().count() > 50 {
             return Err(DomainError::PostTitleTooLong(value));
         }
-        let value = clean(&value);
         Ok(Self(value))
     }
 }
@@ -112,6 +113,28 @@ impl Content {
 
     pub(crate) fn strip_html_tags(&self) -> String {
         strip_tags(&self.0)
+    }
+}
+
+#[cfg(test)]
+mod title_tests {
+    use super::*;
+
+    #[test]
+    fn title_length_is_checked_after_sanitizing() {
+        // ammonia 会把每个 `<` 转义为 `&lt;`，清洗后长度为原来的 4 倍，
+        // 若在清洗前校验，这串 50 字符的标题会突破 varchar(50) 列宽。
+        let oversized = "<".repeat(50);
+        assert!(matches!(
+            Title::new(oversized),
+            Err(DomainError::PostTitleTooLong(_))
+        ));
+    }
+
+    #[test]
+    fn sanitized_title_at_limit_is_accepted() {
+        let title = Title::new("a".repeat(50)).expect("50 chars fits column width");
+        assert_eq!(title.0.chars().count(), 50);
     }
 }
 

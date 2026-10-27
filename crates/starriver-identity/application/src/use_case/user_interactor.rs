@@ -1,5 +1,5 @@
 use starriver_identity_domain::{
-    password_encoder::PasswordEncoder, password_service::PasswordDomainService,
+    error::DomainError, password_encoder::PasswordEncoder, password_service::PasswordDomainService,
     user::factory::UserFactory,
 };
 use starriver_shared_base::{
@@ -140,30 +140,33 @@ where
                 "new password and confirm password do not match".to_string(),
             ));
         }
-        let tx = self.conn.begin().await.map_err(|e| {
-            error!(error = %e, "begin transaction failed");
-            CtxError::Internal
-        })?;
+        let user_opt = self
+            .user_repo
+            .find_by_username(&self.conn, username)
+            .await?;
+        let mut user = user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
 
-        let result: Result<(), CtxError> = async {
-            let user_opt = self.user_repo.find_by_username(&tx, username).await?;
-            let mut user =
-                user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
+        let user_id = *user.id();
+        let original = user.clone();
+        let changed = self.pwd_service.change_password(
+            &mut user,
+            cmd.cur_password.as_str(),
+            cmd.new_password.as_str(),
+        );
 
-            let user_id = *user.id();
-            let original = user.clone();
-            let changed = self.pwd_service.change_password(
-                &mut user,
-                cmd.cur_password.as_str(),
-                cmd.new_password.as_str(),
-            );
+        match changed {
+            Ok(_) => {
+                // 只有成功路径的“更新 user + 写安全事件”需要事务；
+                // 密码校验/编码已在事务外完成。
+                let tx = self.conn.begin().await.map_err(|e| {
+                    error!(error = %e, "begin transaction failed");
+                    CtxError::Internal
+                })?;
 
-            self.user_repo
-                .update(&tx, Revision::new(original, user))
-                .await?;
-
-            match changed {
-                Ok(_) => {
+                let result: Result<(), CtxError> = async {
+                    self.user_repo
+                        .update(&tx, Revision::new(original, user))
+                        .await?;
                     self.security_event_port
                         .insert(
                             &tx,
@@ -176,33 +179,33 @@ where
                         .await?;
                     Ok(())
                 }
-                Err(e) => Err(CtxError::from(e)),
-            }
-        }
-        .await;
+                .await;
 
-        match result {
-            Ok(_) => {
-                tx.commit().await.map_err(|e| {
-                    error!(error=%e, "commit transaction failed");
-                    CtxError::Internal
-                })?;
-                Ok(())
+                match result {
+                    Ok(_) => {
+                        tx.commit().await.map_err(|e| {
+                            error!(error=%e, "commit transaction failed");
+                            CtxError::Internal
+                        })?;
+                        Ok(())
+                    }
+                    Err(e) => {
+                        tx.rollback().await.map_err(|e| {
+                            error!(username=%username, error=%e, "rollback transaction failed");
+                            CtxError::Internal
+                        })?;
+                        Err(e)
+                    }
+                }
             }
-            Err(CtxError::AuthenticationFailed(msg)) => {
-                tx.commit().await.map_err(|e| {
-                    error!(error=%e, "commit transaction failed");
-                    CtxError::Internal
-                })?;
-                Err(CtxError::AuthenticationFailed(msg))
+            Err(DomainError::BadPassword) => {
+                // 失败计数需要持久化：单条更新，不需要事务
+                self.user_repo
+                    .update(&self.conn, Revision::new(original, user))
+                    .await?;
+                Err(CtxError::from(DomainError::BadPassword))
             }
-            Err(e) => {
-                tx.rollback().await.map_err(|e| {
-                    error!(username=%username, error=%e, "rollback transaction failed");
-                    CtxError::Internal
-                })?;
-                Err(e)
-            }
+            Err(e) => Err(CtxError::from(e)),
         }
     }
 
@@ -261,22 +264,25 @@ where
             ));
         }
 
+        let Some(mut user) = self.user_repo.find_by_email(&self.conn, email).await? else {
+            // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
+            warn!(email = %email, "account not found after code validation");
+            return Err(CtxError::InvalidInput(
+                "verification code invalid".to_owned(),
+            ));
+        };
+        let user_id = *user.id();
+        let origin = user.clone();
+        // 密码编码（Argon2）在事务外完成
+        self.pwd_service
+            .reset_password(&mut user, &cmd.new_password)?;
+
+        // 只有“更新 user + 写安全事件”这两条写需要事务
         let tx = self.conn.begin().await.map_err(|e| {
             error!(error = %e, "begin transaction failed");
             CtxError::Internal
         })?;
         let result = async {
-            let Some(mut user) = self.user_repo.find_by_email(&tx, email).await? else {
-                // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
-                warn!(email = %email, "account not found after code validation");
-                return Err(CtxError::InvalidInput(
-                    "verification code invalid".to_owned(),
-                ));
-            };
-            let user_id = *user.id();
-            let origin = user.clone();
-            self.pwd_service
-                .reset_password(&mut user, &cmd.new_password)?;
             self.user_repo
                 .update(&tx, Revision::new(origin, user))
                 .await?;

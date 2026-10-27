@@ -1,5 +1,5 @@
 use starriver_identity_domain::{
-    password_encoder::PasswordEncoder, password_service::PasswordDomainService,
+    password_encoder::PasswordEncoder, password_service::PasswordDomainService, user::entity::User,
 };
 use starriver_shared_base::{
     authentication::authentication_request::{IdentifierPasswordRequest, UserIdentifier},
@@ -27,7 +27,7 @@ pub struct AuthenticationInteractor<Conn, UR, SEP, PE> {
 impl<Conn, UR, SEP, PE> AuthenticationInteractor<Conn, UR, SEP, PE>
 where
     Conn: Connection,
-    UR: UserRepository<<Conn as Connection>::Transaction> + Sync,
+    UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
     SEP: SecurityEventPort<<Conn as Connection>::Transaction> + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
@@ -53,96 +53,96 @@ where
         let identifier = req.identifier.as_str();
         let password = req.password.as_str();
 
-        let tx = self.conn.begin().await.map_err(|e| {
-            error!(error = %e, "begin transaction failed");
-            AuthenticationError::InnerError {
-                message: e.to_string(),
+        // 读用户与密码校验（Argon2）都在事务外完成，避免长时间占用连接
+        let user_result = match UserIdentifier::new(identifier) {
+            UserIdentifier::Username(username) => {
+                self.user_repo.find_by_username(&self.conn, username).await
             }
+            UserIdentifier::Email(email) => self.user_repo.find_by_email(&self.conn, email).await,
+        };
+        let mut user = user_result.map_err(mapping_repo_error())?.ok_or_else(|| {
+            info!(identifier = %identifier, "user not found");
+            AuthenticationError::IdentifierNotFound
         })?;
 
-        match async {
-            let user_result = match UserIdentifier::new(identifier) {
-                UserIdentifier::Username(username) => {
-                    self.user_repo.find_by_username(&tx, username).await
+        let original = user.clone();
+        match self.pwd_service.authenticate(&mut user, password) {
+            Ok(_) => {
+                // 认证成功：清理失败计数/计数窗口/锁定（若有）。
+                // 单条更新，不需要事务。
+                if user.has_password_attempts() {
+                    user.reset_password_attempts();
+                    let user = self
+                        .user_repo
+                        .update(&self.conn, Revision::new(original, user))
+                        .await
+                        .map_err(mapping_repo_error())?;
+                    Ok(into_user_detail(user))
+                } else {
+                    Ok(into_user_detail(user))
                 }
-                UserIdentifier::Email(email) => self.user_repo.find_by_email(&tx, email).await,
-            };
-            let mut user = user_result.map_err(mapping_repo_error())?.ok_or_else(|| {
-                info!(identifier = %identifier, "user not found");
-                AuthenticationError::IdentifierNotFound
-            })?;
-
-            let original = user.clone();
-            match self.pwd_service.authenticate(&mut user, password) {
-                Ok(_) => {
-                    // 认证成功：清理失败计数/计数窗口/锁定（若有）并持久化
-                    if user.has_password_attempts() {
-                        user.reset_password_attempts();
-                        let user = self
-                            .user_repo
-                            .update(&tx, Revision::new(original, user))
-                            .await
-                            .map_err(mapping_repo_error())?;
-                        Ok(user)
-                    } else {
-                        Ok(user)
+            }
+            Err(AuthenticationError::BadPassword) => {
+                // 只有“失败计数更新 + 安全事件”这两条写需要事务。
+                // 密码校验已经结束，事务保持短小。
+                let tx = self.conn.begin().await.map_err(|e| {
+                    error!(error = %e, "begin transaction failed");
+                    AuthenticationError::InnerError {
+                        message: e.to_string(),
                     }
-                }
-                Err(AuthenticationError::BadPassword) => {
+                })?;
+
+                let result = async {
                     let user = self
                         .user_repo
                         .update(&tx, Revision::new(original, user))
                         .await
                         .map_err(mapping_repo_error())?;
-                    let user_id = user.dissolve().0;
                     self.security_event_port
                         .insert(
                             &tx,
                             SecurityEventCmd {
-                                user_id,
+                                user_id: *user.id(),
                                 event_type: SecurityEventType::TryLoginWithBadPwd,
                                 payload: "bad password".to_string(),
                             },
                         )
                         .await
                         .map_err(mapping_repo_error())?;
-                    Err(AuthenticationError::BadPassword)
+                    Ok(())
                 }
-                Err(e) => Err(e),
+                .await;
+
+                match result {
+                    Ok(()) => {
+                        tx.commit()
+                            .await
+                            .map_err(|e| AuthenticationError::InnerError {
+                                message: e.to_string(),
+                            })?;
+                        Err(AuthenticationError::BadPassword)
+                    }
+                    Err(e) => {
+                        tx.rollback()
+                            .await
+                            .map_err(|e| AuthenticationError::InnerError {
+                                message: e.to_string(),
+                            })?;
+                        Err(e)
+                    }
+                }
             }
+            Err(e) => Err(e),
         }
-        .await
-        {
-            Ok(user) => {
-                tx.commit()
-                    .await
-                    .map_err(|e| AuthenticationError::InnerError {
-                        message: e.to_string(),
-                    })?;
-                let fields = user.dissolve();
-                Ok(UserDetail {
-                    id: fields.0,
-                    username: fields.1.to_string(),
-                    email: fields.3.to_string(),
-                })
-            }
-            Err(AuthenticationError::BadPassword) => {
-                tx.commit()
-                    .await
-                    .map_err(|e| AuthenticationError::InnerError {
-                        message: e.to_string(),
-                    })?;
-                Err(AuthenticationError::BadPassword)
-            }
-            Err(e) => {
-                tx.rollback()
-                    .await
-                    .map_err(|e| AuthenticationError::InnerError {
-                        message: e.to_string(),
-                    })?;
-                Err(e)
-            }
-        }
+    }
+}
+
+fn into_user_detail(user: User) -> UserDetail {
+    let fields = user.dissolve();
+    UserDetail {
+        id: fields.0,
+        username: fields.1.to_string(),
+        email: fields.3.to_string(),
     }
 }
 

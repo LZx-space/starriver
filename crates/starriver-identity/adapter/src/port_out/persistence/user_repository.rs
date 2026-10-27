@@ -153,6 +153,8 @@ where
             new_password_attempts,
         ) = modified.dissolve();
 
+        let window_changed = password_window_start != new_password_window_start;
+
         let mut username = Unchanged(username.as_str().to_string());
         username.set_if_not_equals(new_username.as_str().to_string());
         let mut password = Unchanged(password.as_str().to_string());
@@ -184,14 +186,16 @@ where
         // 行锁方案：让连接池和数据库承压，高并发连接挂起影响其它查询，并且数据库压力大
         let attempts_expr_opt = if password_attempts == new_password_attempts {
             None
+        } else if new_password_attempts == 0 {
+            // 认证成功/改密成功：清零
+            Some(Expr::value(0i16))
+        } else if window_changed {
+            // 新窗口：域已经把计数重置为 1，不能拿数据库里的旧窗口计数 +1，
+            // 否则窗口过期后的第一次失败会把上一窗口的计数带进来，导致提前锁定。
+            Some(Expr::value(new_password_attempts as i16))
         } else {
-            let attempts_expr = Expr::case(
-                Expr::value(new_password_attempts).eq(0), // WHEN new = 0
-                Expr::value(0),                           // THEN 0
-            )
-            .finally(Expr::col(Column::PasswordAttempts).add(1)) // ELSE +1
-            .into();
-            Some(attempts_expr)
+            // 同一窗口内的并发失败：不采用实体业务计算值，而在数据库当前值上原子 +1
+            Some(Expr::col(Column::PasswordAttempts).add(1))
         };
 
         user_po::Entity::update_many()

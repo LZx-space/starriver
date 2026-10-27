@@ -15,7 +15,7 @@ where
         E: Send + Sync + 'static;
 }
 
-/// [`Cache`] 失效方法的抽象
+/// [`Cache`] 失效方法的抽象，跨用例清除缓存时需要
 pub trait Invalidator<K>
 where
     K: Hash + Eq + Send + Sync + 'static,

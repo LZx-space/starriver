@@ -138,11 +138,11 @@ where
 }
 
 fn into_user_detail(user: User) -> UserDetail {
-    let fields = user.dissolve();
+    let (id, username, _, email, ..) = user.into_parts();
     UserDetail {
-        id: fields.0,
-        username: fields.1.to_string(),
-        email: fields.3.to_string(),
+        id,
+        username: username.into_inner(),
+        email: email.into_inner(),
     }
 }
 

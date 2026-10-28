@@ -38,7 +38,7 @@ where
     }
 
     async fn insert(&self, conn: &T, category: Category) -> Result<Category, RepositoryError> {
-        let (id, name) = category.dissolve();
+        let (id, name) = category.into_parts();
         ActiveModel {
             id: Set(id),
             name: Set(name),
@@ -60,7 +60,7 @@ where
             return Ok(category.into_original());
         }
 
-        let (id, name) = category.into_parts().1.dissolve();
+        let (id, name) = category.into_modified().into_parts();
         ActiveModel {
             id: Unchanged(id),
             name: Set(name),

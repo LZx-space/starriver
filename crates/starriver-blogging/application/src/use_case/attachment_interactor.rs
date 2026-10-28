@@ -103,7 +103,7 @@ where
         let file_name = attachment.file_name();
         let url = self.upload_location_resolver.url(&file_name);
         Ok(AttachmentDto {
-            id: attachment.dissolve().0,
+            id: attachment.into_parts().0,
             file_name,
             url,
         })

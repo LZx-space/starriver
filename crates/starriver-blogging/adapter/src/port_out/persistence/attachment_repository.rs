@@ -25,9 +25,9 @@ where
     ) -> Result<Attachment, RepositoryError> {
         let file_name = attachment.file_name();
         let file_size = attachment.file_size();
-        let fields = attachment.dissolve();
+        let (id, ..) = attachment.into_parts();
         ActiveModel {
-            id: Set(fields.0),
+            id: Set(id),
             file_name: Set(file_name),
             file_size: Set(file_size),
             created_at: Set(OffsetDateTime::now_utc()),

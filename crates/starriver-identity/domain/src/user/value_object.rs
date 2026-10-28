@@ -32,6 +32,10 @@ impl Username {
         Self(username)
     }
 
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -66,6 +70,10 @@ impl HashedPassword {
 
     pub(crate) fn from_repo(hashed_password: String) -> Self {
         Self(hashed_password)
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 
     pub fn as_str(&self) -> &str {
@@ -119,6 +127,10 @@ impl Email {
         let (local, domain) = (parts[0], parts[1]);
         let masked_local = format!("{}{}", &local[..1], "*".repeat(local.len() - 1));
         format!("{}@{}", masked_local, domain)
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 
     pub fn as_str(&self) -> &str {

@@ -44,6 +44,10 @@ where
         self.original
     }
 
+    pub fn into_modified(self) -> T {
+        self.modified
+    }
+
     pub fn into_parts(self) -> (T, T) {
         (self.original, self.modified)
     }

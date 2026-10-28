@@ -88,7 +88,7 @@ where
             password_locked_until,
             password_window_start,
             password_attempts,
-        ) = user.dissolve();
+        ) = user.into_parts();
         ActiveModel {
             id: Set(id),
             username: Set(username.to_string()),
@@ -141,7 +141,7 @@ where
             password_locked_until,
             password_window_start,
             password_attempts,
-        ) = original.dissolve();
+        ) = original.into_parts();
         let (
             _user_id,
             new_username,
@@ -151,7 +151,7 @@ where
             new_password_locked_until,
             new_password_window_start,
             new_password_attempts,
-        ) = modified.dissolve();
+        ) = modified.into_parts();
 
         let window_changed = password_window_start != new_password_window_start;
 

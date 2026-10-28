@@ -52,7 +52,7 @@ where
         let excerpt = post.content_excerpt();
         let content_text = post.content_strip_html_tags();
         let (id, title, content, state, author_id, category_id, attachments, published_at) =
-            post.dissolve();
+            post.into_parts();
         // 插入 Post 实体
         let now = OffsetDateTime::now_utc();
         let model = ActiveModel {
@@ -113,7 +113,7 @@ where
         let original_excerpt = original.content_excerpt();
         let original_content_text = original.content_strip_html_tags();
         let (id, title, content, state, author_id, category_id, old_attachments, published_at) =
-            original.dissolve();
+            original.into_parts();
         let modified_excerpt = modified.content_excerpt();
         let modified_content_text = modified.content_strip_html_tags();
         let (
@@ -125,7 +125,7 @@ where
             new_category_id,
             new_attachments,
             new_published_at,
-        ) = modified.dissolve();
+        ) = modified.into_parts();
 
         // 更新博客
         let mut title = Unchanged(title.to_string());

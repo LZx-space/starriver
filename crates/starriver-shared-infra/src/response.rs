@@ -8,10 +8,12 @@ use axum::response::Response;
 use serde::Serialize;
 use tower_http::catch_panic::ResponseForPanic;
 
-/// 统一错误响应体：`{"status": <code>, "message": "<文案>", "details": <可选结构化明细>}`
+/// 统一错误响应体：`{"message": "<文案>", "details": <可选结构化明细>}`
+/// HTTP 状态码由响应状态行承载。
 #[derive(Clone, Serialize)]
 pub struct ApiError {
-    status: u16,
+    #[serde(skip)]
+    status: StatusCode,
     message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     details: Option<serde_json::Value>,
@@ -20,7 +22,7 @@ pub struct ApiError {
 impl ApiError {
     pub fn new(status: StatusCode, message: String) -> Self {
         Self {
-            status: status.into(),
+            status,
             message,
             details: None,
         }
@@ -29,7 +31,7 @@ impl ApiError {
     /// 带结构化明细的错误，例如字段级校验失败
     pub fn with_details(status: StatusCode, message: String, details: serde_json::Value) -> Self {
         Self {
-            status: status.into(),
+            status,
             message,
             details: Some(details),
         }
@@ -38,9 +40,7 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let status_code =
-            StatusCode::from_u16(self.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-        (status_code, Json(self)).into_response()
+        (self.status, Json(self)).into_response()
     }
 }
 
@@ -81,13 +81,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn into_response_uses_http_status() {
+        let response =
+            ApiError::new(StatusCode::BAD_REQUEST, "bad request".to_string()).into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
     fn serializes_without_details() {
         let error = ApiError::new(StatusCode::BAD_REQUEST, "bad request".to_string());
         let json = serde_json::to_value(&error).expect("serializable");
-        assert_eq!(
-            json,
-            serde_json::json!({"status": 400, "message": "bad request"})
-        );
+        assert_eq!(json, serde_json::json!({"message": "bad request"}));
     }
 
     #[test]
@@ -98,7 +102,8 @@ mod tests {
             serde_json::json!({"email": [{"code": "invalid_email"}]}),
         );
         let json = serde_json::to_value(&error).expect("serializable");
-        assert_eq!(json["status"], 422);
+        assert_eq!(json["message"], "validation failed");
         assert_eq!(json["details"]["email"][0]["code"], "invalid_email");
+        assert!(json.get("status").is_none());
     }
 }

@@ -57,10 +57,10 @@ where
         category: Revision<Category>,
     ) -> Result<Category, RepositoryError> {
         if !category.is_changed() {
-            return Ok(category.dissolve().0);
+            return Ok(category.into_original());
         }
 
-        let (id, name) = category.dissolve().1.dissolve();
+        let (id, name) = category.into_parts().1.dissolve();
         ActiveModel {
             id: Unchanged(id),
             name: Set(name),

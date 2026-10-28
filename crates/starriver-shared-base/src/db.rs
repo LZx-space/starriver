@@ -40,7 +40,11 @@ where
         self.original != self.modified
     }
 
-    pub fn dissolve(self) -> (T, T) {
+    pub fn into_original(self) -> T {
+        self.original
+    }
+
+    pub fn into_parts(self) -> (T, T) {
         (self.original, self.modified)
     }
 }

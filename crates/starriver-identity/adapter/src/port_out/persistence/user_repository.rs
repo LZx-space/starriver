@@ -128,10 +128,10 @@ where
 
     async fn update(&self, conn: &T, user: Revision<User>) -> Result<User, RepositoryError> {
         if !user.is_changed() {
-            return Ok(user.dissolve().0);
+            return Ok(user.into_original());
         }
 
-        let (original, modified) = user.dissolve();
+        let (original, modified) = user.into_parts();
         let (
             user_id,
             username,

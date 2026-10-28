@@ -105,10 +105,10 @@ where
 
     async fn update(&self, conn: &T, post: Revision<Post>) -> Result<Post, RepositoryError> {
         if !post.is_changed() {
-            return Ok(post.dissolve().0);
+            return Ok(post.into_original());
         }
 
-        let (original, modified) = post.dissolve();
+        let (original, modified) = post.into_parts();
 
         let original_excerpt = original.content_excerpt();
         let original_content_text = original.content_strip_html_tags();

@@ -24,7 +24,7 @@ impl<T: FileTypeChecker> AttachmentFactory<T> {
         &self,
         attachment_id: Uuid,
         bytes: &[u8],
-        extension: &Extension,
+        extension: Extension,
         file_size: FileSize,
     ) -> Result<Attachment, DomainError> {
         let checked = self.file_type_checker.check(bytes, extension.as_str())?;
@@ -34,6 +34,6 @@ impl<T: FileTypeChecker> AttachmentFactory<T> {
             ));
         }
 
-        Ok(Attachment::new(attachment_id, extension.clone(), file_size))
+        Ok(Attachment::new(attachment_id, extension, file_size))
     }
 }

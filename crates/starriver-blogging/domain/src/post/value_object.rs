@@ -2,11 +2,13 @@ use std::fmt::{Display, Formatter};
 
 use ammonia::clean;
 use html_escape::{decode_html_entities, encode_text};
+use serde::Serialize;
 use striptags::strip_tags;
 
 use crate::shared_error::DomainError;
 
-#[derive(Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PostState {
     #[default]
     Draft,
@@ -37,6 +39,10 @@ impl Title {
             return Err(DomainError::PostTitleTooLong(value));
         }
         Ok(Self(value))
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 }
 
@@ -75,7 +81,7 @@ impl Content {
         const ELLIPSIS: &str = "...";
 
         if len <= TARGET_LEN {
-            return escaped.to_string();
+            return escaped.into_owned();
         }
 
         // 文本长度大于TARGET_LEN，在 [TARGET_LEN, MAX_EXCERPT_LEN) 区间内查找第一个分隔符
@@ -113,6 +119,10 @@ impl Content {
 
     pub(crate) fn strip_html_tags(&self) -> String {
         strip_tags(&self.0)
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 }
 

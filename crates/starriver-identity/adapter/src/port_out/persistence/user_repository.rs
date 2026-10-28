@@ -91,9 +91,9 @@ where
         ) = user.into_parts();
         ActiveModel {
             id: Set(id),
-            username: Set(username.to_string()),
-            password: Set(password.as_str().to_string()),
-            email: Set(email.to_string()),
+            username: Set(username.into_inner()),
+            password: Set(password.into_inner()),
+            email: Set(email.into_inner()),
             life_cycle: Set(life_cycle.into()),
             password_locked_until: Set(password_locked_until),
             password_window_start: Set(password_window_start),
@@ -155,12 +155,12 @@ where
 
         let window_changed = password_window_start != new_password_window_start;
 
-        let mut username = Unchanged(username.as_str().to_string());
-        username.set_if_not_equals(new_username.as_str().to_string());
-        let mut password = Unchanged(password.as_str().to_string());
-        password.set_if_not_equals(new_password.as_str().to_string());
-        let mut email = Unchanged(email.to_string());
-        email.set_if_not_equals(new_email.to_string());
+        let mut username = Unchanged(username.into_inner());
+        username.set_if_not_equals(new_username.into_inner());
+        let mut password = Unchanged(password.into_inner());
+        password.set_if_not_equals(new_password.into_inner());
+        let mut email = Unchanged(email.into_inner());
+        email.set_if_not_equals(new_email.into_inner());
         let mut life_cycle = Unchanged(life_cycle.into());
         life_cycle.set_if_not_equals(new_life_cycle.into());
         let mut password_locked_until = Unchanged(password_locked_until);

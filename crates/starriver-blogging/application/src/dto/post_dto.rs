@@ -37,6 +37,7 @@ pub mod req {
 pub mod res {
 
     use serde::Serialize;
+    use starriver_blogging_domain::post::value_object::PostState;
     use starriver_shared_base::dto::IdName;
     use time::OffsetDateTime;
     use uuid::Uuid;
@@ -48,7 +49,7 @@ pub mod res {
         pub id: Uuid,
         pub title: String,
         pub content: String,
-        pub state: String,
+        pub state: PostState,
         pub category: IdName<Uuid>,
         pub attachments: Vec<AttachmentDto>,
         pub published_at: Option<OffsetDateTime>,
@@ -61,7 +62,7 @@ pub mod res {
         pub id: Uuid,
         pub title: String,
         pub excerpt: String,
-        pub state: String,
+        pub state: PostState,
         pub category: String,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,

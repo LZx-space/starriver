@@ -105,7 +105,7 @@ where
             return Err(DomainError::BadPassword);
         }
         self.pwd_spec.validate(new_pwd)?;
-        let hashed_pwd = &self.pwd_encoder.encode(new_pwd)?;
+        let hashed_pwd = self.pwd_encoder.encode(new_pwd)?;
         let password = HashedPassword::new(hashed_pwd)?;
 
         user.change_password(password);
@@ -115,7 +115,7 @@ where
 
     pub fn reset_password(&self, user: &mut User, new_pwd: &str) -> Result<(), DomainError> {
         self.pwd_spec.validate(new_pwd)?;
-        let hashed_pwd = &self.pwd_encoder.encode(new_pwd)?;
+        let hashed_pwd = self.pwd_encoder.encode(new_pwd)?;
         let password = HashedPassword::new(hashed_pwd)?;
 
         user.change_password(password);

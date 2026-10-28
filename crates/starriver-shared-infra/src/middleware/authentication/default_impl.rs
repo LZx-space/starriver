@@ -168,12 +168,12 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
         result: AuthenticationResult<DefaultUser>,
     ) -> Self::Response {
         // 创建JWS声明
-        let user = result.principal();
+        let user = result.into_principal();
         let principal_claims = AuthenticatedJwtClaims::new(
             time::Duration::hours(self.cfg.jws_exp_hours as i64),
             user.id,
-            user.username.clone(),
-            user.email.clone(),
+            user.username,
+            user.email,
         );
 
         // 编码为JWS

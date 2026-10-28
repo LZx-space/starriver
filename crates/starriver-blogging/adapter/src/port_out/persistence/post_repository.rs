@@ -57,8 +57,8 @@ where
         let now = OffsetDateTime::now_utc();
         let model = ActiveModel {
             id: Set(id),
-            title: Set(title.to_string()),
-            content_html: Set(content.to_string()),
+            title: Set(title.into_inner()),
+            content_html: Set(content.into_inner()),
             content_text: Set(content_text),
             excerpt: Set(excerpt),
             state: Set(state.into()),
@@ -110,12 +110,18 @@ where
 
         let (original, modified) = post.into_parts();
 
-        let original_excerpt = original.content_excerpt();
-        let original_content_text = original.content_strip_html_tags();
+        let (excerpt, content_text) = if original.content() == modified.content() {
+            (NotSet, NotSet)
+        } else {
+            (
+                Set(modified.content_excerpt()),
+                Set(modified.content_strip_html_tags()),
+            )
+        };
+
         let (id, title, content, state, author_id, category_id, old_attachments, published_at) =
             original.into_parts();
-        let modified_excerpt = modified.content_excerpt();
-        let modified_content_text = modified.content_strip_html_tags();
+
         let (
             _,
             new_title,
@@ -128,17 +134,11 @@ where
         ) = modified.into_parts();
 
         // 更新博客
-        let mut title = Unchanged(title.to_string());
-        title.set_if_not_equals(new_title.to_string());
+        let mut title = Unchanged(title.into_inner());
+        title.set_if_not_equals(new_title.into_inner());
 
-        let mut content_html = Unchanged(content.to_string());
-        content_html.set_if_not_equals(new_content.to_string());
-
-        let mut content_text = Unchanged(original_content_text);
-        content_text.set_if_not_equals(modified_content_text);
-
-        let mut excerpt = Unchanged(original_excerpt);
-        excerpt.set_if_not_equals(modified_excerpt);
+        let mut content_html = Unchanged(content.into_inner());
+        content_html.set_if_not_equals(new_content.into_inner());
 
         let mut state = Unchanged(state.into());
         state.set_if_not_equals(new_state.into());

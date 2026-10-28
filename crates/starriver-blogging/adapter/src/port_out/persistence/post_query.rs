@@ -140,7 +140,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             id,
             title: post.title,
             content: post.content,
-            state: PostState::from(post.state).to_string(),
+            state: PostState::from(post.state),
             category: IdName {
                 id: post.category_id,
                 name: post.category_name,

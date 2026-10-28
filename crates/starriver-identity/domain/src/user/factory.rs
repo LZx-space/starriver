@@ -42,7 +42,7 @@ impl<PE: PasswordEncoder> UserFactory<PE> {
     ) -> Result<User, DomainError> {
         let username = Username::new(username, &self.username_spec)?;
         self.password_spec.validate(password)?;
-        let hashed_pwd = &self.password_encoder.encode(password)?;
+        let hashed_pwd = self.password_encoder.encode(password)?;
         let password = HashedPassword::new(hashed_pwd)?;
         let email = Email::new(email, &self.email_spec)?;
         Ok(User::new(

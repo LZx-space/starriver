@@ -56,7 +56,7 @@ impl HashedPassword {
     /// # returns
     ///  -  `Ok(HashedPassword)`
     ///  - `Err(DomainError::InvalidPasswordHash)`
-    pub fn new(hashed_password: &str) -> Result<Self, DomainError> {
+    pub fn new(hashed_password: String) -> Result<Self, DomainError> {
         if hashed_password.is_empty() {
             return Err(DomainError::InvalidPasswordHash);
         }
@@ -65,7 +65,7 @@ impl HashedPassword {
             hashed_password.len() >= 50,
             "HashedPassword 应来自密码编码器，收到非法输入"
         );
-        Ok(Self(hashed_password.to_string()))
+        Ok(Self(hashed_password))
     }
 
     pub(crate) fn from_repo(hashed_password: String) -> Self {
@@ -256,20 +256,20 @@ mod hashed_password_tests {
 
     #[test]
     fn new_rejects_empty() {
-        assert!(HashedPassword::new("").is_err());
+        assert!(HashedPassword::new("".into()).is_err());
     }
 
     #[test]
     #[should_panic(expected = "HashedPassword 应来自密码编码器")]
     fn new_panics_on_too_short() {
         // < 50 字符在 debug 模式下触发 panic
-        let _ = HashedPassword::new("short");
+        let _ = HashedPassword::new("short".into());
     }
 
     #[test]
     fn new_accepts_long_hash() {
         let hash = "a".repeat(60);
-        let pwd = HashedPassword::new(&hash).unwrap();
-        assert_eq!(pwd.as_str(), hash);
+        let pwd = HashedPassword::new(hash.clone()).unwrap();
+        assert_eq!(pwd.0, hash);
     }
 }

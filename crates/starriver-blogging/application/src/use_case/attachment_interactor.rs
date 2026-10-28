@@ -95,7 +95,7 @@ where
         let attachment = self.factory.create_attachment(
             attachment_id,
             &magic_checker_buf,
-            &extension,
+            extension,
             file_size,
         )?;
         let attachment = self.repo.insert(&self.conn, attachment).await?;

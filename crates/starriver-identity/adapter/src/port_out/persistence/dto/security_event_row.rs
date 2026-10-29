@@ -1,6 +1,6 @@
 use sea_orm::FromQueryResult;
 use starriver_identity_application::dto::user_dto::{
-    req::SecurityEventType, res::SecurityEventDto,
+    input::SecurityEventType, output::SecurityEventDto,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;

@@ -1,5 +1,5 @@
 use sea_orm::FromQueryResult;
-use starriver_blogging_application::dto::post_dto::res::PostExcerptDto;
+use starriver_blogging_application::dto::post_dto::output::PostExcerptDto;
 use starriver_blogging_domain::post::value_object::PostState;
 use time::OffsetDateTime;
 use uuid::Uuid;

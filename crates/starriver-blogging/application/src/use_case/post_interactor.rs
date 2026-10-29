@@ -10,8 +10,8 @@ use uuid::Uuid;
 
 use crate::{
     dto::post_dto::{
-        req::{PageQuery, SaveOrUpdatePostCmd},
-        res::{PostDetailDto, PostExcerptDto, PostSearchDto},
+        input::{PageQuery, SaveOrUpdatePostCmd},
+        output::{PostDetailDto, PostExcerptDto, PostSearchDto},
     },
     error::CtxError,
     port::{

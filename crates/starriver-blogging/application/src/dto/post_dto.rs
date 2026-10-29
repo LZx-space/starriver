@@ -1,4 +1,4 @@
-pub mod req {
+pub mod input {
     use serde::Deserialize;
     use uuid::Uuid;
     use validator::Validate;
@@ -34,15 +34,14 @@ pub mod req {
     }
 }
 
-pub mod res {
-
+pub mod output {
     use serde::Serialize;
     use starriver_blogging_domain::post::value_object::PostState;
     use starriver_shared_base::dto::IdName;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
-    use crate::dto::attachment_dto::res::AttachmentDto;
+    use crate::dto::attachment_dto::output::AttachmentDto;
 
     #[derive(Clone, Serialize)]
     pub struct PostDetailDto {

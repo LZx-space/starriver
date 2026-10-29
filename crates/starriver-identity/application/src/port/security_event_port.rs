@@ -6,7 +6,7 @@ use starriver_shared_base::{
     error::QueryError,
 };
 
-use crate::dto::user_dto::{req::SecurityEventCmd, res::SecurityEventDto};
+use crate::dto::user_dto::{input::SecurityEventCmd, output::SecurityEventDto};
 
 /// SecurityEvent无业务性，仅保存查询，所以这里不是Repository，简单的面向数据
 pub trait SecurityEventPort<T: Executor> {

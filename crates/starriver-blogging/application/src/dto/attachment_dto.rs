@@ -1,4 +1,4 @@
-pub mod req {
+pub mod input {
     use serde::Deserialize;
 
     #[derive(Deserialize)]
@@ -9,7 +9,7 @@ pub mod req {
     }
 }
 
-pub mod res {
+pub mod output {
     use serde::Serialize;
     use uuid::Uuid;
 

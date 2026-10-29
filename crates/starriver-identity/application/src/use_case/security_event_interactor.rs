@@ -4,7 +4,7 @@ use starriver_shared_base::{
 };
 
 use crate::{
-    dto::user_dto::res::SecurityEventDto, error::CtxError,
+    dto::user_dto::output::SecurityEventDto, error::CtxError,
     port::security_event_port::SecurityEventPort,
 };
 

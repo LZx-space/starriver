@@ -1,6 +1,6 @@
 use starriver_shared_base::{db::Executor, error::QueryError};
 
-use crate::dto::category_dto::res::CategoryDetailDto;
+use crate::dto::category_dto::output::CategoryDetailDto;
 
 pub trait CategoryQuery<T: Executor> {
     fn list_all(

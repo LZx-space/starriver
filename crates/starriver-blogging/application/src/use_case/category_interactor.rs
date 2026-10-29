@@ -6,7 +6,7 @@ use starriver_shared_base::{authentication::principal::DefaultUser, db::Revision
 use tracing::info;
 use uuid::Uuid;
 
-use crate::dto::category_dto::res::CategoryDetailDto;
+use crate::dto::category_dto::output::CategoryDetailDto;
 use crate::error::CtxError;
 use crate::port::category_cache::{CACHE_KEY_CATEGORY_LIST, CategoryListKey};
 use crate::port::category_query::CategoryQuery;

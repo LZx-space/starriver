@@ -6,8 +6,8 @@ use starriver_shared_base::{
 use uuid::Uuid;
 
 use crate::dto::post_dto::{
-    req::PageQuery,
-    res::{PostDetailDto, PostExcerptDto, PostSearchDto},
+    input::PageQuery,
+    output::{PostDetailDto, PostExcerptDto, PostSearchDto},
 };
 
 pub trait PostQuery<T: Executor> {

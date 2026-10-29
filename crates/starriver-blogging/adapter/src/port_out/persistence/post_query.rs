@@ -5,10 +5,10 @@ use sea_orm::{
 };
 use starriver_blogging_application::{
     dto::{
-        attachment_dto::res::AttachmentDto,
+        attachment_dto::output::AttachmentDto,
         post_dto::{
-            req::PageQuery,
-            res::{PostDetailDto, PostExcerptDto, PostSearchDto},
+            input::PageQuery,
+            output::{PostDetailDto, PostExcerptDto, PostSearchDto},
         },
     },
     port::post_query::PostQuery,

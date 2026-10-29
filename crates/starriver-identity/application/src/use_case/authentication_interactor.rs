@@ -11,8 +11,8 @@ use tracing::{error, info};
 
 use crate::{
     dto::user_dto::{
-        req::{SecurityEventCmd, SecurityEventType},
-        res::UserDetail,
+        input::{SecurityEventCmd, SecurityEventType},
+        output::UserDetail,
     },
     port::{security_event_port::SecurityEventPort, user_repository::UserRepository},
 };

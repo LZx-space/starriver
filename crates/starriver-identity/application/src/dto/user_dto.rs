@@ -1,4 +1,4 @@
-pub mod req {
+pub mod input {
     use std::{borrow::Cow, fmt::Display, sync::Arc};
 
     use serde::{Deserialize, Serialize};
@@ -173,8 +173,8 @@ pub mod req {
     }
 }
 
-pub mod res {
-    use super::req::SecurityEventType;
+pub mod output {
+    use super::input::SecurityEventType;
     use serde::Serialize;
     use starriver_identity_domain::user::value_object::LifeCycle;
     use time::OffsetDateTime;

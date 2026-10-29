@@ -2,8 +2,8 @@ use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
 use starriver_blogging_application::{
     dto::{
-        category_dto::res::CategoryDetailDto,
-        post_dto::res::{PostDetailDto, PostExcerptDto},
+        category_dto::output::CategoryDetailDto,
+        post_dto::output::{PostDetailDto, PostExcerptDto},
     },
     port::{category_cache::CategoryListKey, post_cache::PostPageKey},
     use_case::{attachment_interactor, category_interactor, post_interactor},

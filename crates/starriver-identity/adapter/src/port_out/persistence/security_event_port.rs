@@ -5,7 +5,7 @@ use sea_orm::{
     QuerySelect,
 };
 use starriver_identity_application::{
-    dto::user_dto::{req::SecurityEventCmd, res::SecurityEventDto},
+    dto::user_dto::{input::SecurityEventCmd, output::SecurityEventDto},
     port::security_event_port::SecurityEventPort,
 };
 use starriver_shared_base::{

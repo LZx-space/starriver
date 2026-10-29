@@ -4,7 +4,7 @@ use starriver_shared_base::{
     error::QueryError,
 };
 
-use crate::dto::user_dto::res::UserDetailDto;
+use crate::dto::user_dto::output::UserDetailDto;
 
 pub trait UserQuery<T: Executor> {
     /// 查询一页数据

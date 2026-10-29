@@ -3,7 +3,7 @@ use sea_orm::{
     sea_query::NullOrdering,
 };
 use starriver_identity_application::{
-    dto::user_dto::res::UserDetailDto, port::user_query::UserQuery,
+    dto::user_dto::output::UserDetailDto, port::user_query::UserQuery,
 };
 use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::{

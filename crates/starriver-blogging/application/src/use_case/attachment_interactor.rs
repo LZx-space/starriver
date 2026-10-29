@@ -11,7 +11,7 @@ use starriver_shared_base::{
 use uuid::Uuid;
 
 use crate::{
-    dto::attachment_dto::res::AttachmentDto, error::CtxError,
+    dto::attachment_dto::output::AttachmentDto, error::CtxError,
     port::attachment_repository::AttachmentRepository,
 };
 

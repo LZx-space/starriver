@@ -1,7 +1,7 @@
 use axum::extract::State;
 use axum::response::IntoResponse;
 
-use starriver_identity_application::dto::user_dto::req::{
+use starriver_identity_application::dto::user_dto::input::{
     ChangeMyPasswordCmd, ResetPasswordCmd, SendVerificationCodeCmd, UserRegisterCmd,
 };
 use starriver_shared_base::dto::PageQuery;

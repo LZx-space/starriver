@@ -12,11 +12,11 @@ use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{
+        input::{
             ChangeMyPasswordCmd, ResetPasswordCmd, SecurityEventCmd, SecurityEventType,
             UserRegisterCmd,
         },
-        res::UserDetailDto,
+        output::UserDetailDto,
     },
     error::CtxError,
     port::{

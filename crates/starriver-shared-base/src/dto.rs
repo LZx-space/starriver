@@ -15,7 +15,7 @@ pub struct IdValue<I, V> {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct PageQuery {
-    #[validate(range(min = 0, max = 10))]
+    #[validate(range(min = 0))]
     pub page: u64,
     #[validate(range(min = 1, max = 20))]
     pub page_size: u64,
@@ -23,7 +23,7 @@ pub struct PageQuery {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct PageSearch {
-    #[validate(range(min = 0, max = 10))]
+    #[validate(range(min = 0))]
     pub page: u64,
     #[validate(range(min = 1, max = 20))]
     pub page_size: u64,

@@ -4,7 +4,7 @@ use starriver_identity_domain::{
 use starriver_shared_base::{
     authentication::authentication_request::{IdentifierPasswordRequest, UserIdentifier},
     authentication::core::error::AuthenticationError,
-    db::{Connection, Revision, Transaction},
+    db::{Connection, Revision},
     error::RepositoryError,
 };
 use tracing::{error, info};
@@ -27,8 +27,8 @@ pub struct AuthenticationInteractor<Conn, UR, SEP, PE> {
 impl<Conn, UR, SEP, PE> AuthenticationInteractor<Conn, UR, SEP, PE>
 where
     Conn: Connection,
-    UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
-    SEP: SecurityEventPort<<Conn as Connection>::Transaction> + Sync,
+    UR: UserRepository<Conn> + Sync,
+    SEP: SecurityEventPort<Conn> + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
     /// 新建
@@ -77,60 +77,44 @@ where
                         .update(&self.conn, Revision::new(original, user))
                         .await
                         .map_err(mapping_repo_error())?;
+
+                    self.security_event_port
+                        .insert(
+                            &self.conn,
+                            SecurityEventCmd::new(
+                                *user.id(),
+                                user.username().to_string(),
+                                SecurityEventType::UserUnlocked,
+                                "password lock expired",
+                            ),
+                        )
+                        .await;
                     Ok(into_user_detail(user))
                 } else {
                     Ok(into_user_detail(user))
                 }
             }
             Err(AuthenticationError::BadPassword) => {
-                // 只有“失败计数更新 + 安全事件”这两条写需要事务。
-                // 密码校验已经结束，事务保持短小。
-                let tx = self.conn.begin().await.map_err(|e| {
-                    error!(error = %e, "begin transaction failed");
-                    AuthenticationError::InnerError {
-                        message: e.to_string(),
-                    }
-                })?;
+                // 失败计数是主业务；审计写入在其后 best-effort 执行，失败不回滚计数。
+                let user = self
+                    .user_repo
+                    .update(&self.conn, Revision::new(original, user))
+                    .await
+                    .map_err(mapping_repo_error())?;
 
-                let result = async {
-                    let user = self
-                        .user_repo
-                        .update(&tx, Revision::new(original, user))
-                        .await
-                        .map_err(mapping_repo_error())?;
-                    self.security_event_port
-                        .insert(
-                            &tx,
-                            SecurityEventCmd {
-                                user_id: *user.id(),
-                                event_type: SecurityEventType::TryLoginWithBadPwd,
-                                payload: "bad password".to_string(),
-                            },
-                        )
-                        .await
-                        .map_err(mapping_repo_error())?;
-                    Ok(())
-                }
-                .await;
-
-                match result {
-                    Ok(()) => {
-                        tx.commit()
-                            .await
-                            .map_err(|e| AuthenticationError::InnerError {
-                                message: e.to_string(),
-                            })?;
-                        Err(AuthenticationError::BadPassword)
-                    }
-                    Err(e) => {
-                        tx.rollback()
-                            .await
-                            .map_err(|e| AuthenticationError::InnerError {
-                                message: e.to_string(),
-                            })?;
-                        Err(e)
-                    }
-                }
+                let (user_id, username, ..) = user.into_parts();
+                self.security_event_port
+                    .insert(
+                        &self.conn,
+                        SecurityEventCmd::new(
+                            user_id,
+                            username.into_inner(),
+                            SecurityEventType::TryLoginWithBadPwd,
+                            "bad password",
+                        ),
+                    )
+                    .await;
+                Err(AuthenticationError::BadPassword)
             }
             Err(e) => Err(e),
         }

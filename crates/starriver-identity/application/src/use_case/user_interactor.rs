@@ -41,7 +41,7 @@ where
     Conn: Connection,
     UQ: UserQuery<Conn> + Sync,
     UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
-    SEP: SecurityEventPort<<Conn as Connection>::Transaction> + Sync,
+    SEP: SecurityEventPort<Conn> + Sync,
     VCS: EmailVerificationService + Send + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
@@ -156,8 +156,7 @@ where
 
         match changed {
             Ok(_) => {
-                // 只有成功路径的“更新 user + 写安全事件”需要事务；
-                // 密码校验/编码已在事务外完成。
+                // 主业务写入只有 user 更新；审计在提交后 best-effort 执行。
                 let tx = self.conn.begin().await.map_err(|e| {
                     error!(error = %e, "begin transaction failed");
                     CtxError::Internal
@@ -166,16 +165,6 @@ where
                 let result: Result<(), CtxError> = async {
                     self.user_repo
                         .update(&tx, Revision::new(original, user))
-                        .await?;
-                    self.security_event_port
-                        .insert(
-                            &tx,
-                            SecurityEventCmd {
-                                user_id,
-                                event_type: SecurityEventType::PasswordChanged,
-                                payload: "password changed".to_string(),
-                            },
-                        )
                         .await?;
                     Ok(())
                 }
@@ -187,6 +176,17 @@ where
                             error!(error=%e, "commit transaction failed");
                             CtxError::Internal
                         })?;
+                        self.security_event_port
+                            .insert(
+                                &self.conn,
+                                SecurityEventCmd::new(
+                                    user_id,
+                                    username,
+                                    SecurityEventType::PasswordChanged,
+                                    "password changed",
+                                ),
+                            )
+                            .await;
                         Ok(())
                     }
                     Err(e) => {
@@ -272,12 +272,13 @@ where
             ));
         };
         let user_id = *user.id();
+        let event_username = user.username().to_string();
         let origin = user.clone();
         // 密码编码（Argon2）在事务外完成
         self.pwd_service
             .reset_password(&mut user, &cmd.new_password)?;
 
-        // 只有“更新 user + 写安全事件”这两条写需要事务
+        // 主业务写入只有 user 更新；审计在提交后 best-effort 执行。
         let tx = self.conn.begin().await.map_err(|e| {
             error!(error = %e, "begin transaction failed");
             CtxError::Internal
@@ -285,16 +286,6 @@ where
         let result = async {
             self.user_repo
                 .update(&tx, Revision::new(origin, user))
-                .await?;
-            self.security_event_port
-                .insert(
-                    &tx,
-                    SecurityEventCmd {
-                        user_id,
-                        event_type: SecurityEventType::PasswordChanged,
-                        payload: "password reset with verification code".to_string(),
-                    },
-                )
                 .await?;
             Ok(())
         }
@@ -306,6 +297,18 @@ where
                     error!(email = %email, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
+
+                self.security_event_port
+                    .insert(
+                        &self.conn,
+                        SecurityEventCmd::new(
+                            user_id,
+                            event_username,
+                            SecurityEventType::PasswordReset,
+                            "password reset with verification code",
+                        ),
+                    )
+                    .await;
 
                 // 业务提交成功后再消费验证码；消费失败只记日志
                 if let Err(e) = self

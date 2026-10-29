@@ -1,47 +1,48 @@
+use std::convert::Infallible;
+
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ConnectionTrait, EntityTrait, JoinType, PaginatorTrait,
-    QueryOrder, QuerySelect, RelationTrait,
+    ActiveModelTrait, ActiveValue::Set, ConnectionTrait, EntityTrait, PaginatorTrait, QueryOrder,
+    QuerySelect,
 };
 use starriver_identity_application::{
     dto::user_dto::{req::SecurityEventCmd, res::SecurityEventDto},
     port::security_event_port::SecurityEventPort,
 };
 use starriver_shared_base::{
+    db::Executor,
     dto::{PageQuery, PageResult},
-    error::{QueryError, RepositoryError},
-};
-use starriver_shared_infra::{
-    db::{DefaultConnection, DefaultTransaction},
-    error_mapping::db_2_repo_error,
+    error::QueryError,
 };
 use time::OffsetDateTime;
+use tracing::error;
 use uuid::Uuid;
 
 use crate::port_out::persistence::{
     dto::security_event_row::SecurityEventRow,
-    po::{
-        security_event_po::{ActiveModel, Column, Entity, Relation},
-        user_po,
-    },
+    po::security_event_po::{ActiveModel, Column, Entity},
 };
 
 pub struct DefaultSecurityEventPort;
 
-impl DefaultSecurityEventPort {
+impl<T> SecurityEventPort<T> for DefaultSecurityEventPort
+where
+    T: Executor + ConnectionTrait,
+{
     async fn paginate(
         &self,
-        conn: &impl ConnectionTrait,
+        conn: &T,
         q: PageQuery,
     ) -> Result<PageResult<SecurityEventDto>, QueryError> {
         let paginator = Entity::find()
             .select_only()
             .column(Column::Id)
+            .column(Column::UserId)
+            .column(Column::Username)
             .column(Column::EventType)
             .column(Column::CreatedAt)
             .column_as(Column::CreatedAt, "occurred_at")
-            .column_as(user_po::Column::Username, "username")
-            .join(JoinType::LeftJoin, Relation::User.def())
             .order_by_desc(Column::CreatedAt)
+            .order_by_desc(Column::Id)
             .into_model::<SecurityEventRow>()
             .paginate(conn, q.page_size);
         let events = paginator
@@ -58,57 +59,22 @@ impl DefaultSecurityEventPort {
         Ok(PageResult::new(q.page, q.page_size, total_items, events))
     }
 
-    async fn insert(
-        &self,
-        conn: &impl ConnectionTrait,
-        event: SecurityEventCmd,
-    ) -> Result<(), RepositoryError> {
-        ActiveModel {
+    async fn insert(&self, conn: &T, event: SecurityEventCmd) -> Result<(), Infallible> {
+        let (user_id, username, event_type, payload) = event.into_parts();
+        let result = ActiveModel {
             id: Set(Uuid::now_v7()),
-            event_type: Set(event.event_type.into()),
-            message: Set(event.payload),
+            user_id: Set(user_id),
+            username: Set(username),
+            event_type: Set(event_type.into()),
+            message: Set(payload.into_owned()),
             created_at: Set(OffsetDateTime::now_utc()),
-            user_id: Set(event.user_id),
         }
         .insert(conn)
-        .await
-        .map_err(db_2_repo_error)
-        .map(|_| ())
-    }
-}
+        .await;
 
-impl SecurityEventPort<DefaultConnection> for DefaultSecurityEventPort {
-    async fn paginate(
-        &self,
-        conn: &DefaultConnection,
-        q: PageQuery,
-    ) -> Result<PageResult<SecurityEventDto>, QueryError> {
-        self.paginate(conn, q).await
-    }
-
-    async fn insert(
-        &self,
-        conn: &DefaultConnection,
-        event: SecurityEventCmd,
-    ) -> Result<(), RepositoryError> {
-        self.insert(conn, event).await
-    }
-}
-
-impl SecurityEventPort<DefaultTransaction> for DefaultSecurityEventPort {
-    async fn paginate(
-        &self,
-        conn: &DefaultTransaction,
-        q: PageQuery,
-    ) -> Result<PageResult<SecurityEventDto>, QueryError> {
-        self.paginate(conn, q).await
-    }
-
-    async fn insert(
-        &self,
-        conn: &DefaultTransaction,
-        event: SecurityEventCmd,
-    ) -> Result<(), RepositoryError> {
-        self.insert(conn, event).await
+        if let Err(e) = result {
+            error!(error=%e, "insert security event failed");
+        }
+        Ok(())
     }
 }

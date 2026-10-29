@@ -9,6 +9,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub user_id: Uuid,
+    pub username: String,
     pub event_type: SecurityEventTypePo,
     pub message: String,
     pub created_at: OffsetDateTime,
@@ -17,14 +18,7 @@ pub struct Model {
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::user_po::Entity",
-        from = "Column::UserId",
-        to = "super::user_po::Column::Id"
-    )]
-    User,
-}
+pub enum Relation {}
 
 /////////////////////////////////////////////////////////////////
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
@@ -37,6 +31,8 @@ pub enum SecurityEventTypePo {
     UserUnlocked,
     #[sea_orm(num_value = 2)]
     PasswordChanged,
+    #[sea_orm(num_value = 3)]
+    PasswordReset,
 }
 
 impl From<SecurityEventTypePo> for SecurityEventType {
@@ -45,6 +41,7 @@ impl From<SecurityEventTypePo> for SecurityEventType {
             SecurityEventTypePo::TryLoginWithBadPwd => Self::TryLoginWithBadPwd,
             SecurityEventTypePo::UserUnlocked => Self::UserUnlocked,
             SecurityEventTypePo::PasswordChanged => Self::PasswordChanged,
+            SecurityEventTypePo::PasswordReset => Self::PasswordReset,
         }
     }
 }
@@ -55,6 +52,7 @@ impl From<SecurityEventType> for SecurityEventTypePo {
             SecurityEventType::TryLoginWithBadPwd => Self::TryLoginWithBadPwd,
             SecurityEventType::UserUnlocked => Self::UserUnlocked,
             SecurityEventType::PasswordChanged => Self::PasswordChanged,
+            SecurityEventType::PasswordReset => SecurityEventTypePo::PasswordReset,
         }
     }
 }

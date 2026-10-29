@@ -10,6 +10,7 @@ use crate::port_out::persistence::po::security_event_po::SecurityEventTypePo;
 #[derive(FromQueryResult)]
 pub struct SecurityEventRow {
     pub id: Uuid,
+    pub user_id: Uuid,
     pub username: String,
     pub event_type: SecurityEventTypePo,
     pub occurred_at: OffsetDateTime,
@@ -19,8 +20,9 @@ impl From<SecurityEventRow> for SecurityEventDto {
     fn from(e: SecurityEventRow) -> Self {
         SecurityEventDto {
             id: e.id,
+            user_id: e.user_id,
             username: e.username,
-            event_type: SecurityEventType::from(e.event_type).to_string(),
+            event_type: SecurityEventType::from(e.event_type),
             occurred_at: e.occurred_at,
         }
     }

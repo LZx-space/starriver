@@ -97,6 +97,7 @@ pub mod input {
     }
 
     #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+    #[serde(rename_all = "snake_case")]
     pub enum SecurityEventType {
         TryLoginWithBadPwd,
         UserUnlocked,

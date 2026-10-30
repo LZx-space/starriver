@@ -9,7 +9,7 @@ use starriver_blogging_application::{
     use_case::{attachment_interactor, category_interactor, post_interactor},
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
-use starriver_shared_base::{dto::PageResult, random::duration_with_jitter};
+use starriver_shared_base::{dto::OffsetPage, random::duration_with_jitter};
 use starriver_shared_infra::{
     cache::DefaultCache,
     config::{Auth, Uploads},
@@ -36,7 +36,7 @@ type PostInteractor = post_interactor::PostInteractor<
     DefaultPostQuery,
     DefaultPostRepository,
     DefaultCategoryRepository,
-    DefaultCache<PostPageKey, PageResult<PostExcerptDto>>,
+    DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
 
@@ -45,7 +45,7 @@ type CategoryInteractor = category_interactor::CategoryInteractor<
     DefaultCategoryQuery,
     DefaultCategoryRepository,
     DefaultCache<CategoryListKey, Vec<CategoryDetailDto>>,
-    DefaultCache<PostPageKey, PageResult<PostExcerptDto>>,
+    DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
 

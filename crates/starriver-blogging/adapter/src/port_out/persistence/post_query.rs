@@ -7,7 +7,7 @@ use starriver_blogging_application::{
     dto::{
         attachment_dto::output::AttachmentDto,
         post_dto::{
-            input::PageQuery,
+            input::{PageQuery, SearchQuery},
             output::{PostDetailDto, PostExcerptDto, PostSearchDto},
         },
     },
@@ -15,7 +15,7 @@ use starriver_blogging_application::{
 };
 use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
-    dto::{IdName, PageResult, PageSearch},
+    dto::{IdName, OffsetPage},
     error::QueryError,
     upload_file::UploadLocationResolver,
 };
@@ -45,7 +45,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         &self,
         conn: &DefaultConnection,
         q: PageQuery,
-    ) -> Result<PageResult<PostExcerptDto>, QueryError> {
+    ) -> Result<OffsetPage<PostExcerptDto>, QueryError> {
         let mut select = Entity::find()
             .select_only()
             .columns([
@@ -77,9 +77,9 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .order_by(Column::Id, Order::Desc)
             .filter(cond)
             .into_model::<PostExcerptRow>()
-            .paginate(conn, q.page_size);
+            .paginate(conn, q.pagination.page_size);
         let posts = paginator
-            .fetch_page(q.page)
+            .fetch_page(q.pagination.page)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?
             .into_iter()
@@ -89,7 +89,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .num_items()
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(PageResult::new(q.page, q.page_size, total_items, posts))
+        Ok(OffsetPage::from_query(q.pagination, total_items, posts))
     }
 
     async fn find_detail(
@@ -155,10 +155,10 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
     async fn search(
         &self,
         conn: &DefaultConnection,
-        q: PageSearch,
-    ) -> Result<PageResult<PostSearchDto>, QueryError> {
+        q: SearchQuery,
+    ) -> Result<OffsetPage<PostSearchDto>, QueryError> {
         if q.q.is_empty() {
-            return Ok(PageResult::new(q.page, q.page_size, 0, vec![]));
+            return Ok(OffsetPage::from_query(q.pagination, 0, vec![]));
         }
 
         // pgroonga扩展实现搜索功能
@@ -242,14 +242,14 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             LIMIT
                	$2;
             "#,
-            [(q.page * q.page_size).into(), q.page_size.into(), q.q.into()],
+            [(q.pagination.page * q.pagination.page_size).into(), q.pagination.page_size.into(), q.q.into()],
         ))
         .all(conn)
         .await
         .map_err(|e| QueryError::DbError(e.to_string()))?;
 
         if rows.is_empty() {
-            return Ok(PageResult::new(q.page, q.page_size, 0, vec![]));
+            return Ok(OffsetPage::from_query(q.pagination, 0, vec![]));
         }
 
         let total_count = rows[0].total_count;
@@ -264,9 +264,8 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                 score: e.score,
             })
             .collect();
-        Ok(PageResult::new(
-            q.page,
-            q.page_size,
+        Ok(OffsetPage::from_query(
+            q.pagination,
             total_count as u64,
             items,
         ))

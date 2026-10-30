@@ -6,6 +6,7 @@ pub mod input {
         specification::{EmailSpec, PasswordSpec, UsernameSpec},
         value_object::Email,
     };
+    use starriver_shared_base::dto::CursorPageQuery;
     use tracing::warn;
     use uuid::Uuid;
     use validator::{Validate, ValidationError};
@@ -96,7 +97,7 @@ pub mod input {
         }
     }
 
-    #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "snake_case")]
     pub enum SecurityEventType {
         TryLoginWithBadPwd,
@@ -115,6 +116,22 @@ pub mod input {
             }
             Ok(())
         }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    /// 安全事件列表查询（游标分页）
+    #[derive(Debug, Deserialize, Validate)]
+    pub struct SecurityEventQuery {
+        #[serde(flatten)]
+        #[validate(nested)]
+        pub pagination: CursorPageQuery,
+        pub user_id: Option<Uuid>,
+        pub event_type: Option<SecurityEventType>,
+        /// RFC3339，包含边界
+        pub from: Option<String>,
+        /// RFC3339，包含边界
+        pub to: Option<String>,
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -206,5 +223,13 @@ pub mod output {
         pub username: String,
         pub event_type: SecurityEventType,
         pub occurred_at: OffsetDateTime,
+    }
+
+    /// 游标分页结果
+    #[derive(Serialize)]
+    pub struct SecurityEventPage {
+        pub items: Vec<SecurityEventDto>,
+        /// 为空表示没有下一页
+        pub next_cursor: Option<String>,
     }
 }

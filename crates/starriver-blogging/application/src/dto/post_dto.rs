@@ -1,14 +1,14 @@
 pub mod input {
     use serde::Deserialize;
+    use starriver_shared_base::dto::OffsetPageQuery;
     use uuid::Uuid;
     use validator::Validate;
 
-    #[derive(Debug, Deserialize, PartialEq, Eq, Validate)]
+    #[derive(Debug, Deserialize, Validate)]
     pub struct PageQuery {
-        #[validate(range(min = 0, max = 10))]
-        pub page: u64,
-        #[validate(range(min = 1, max = 20))]
-        pub page_size: u64,
+        #[serde(flatten)]
+        #[validate(nested)]
+        pub pagination: OffsetPageQuery,
         /// some， when need to filter by category
         pub category_id: Option<Uuid>,
         #[serde(default)]
@@ -17,6 +17,9 @@ pub mod input {
 
     #[derive(Debug, Deserialize, Validate)]
     pub struct SearchQuery {
+        #[serde(flatten)]
+        #[validate(nested)]
+        pub pagination: OffsetPageQuery,
         #[validate(length(min = 1, max = 10))]
         pub q: String,
     }

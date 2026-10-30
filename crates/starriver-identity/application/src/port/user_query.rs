@@ -1,6 +1,6 @@
 use starriver_shared_base::{
     db::Executor,
-    dto::{PageQuery, PageResult},
+    dto::{OffsetPage, OffsetPageQuery},
     error::QueryError,
 };
 
@@ -11,8 +11,8 @@ pub trait UserQuery<T: Executor> {
     fn paginate(
         &self,
         conn: &T,
-        q: PageQuery,
-    ) -> impl Future<Output = Result<PageResult<UserDetailDto>, QueryError>> + Send;
+        q: OffsetPageQuery,
+    ) -> impl Future<Output = Result<OffsetPage<UserDetailDto>, QueryError>> + Send;
 
     fn exists_by_email(
         &self,

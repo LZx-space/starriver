@@ -3,14 +3,14 @@ use starriver_shared_base::{
     authentication::principal::DefaultUser,
     cache::Cache,
     db::{Connection, Revision, Transaction},
-    dto::{PageResult, PageSearch},
+    dto::OffsetPage,
 };
 use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::{
     dto::post_dto::{
-        input::{PageQuery, SaveOrUpdatePostCmd},
+        input::{PageQuery, SaveOrUpdatePostCmd, SearchQuery},
         output::{PostDetailDto, PostExcerptDto, PostSearchDto},
     },
     error::CtxError,
@@ -35,7 +35,7 @@ where
     Q: PostQuery<Conn>,
     PR: PostRepository<Conn> + PostRepository<<Conn as Connection>::Transaction>,
     CR: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
-    PC: Cache<PostPageKey, PageResult<PostExcerptDto>>,
+    PC: Cache<PostPageKey, OffsetPage<PostExcerptDto>>,
     IC: Cache<Uuid, Option<PostDetailDto>>,
 {
     /// 新建
@@ -59,16 +59,16 @@ where
 
     pub const CACHE_PAGE_LIMIT: u64 = 3;
 
-    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, CtxError> {
-        if q.page >= Self::CACHE_PAGE_LIMIT {
+    pub async fn paginate(&self, q: PageQuery) -> Result<OffsetPage<PostExcerptDto>, CtxError> {
+        if q.pagination.page >= Self::CACHE_PAGE_LIMIT {
             self.query
                 .paginate(&self.conn, q)
                 .await
                 .map_err(|e| CtxError::internal("paginate posts failed", e))
         } else {
             let key = PostPageKey {
-                page: q.page,
-                page_size: q.page_size,
+                page: q.pagination.page,
+                page_size: q.pagination.page_size,
                 published_only: q.published_only,
                 category_id: q.category_id,
             };
@@ -79,7 +79,7 @@ where
         }
     }
 
-    pub async fn search(&self, q: PageSearch) -> Result<PageResult<PostSearchDto>, CtxError> {
+    pub async fn search(&self, q: SearchQuery) -> Result<OffsetPage<PostSearchDto>, CtxError> {
         self.query
             .search(&self.conn, q)
             .await

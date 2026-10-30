@@ -1,12 +1,8 @@
-use starriver_shared_base::{
-    db::Executor,
-    dto::{PageResult, PageSearch},
-    error::QueryError,
-};
+use starriver_shared_base::{db::Executor, dto::OffsetPage, error::QueryError};
 use uuid::Uuid;
 
 use crate::dto::post_dto::{
-    input::PageQuery,
+    input::{PageQuery, SearchQuery},
     output::{PostDetailDto, PostExcerptDto, PostSearchDto},
 };
 
@@ -16,7 +12,7 @@ pub trait PostQuery<T: Executor> {
         &self,
         conn: &T,
         q: PageQuery,
-    ) -> impl Future<Output = Result<PageResult<PostExcerptDto>, QueryError>> + Send;
+    ) -> impl Future<Output = Result<OffsetPage<PostExcerptDto>, QueryError>> + Send;
 
     fn find_detail(
         &self,
@@ -27,6 +23,6 @@ pub trait PostQuery<T: Executor> {
     fn search(
         &self,
         conn: &T,
-        q: PageSearch,
-    ) -> impl Future<Output = Result<PageResult<PostSearchDto>, QueryError>> + Send;
+        q: SearchQuery,
+    ) -> impl Future<Output = Result<OffsetPage<PostSearchDto>, QueryError>> + Send;
 }

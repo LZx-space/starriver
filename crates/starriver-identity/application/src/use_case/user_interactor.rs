@@ -4,7 +4,7 @@ use starriver_identity_domain::{
 };
 use starriver_shared_base::{
     db::{Connection, Revision, Transaction},
-    dto::{PageQuery, PageResult},
+    dto::{OffsetPage, OffsetPageQuery},
     error::RepositoryError,
 };
 use std::convert::Infallible;
@@ -66,7 +66,10 @@ where
         }
     }
 
-    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<UserDetailDto>, CtxError> {
+    pub async fn paginate(
+        &self,
+        q: OffsetPageQuery,
+    ) -> Result<OffsetPage<UserDetailDto>, CtxError> {
         self.user_query
             .paginate(&self.conn, q)
             .await

@@ -15,4 +15,5 @@ COMMENT ON TABLE public.security_event
 COMMENT ON COLUMN public.security_event.username IS '事件发生时的用户名快照';
 
 -- Index
-CREATE INDEX idx_security_event_user_type_created ON public.security_event (user_id, event_type, created_at DESC);
+CREATE INDEX idx_security_event_user_type_created ON public.security_event (user_id, event_type, created_at DESC, id DESC);
+CREATE INDEX idx_security_event_created_id ON public.security_event (created_at DESC, id DESC);

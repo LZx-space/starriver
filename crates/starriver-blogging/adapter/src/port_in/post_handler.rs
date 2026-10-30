@@ -1,6 +1,7 @@
 use axum::{extract::State, response::IntoResponse};
-use starriver_blogging_application::dto::post_dto::input::{PageQuery, SaveOrUpdatePostCmd};
-use starriver_shared_base::dto::PageSearch;
+use starriver_blogging_application::dto::post_dto::input::{
+    PageQuery, SaveOrUpdatePostCmd, SearchQuery,
+};
 use starriver_shared_infra::{
     extract::{Json, Path, Query},
     middleware::authentication::default_impl::AuthenticatedJwtClaims,
@@ -19,7 +20,7 @@ pub async fn paginate(
 
 pub async fn search(
     state: State<BloggingState>,
-    query: Query<PageSearch>,
+    query: Query<SearchQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     let results = state.post_interactor.search(query.0).await?;
     Ok(Json(results))

@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
+
+use ::serde::{Deserialize, Serialize};
+use serde::{Deserializer, de::DeserializeOwned};
 use validator::Validate;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -51,24 +54,57 @@ impl<T: Serialize> OffsetPage<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct SignedCursor<T> {
+    inner: String,
+    _mark: PhantomData<T>,
+}
+
+impl<T: DeserializeOwned> SignedCursor<T> {
+    /// 从已验签的字符串反序列化成目标游标结构体
+    pub fn decode(&self) -> Result<T, String> {
+        serde_json::from_slice::<T>(self.inner.as_bytes())
+            .map_err(|e| format!("cursor json decode failed: {e}"))
+    }
+}
+
+impl<T: Serialize> SignedCursor<T> {
+    pub fn encode(v: &T) -> Result<String, String> {
+        serde_json::to_string(v).map_err(|e| format!("cursor json decode failed: {e}"))
+    }
+}
+
+/// 提取层只做验签：非法游标在这里变成 400
+impl<'de, T> Deserialize<'de> for SignedCursor<T> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(d)?;
+        // todo verify signature
+        // raw cursor
+        Ok(SignedCursor {
+            inner: s,
+            _mark: PhantomData,
+        }) // 只存原文，不在这里解析成 T
+    }
+}
+
 /// 游标分页查询
 #[derive(Debug, Deserialize, Validate)]
-pub struct CursorPageQuery {
+pub struct CursorPageQuery<T> {
     /// 首页不传，其余情况传响应中返回的 next_cursor 字段值
-    pub cursor: Option<String>,
-    #[validate(range(min = 1, max = u8::MAX))]
+    pub cursor: Option<SignedCursor<T>>,
+
+    #[validate(range(min = 1, max = 100))]
     #[serde(default = "default_limit")]
     pub limit: u8,
 }
 
 fn default_limit() -> u8 {
-    20
+    10
 }
 
 /// 游标分页数据结果
 #[derive(Clone, Debug, Serialize)]
 pub struct CursorPage<T: Serialize> {
-    next_cursor: Option<String>,
-    limit: u8,
-    items: Vec<T>,
+    pub next_cursor: Option<String>,
+    pub items: Vec<T>,
 }

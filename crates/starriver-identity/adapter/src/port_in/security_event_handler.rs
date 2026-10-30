@@ -12,6 +12,6 @@ pub async fn paginate(
     _: AuthenticatedJwtClaims,
     q: Query<SecurityEventQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let page = state.security_event_interactor.list(q.0).await?;
+    let page = state.security_event_interactor.paginate(q.0).await?;
     Ok(Json(page))
 }

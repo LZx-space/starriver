@@ -7,6 +7,7 @@ pub mod input {
         value_object::Email,
     };
     use starriver_shared_base::dto::CursorPageQuery;
+    use time::OffsetDateTime;
     use tracing::warn;
     use uuid::Uuid;
     use validator::{Validate, ValidationError};
@@ -121,17 +122,23 @@ pub mod input {
     //////////////////////////////////////////////////////////////////////////////////////
 
     /// 安全事件列表查询（游标分页）
-    #[derive(Debug, Deserialize, Validate)]
+    #[derive(Deserialize, Validate)]
     pub struct SecurityEventQuery {
         #[serde(flatten)]
         #[validate(nested)]
-        pub pagination: CursorPageQuery,
+        pub pagination: CursorPageQuery<SecurityEventCursor>,
         pub user_id: Option<Uuid>,
         pub event_type: Option<SecurityEventType>,
         /// RFC3339，包含边界
-        pub from: Option<String>,
+        pub from: Option<OffsetDateTime>,
         /// RFC3339，包含边界
-        pub to: Option<String>,
+        pub to: Option<OffsetDateTime>,
+    }
+
+    #[derive(Deserialize, Serialize)]
+    pub struct SecurityEventCursor {
+        pub occurred_at: OffsetDateTime,
+        pub id: Uuid,
     }
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -223,13 +230,5 @@ pub mod output {
         pub username: String,
         pub event_type: SecurityEventType,
         pub occurred_at: OffsetDateTime,
-    }
-
-    /// 游标分页结果
-    #[derive(Serialize)]
-    pub struct SecurityEventPage {
-        pub items: Vec<SecurityEventDto>,
-        /// 为空表示没有下一页
-        pub next_cursor: Option<String>,
     }
 }

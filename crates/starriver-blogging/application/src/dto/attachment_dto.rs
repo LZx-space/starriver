@@ -1,14 +1,3 @@
-pub mod input {
-    use serde::Deserialize;
-
-    #[derive(Deserialize)]
-    pub struct UploadAttachmentCmd {
-        pub file_name: String,
-        pub claimed_extension: String,
-        pub bytes: Vec<u8>,
-    }
-}
-
 pub mod output {
     use serde::Serialize;
     use uuid::Uuid;

@@ -5,10 +5,17 @@ use sea_orm::{
     QueryFilter, QueryOrder, QuerySelect,
 };
 use starriver_identity_application::{
-    dto::user_dto::{input::SecurityEventCmd, output::SecurityEventPage},
-    port::security_event_port::{SecurityEventCursor, SecurityEventFilter, SecurityEventPort},
+    dto::user_dto::{
+        input::{SecurityEventCmd, SecurityEventCursor, SecurityEventQuery},
+        output::SecurityEventDto,
+    },
+    port::security_event_port::SecurityEventPort,
 };
-use starriver_shared_base::{db::Executor, error::QueryError};
+use starriver_shared_base::{
+    db::Executor,
+    dto::{CursorPage, SignedCursor},
+    error::QueryError,
+};
 use time::OffsetDateTime;
 use tracing::error;
 use uuid::Uuid;
@@ -24,34 +31,41 @@ impl<T> SecurityEventPort<T> for DefaultSecurityEventPort
 where
     T: Executor + ConnectionTrait,
 {
-    async fn list(
+    async fn paginate(
         &self,
         conn: &T,
-        filter: SecurityEventFilter,
-    ) -> Result<SecurityEventPage, QueryError> {
-        let limit = filter.limit.clamp(1, 100) as usize;
+        query: SecurityEventQuery,
+    ) -> Result<CursorPage<SecurityEventDto>, QueryError> {
+        let limit = query.pagination.limit as usize;
+        let cursor = query
+            .pagination
+            .cursor
+            .as_ref()
+            .map(|value| value.decode())
+            .transpose()
+            .map_err(QueryError::DbError)?;
 
         let mut cond = Condition::all();
-        if let Some(user_id) = filter.user_id {
+        if let Some(user_id) = query.user_id {
             cond = cond.add(Column::UserId.eq(user_id));
         }
-        if let Some(event_type) = filter.event_type {
+        if let Some(event_type) = query.event_type {
             cond = cond.add(Column::EventType.eq(SecurityEventTypePo::from(event_type)));
         }
-        if let Some(from) = filter.from {
+        if let Some(from) = query.from {
             cond = cond.add(Column::CreatedAt.gte(from));
         }
-        if let Some(to) = filter.to {
+        if let Some(to) = query.to {
             cond = cond.add(Column::CreatedAt.lte(to));
         }
-        if let Some(after) = filter.after {
+        if let Some(cursor) = cursor {
             cond = cond.add(
                 Condition::any()
-                    .add(Column::CreatedAt.lt(after.occurred_at))
+                    .add(Column::CreatedAt.lt(cursor.occurred_at))
                     .add(
                         Condition::all()
-                            .add(Column::CreatedAt.eq(after.occurred_at))
-                            .add(Column::Id.lt(after.id)),
+                            .add(Column::CreatedAt.eq(cursor.occurred_at))
+                            .add(Column::Id.lt(cursor.id)),
                     ),
             );
         }
@@ -80,17 +94,20 @@ where
                     occurred_at: row.occurred_at,
                     id: row.id,
                 })
-                .map(|cursor| cursor.encode())
+                .map(|cursor| SignedCursor::encode(&cursor))
+                .transpose()
+                .map_err(|e| QueryError::DbError(e.to_string()))?
         } else {
             None
         };
+
         let items = rows
             .into_iter()
             .take(limit)
             .map(Into::into)
             .collect::<Vec<_>>();
 
-        Ok(SecurityEventPage { items, next_cursor })
+        Ok(CursorPage { items, next_cursor })
     }
 
     async fn insert(&self, conn: &T, event: SecurityEventCmd) -> Result<(), Infallible> {

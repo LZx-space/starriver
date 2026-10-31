@@ -135,7 +135,7 @@ pub mod input {
         pub to: Option<OffsetDateTime>,
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct SecurityEventCursor {
         pub occurred_at: OffsetDateTime,
         pub id: Uuid,

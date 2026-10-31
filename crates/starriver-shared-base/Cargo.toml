@@ -8,6 +8,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+base64 = { workspace = true }
 equivalent = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }

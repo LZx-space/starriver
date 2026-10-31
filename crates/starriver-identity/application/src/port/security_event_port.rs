@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use starriver_shared_base::{db::Executor, dto::CursorPage, error::QueryError};
 
 use crate::dto::user_dto::{
-    input::{SecurityEventCmd, SecurityEventQuery},
+    input::{SecurityEventCmd, SecurityEventCursor, SecurityEventQuery},
     output::SecurityEventDto,
 };
 
@@ -13,7 +13,7 @@ pub trait SecurityEventPort<T: Executor> {
         &self,
         conn: &T,
         query: SecurityEventQuery,
-    ) -> impl Future<Output = Result<CursorPage<SecurityEventDto>, QueryError>> + Send;
+    ) -> impl Future<Output = Result<CursorPage<SecurityEventCursor, SecurityEventDto>, QueryError>> + Send;
 
     fn insert(
         &self,

@@ -12,7 +12,7 @@ pub struct Model {
     pub username: String,
     pub event_type: SecurityEventTypePo,
     pub message: String,
-    pub created_at: OffsetDateTime,
+    pub occurred_at: OffsetDateTime,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

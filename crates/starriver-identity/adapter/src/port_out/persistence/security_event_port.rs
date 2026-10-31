@@ -13,7 +13,7 @@ use starriver_identity_application::{
 };
 use starriver_shared_base::{
     db::Executor,
-    dto::{CursorPage, SignedCursor},
+    dto::{CursorPage, Signed},
     error::QueryError,
 };
 use time::OffsetDateTime;
@@ -35,15 +35,14 @@ where
         &self,
         conn: &T,
         query: SecurityEventQuery,
-    ) -> Result<CursorPage<SecurityEventDto>, QueryError> {
+    ) -> Result<CursorPage<SecurityEventCursor, SecurityEventDto>, QueryError> {
         let limit = query.pagination.limit as usize;
         let cursor = query
             .pagination
             .cursor
-            .as_ref()
-            .map(|value| value.decode())
+            .map(|e| e.decode())
             .transpose()
-            .map_err(QueryError::DbError)?;
+            .map_err(|e| QueryError::Other(e.to_string()))?;
 
         let mut cond = Condition::all();
         if let Some(user_id) = query.user_id {
@@ -53,18 +52,18 @@ where
             cond = cond.add(Column::EventType.eq(SecurityEventTypePo::from(event_type)));
         }
         if let Some(from) = query.from {
-            cond = cond.add(Column::CreatedAt.gte(from));
+            cond = cond.add(Column::OccurredAt.gte(from));
         }
         if let Some(to) = query.to {
-            cond = cond.add(Column::CreatedAt.lte(to));
+            cond = cond.add(Column::OccurredAt.lte(to));
         }
         if let Some(cursor) = cursor {
             cond = cond.add(
                 Condition::any()
-                    .add(Column::CreatedAt.lt(cursor.occurred_at))
+                    .add(Column::OccurredAt.lt(cursor.occurred_at))
                     .add(
                         Condition::all()
-                            .add(Column::CreatedAt.eq(cursor.occurred_at))
+                            .add(Column::OccurredAt.eq(cursor.occurred_at))
                             .add(Column::Id.lt(cursor.id)),
                     ),
             );
@@ -76,10 +75,9 @@ where
             .column(Column::UserId)
             .column(Column::Username)
             .column(Column::EventType)
-            .column(Column::CreatedAt)
-            .column_as(Column::CreatedAt, "occurred_at")
+            .column(Column::OccurredAt)
             .filter(cond)
-            .order_by_desc(Column::CreatedAt)
+            .order_by_desc(Column::OccurredAt)
             .order_by_desc(Column::Id)
             .limit(limit as u64 + 1)
             .into_model::<SecurityEventRow>()
@@ -89,14 +87,16 @@ where
 
         let has_more = rows.len() > limit;
         let next_cursor = if has_more {
-            rows.get(limit - 1)
-                .map(|row| SecurityEventCursor {
-                    occurred_at: row.occurred_at,
-                    id: row.id,
-                })
-                .map(|cursor| SignedCursor::encode(&cursor))
-                .transpose()
-                .map_err(|e| QueryError::DbError(e.to_string()))?
+            let last = rows.get(limit - 1).ok_or_else(|| {
+                QueryError::Other("has_more=true but rows shorter than limit".into())
+            })?;
+
+            Signed::encode(&SecurityEventCursor {
+                occurred_at: last.occurred_at,
+                id: last.id,
+            })
+            .map(Some)
+            .map_err(|e| QueryError::Other(e.to_string()))?
         } else {
             None
         };
@@ -118,7 +118,7 @@ where
             username: Set(username),
             event_type: Set(event_type.into()),
             message: Set(payload.into_owned()),
-            created_at: Set(OffsetDateTime::now_utc()),
+            occurred_at: Set(OffsetDateTime::now_utc()),
         }
         .insert(conn)
         .await;

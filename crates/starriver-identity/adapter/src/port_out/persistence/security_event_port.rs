@@ -36,11 +36,13 @@ where
         conn: &T,
         query: SecurityEventQuery,
     ) -> Result<CursorPage<SecurityEventCursor, SecurityEventDto>, QueryError> {
+        const SIGNATURE_KEY: &[u8] = b"tmp";
+
         let limit = query.pagination.limit as usize;
         let cursor = query
             .pagination
             .cursor
-            .map(|e| e.decode())
+            .map(|e| e.decode(SIGNATURE_KEY))
             .transpose()
             .map_err(|e| QueryError::Other(e.to_string()))?;
 
@@ -91,10 +93,13 @@ where
                 QueryError::Other("has_more=true but rows shorter than limit".into())
             })?;
 
-            Signed::encode(&SecurityEventCursor {
-                occurred_at: last.occurred_at,
-                id: last.id,
-            })
+            Signed::encode(
+                SIGNATURE_KEY,
+                &SecurityEventCursor {
+                    occurred_at: last.occurred_at,
+                    id: last.id,
+                },
+            )
             .map(Some)
             .map_err(|e| QueryError::Other(e.to_string()))?
         } else {
@@ -111,14 +116,15 @@ where
     }
 
     async fn insert(&self, conn: &T, event: SecurityEventCmd) -> Result<(), Infallible> {
-        let (user_id, username, event_type, payload) = event.into_parts();
+        let (user_id, username, event_type, payload, occurred_at) = event.into_parts();
         let result = ActiveModel {
             id: Set(Uuid::now_v7()),
             user_id: Set(user_id),
             username: Set(username),
             event_type: Set(event_type.into()),
             message: Set(payload.into_owned()),
-            occurred_at: Set(OffsetDateTime::now_utc()),
+            occurred_at: Set(occurred_at),
+            created_at: Set(OffsetDateTime::now_utc()),
         }
         .insert(conn)
         .await;

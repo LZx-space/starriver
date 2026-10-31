@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use validator::Validate;
 
+use crate::singanature::{sign, verify};
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IdName<T> {
     pub id: T,
@@ -81,10 +83,11 @@ impl<T> Signed<T> {
 }
 
 impl<T: Serialize> Signed<T> {
-    pub fn encode(value: &T) -> Result<Self, CursorError> {
+    pub fn encode(key: &[u8], value: &T) -> Result<Self, CursorError> {
         let payload = serde_json::to_string(value)
             .map_err(|e| CursorError::SerializationError(e.to_string()))?;
-        let sig = "123";
+        let sig = sign(key, payload.as_bytes());
+        let sig = URL_SAFE_NO_PAD.encode(&sig);
         let payload = URL_SAFE_NO_PAD.encode(payload.as_bytes());
         let cursor = format!("{payload}.{sig}");
         Ok(Self {
@@ -95,16 +98,20 @@ impl<T: Serialize> Signed<T> {
 }
 
 impl<T: DeserializeOwned> Signed<T> {
-    pub fn decode(&self) -> Result<T, CursorError> {
-        let (payload, _sig) = self
+    pub fn decode(&self, key: &[u8]) -> Result<T, CursorError> {
+        let (payload, sig) = self
             .cursor
             .rsplit_once('.')
             .ok_or(CursorError::Malformed("without signature".to_string()))?;
         let payload = URL_SAFE_NO_PAD
             .decode(payload)
             .map_err(|e| CursorError::Malformed(e.to_string()))?;
-        // let key = Key::from_str("123")?;
-        // key.verify(payload.as_bytes(), sig)?;
+        let sig = URL_SAFE_NO_PAD
+            .decode(sig)
+            .map_err(|e| CursorError::Malformed(e.to_string()))?;
+        if !verify(key, &payload, &sig) {
+            return Err(CursorError::SignatureVerificationError);
+        }
         Ok(serde_json::from_slice(&payload)
             .map_err(|e| CursorError::DeserializationError(e.to_string())))?
     }
@@ -120,8 +127,8 @@ pub enum CursorError {
     DeserializationError(String),
     #[error("Signature error: {0}")]
     SignatureError(String),
-    #[error("Signature verification error: {0}")]
-    SignatureVerificationError(String),
+    #[error("Signature verification error")]
+    SignatureVerificationError,
 }
 
 /// 游标分页查询

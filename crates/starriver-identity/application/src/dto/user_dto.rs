@@ -63,6 +63,7 @@ pub mod input {
         username: String,
         event_type: SecurityEventType,
         payload: Cow<'static, str>,
+        occurred_at: OffsetDateTime,
     }
 
     impl SecurityEventCmd {
@@ -90,11 +91,26 @@ pub mod input {
                 username: username.into(),
                 event_type,
                 payload,
+                occurred_at: OffsetDateTime::now_utc(),
             }
         }
 
-        pub fn into_parts(self) -> (Uuid, String, SecurityEventType, Cow<'static, str>) {
-            (self.user_id, self.username, self.event_type, self.payload)
+        pub fn into_parts(
+            self,
+        ) -> (
+            Uuid,
+            String,
+            SecurityEventType,
+            Cow<'static, str>,
+            OffsetDateTime,
+        ) {
+            (
+                self.user_id,
+                self.username,
+                self.event_type,
+                self.payload,
+                self.occurred_at,
+            )
         }
     }
 
@@ -192,7 +208,7 @@ pub mod input {
                 SecurityEventType::PasswordChanged,
                 "x".repeat(150),
             );
-            let (_, _, _, payload) = cmd.into_parts();
+            let (_, _, _, payload, _) = cmd.into_parts();
             assert_eq!(payload.chars().count(), MAX_PAYLOAD_CHARS);
         }
     }

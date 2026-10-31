@@ -13,6 +13,7 @@ pub struct Model {
     pub event_type: SecurityEventTypePo,
     pub message: String,
     pub occurred_at: OffsetDateTime,
+    pub created_at: OffsetDateTime,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

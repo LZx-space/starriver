@@ -1,6 +1,7 @@
 use std::{hash::Hash, marker::PhantomData, time::Duration};
 
-use starriver_shared_base::cache::Cache;
+use moka::Equivalent;
+use starriver_shared_base::cache::{Cache, Invalidator};
 
 pub struct DefaultCache<K, V>
 where
@@ -46,8 +47,35 @@ where
     {
         self.inner.try_get_with(key, init)
     }
+}
+
+impl<K, V> Invalidator<K> for DefaultCache<K, V>
+where
+    K: Hash + Eq + Send + Sync + 'static,
+    V: Clone + Send + Sync + 'static,
+{
+    async fn invalidate<Q>(&self, key: &Q)
+    where
+        Q: Equivalent<K> + Hash + ?Sized,
+    {
+        self.inner.invalidate(key).await;
+    }
 
     fn invalidate_all(&self) {
         self.inner.invalidate_all()
+    }
+}
+
+impl<K, V> Clone for DefaultCache<K, V>
+where
+    K: Hash + Eq + Send + Sync + 'static,
+    V: Clone + Send + Sync + 'static,
+{
+    fn clone(&self) -> Self {
+        DefaultCache {
+            inner: self.inner.clone(),
+            _k: PhantomData,
+            _v: PhantomData,
+        }
     }
 }

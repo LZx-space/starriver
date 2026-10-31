@@ -10,7 +10,7 @@ pub struct Model {
     pub id: Uuid,
     pub name: String,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

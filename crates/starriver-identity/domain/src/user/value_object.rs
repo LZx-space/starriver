@@ -32,6 +32,10 @@ impl Username {
         Self(username)
     }
 
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -49,7 +53,10 @@ impl Display for Username {
 pub struct HashedPassword(pub(crate) String);
 
 impl HashedPassword {
-    pub fn new(hashed_password: &str) -> Result<Self, DomainError> {
+    /// # returns
+    ///  -  `Ok(HashedPassword)`
+    ///  - `Err(DomainError::InvalidPasswordHash)`
+    pub fn new(hashed_password: String) -> Result<Self, DomainError> {
         if hashed_password.is_empty() {
             return Err(DomainError::InvalidPasswordHash);
         }
@@ -58,11 +65,15 @@ impl HashedPassword {
             hashed_password.len() >= 50,
             "HashedPassword 应来自密码编码器，收到非法输入"
         );
-        Ok(Self(hashed_password.to_string()))
+        Ok(Self(hashed_password))
     }
 
     pub(crate) fn from_repo(hashed_password: String) -> Self {
         Self(hashed_password)
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 
     pub fn as_str(&self) -> &str {
@@ -82,6 +93,9 @@ impl Display for HashedPassword {
 pub struct Email(pub(crate) String);
 
 impl Email {
+    /// 与 `user.email` 列宽 `varchar(254)` 保持一致（RFC 5321 的上限）。
+    pub const MAX_LEN: usize = 254;
+
     /// 邮箱身份的唯一规范形式：trim + lowercase。
     ///
     /// 写入（[`Email::new`]）与所有把邮箱当查询/缓存键的地方必须一致使用此函数，
@@ -92,6 +106,10 @@ impl Email {
 
     pub fn new(email: &str, spec: &EmailSpec) -> Result<Self, DomainError> {
         let email = Self::normalize(email);
+
+        if email.chars().count() > Self::MAX_LEN {
+            return Err(DomainError::InvalidEmailFormat);
+        }
         spec.validate(&email)?;
         Ok(Self(email))
     }
@@ -109,6 +127,10 @@ impl Email {
         let (local, domain) = (parts[0], parts[1]);
         let masked_local = format!("{}{}", &local[..1], "*".repeat(local.len() - 1));
         format!("{}@{}", masked_local, domain)
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 
     pub fn as_str(&self) -> &str {
@@ -209,6 +231,23 @@ mod email_normalization_tests {
         let email = Email::new("  Alice@Example.COM ", &dummy_spec()).expect("valid email");
         assert_eq!(email.as_str(), "alice@example.com");
     }
+
+    #[test]
+    fn new_accepts_email_at_column_width() {
+        let email = format!("{}@example.com", "a".repeat(Email::MAX_LEN - 12));
+        assert_eq!(email.chars().count(), Email::MAX_LEN);
+        assert!(Email::new(&email, &dummy_spec()).is_ok());
+    }
+
+    #[test]
+    fn new_rejects_email_beyond_column_width() {
+        let email = format!("{}@example.com", "a".repeat(Email::MAX_LEN - 11));
+        assert_eq!(email.chars().count(), Email::MAX_LEN + 1);
+        assert!(matches!(
+            Email::new(&email, &dummy_spec()),
+            Err(DomainError::InvalidEmailFormat)
+        ));
+    }
 }
 
 #[cfg(test)]
@@ -217,20 +256,20 @@ mod hashed_password_tests {
 
     #[test]
     fn new_rejects_empty() {
-        assert!(HashedPassword::new("").is_err());
+        assert!(HashedPassword::new("".into()).is_err());
     }
 
     #[test]
     #[should_panic(expected = "HashedPassword 应来自密码编码器")]
     fn new_panics_on_too_short() {
         // < 50 字符在 debug 模式下触发 panic
-        let _ = HashedPassword::new("short");
+        let _ = HashedPassword::new("short".into());
     }
 
     #[test]
     fn new_accepts_long_hash() {
         let hash = "a".repeat(60);
-        let pwd = HashedPassword::new(&hash).unwrap();
-        assert_eq!(pwd.as_str(), hash);
+        let pwd = HashedPassword::new(hash.clone()).unwrap();
+        assert_eq!(pwd.0, hash);
     }
 }

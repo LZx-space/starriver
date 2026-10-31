@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::attachment::value_object::{Extension, FileSize};
 
 #[derive(Clone, Dissolve)]
+#[dissolve(rename = "into_parts")]
 pub struct Attachment {
     /// 作为文件名，这样无论文件存储位置如何变化都能通过配置文件定位到存储地址和保持URL不变
     id: Uuid,

@@ -1,10 +1,10 @@
 use axum::extract::State;
 use axum::response::IntoResponse;
 
-use starriver_identity_application::dto::user_dto::req::{
+use starriver_identity_application::dto::user_dto::input::{
     ChangeMyPasswordCmd, ResetPasswordCmd, SendVerificationCodeCmd, UserRegisterCmd,
 };
-use starriver_shared_base::dto::PageQuery;
+use starriver_shared_base::dto::OffsetPageQuery;
 use starriver_shared_infra::extract::{Json, JsonEx, Query};
 use starriver_shared_infra::middleware::authentication::default_impl::AuthenticatedJwtClaims;
 
@@ -20,7 +20,7 @@ pub async fn me(user: AuthenticatedJwtClaims) -> Result<impl IntoResponse, ApiEr
 pub async fn paginate(
     state: State<IdentityState>,
     _: AuthenticatedJwtClaims,
-    q: Query<PageQuery>,
+    q: Query<OffsetPageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
     let page = state.user_interactor.paginate(q.0).await?;
     Ok(Json(page))

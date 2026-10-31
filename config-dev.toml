@@ -14,10 +14,7 @@ max_files = 30
 [csrf]
 enabled = false
 # no need for localhost
-trusted_origins = [
-    "https://www.example.com",
-    "https://example.com",
-]
+trusted_origins = ["https://www.example.com", "https://example.com"]
 
 [auth]
 jws_exp_hours = 8
@@ -52,3 +49,4 @@ code_send_cooldown_secs = 60
 [ctx_blogging.cache]
 base_cache_ttl_sec = 3600
 base_cache_jitter_sec_range = 600
+post_page_cache_max_capacity = 128

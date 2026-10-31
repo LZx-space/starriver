@@ -9,7 +9,7 @@ CREATE TABLE public."user"
     password_window_start timestamp with time zone,
     password_attempts     smallint  NOT NULL DEFAULT 0,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone,
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_username UNIQUE (username),
     CONSTRAINT uq_email UNIQUE (email)
 );

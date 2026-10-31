@@ -47,6 +47,9 @@ impl PasswordSpec {
         })
     }
 
+    /// # returns
+    /// - `Ok(())` 通过验证
+    /// - `Err(DomainError::InvalidPasswordFormat)` 验证失败，密码格式不正确
     pub fn validate(&self, password: &str) -> Result<(), DomainError> {
         self.0.validate(password)
     }

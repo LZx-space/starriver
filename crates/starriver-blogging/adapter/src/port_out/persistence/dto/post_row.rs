@@ -1,5 +1,5 @@
 use sea_orm::FromQueryResult;
-use starriver_blogging_application::dto::post_dto::res::PostExcerptDto;
+use starriver_blogging_application::dto::post_dto::output::PostExcerptDto;
 use starriver_blogging_domain::post::value_object::PostState;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ pub struct PostExcerptRow {
     pub category: String,
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 /// cuz：Left Join Category
@@ -30,7 +30,7 @@ pub struct PostDetailRow {
     pub category_name: String,
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 /// cuz：snippet
@@ -53,7 +53,7 @@ impl From<PostExcerptRow> for PostExcerptDto {
             id: value.id,
             title: value.title,
             excerpt: value.excerpt,
-            state: PostState::from(value.state).to_string(),
+            state: PostState::from(value.state),
             category: value.category,
             published_at: value.published_at,
             created_at: value.created_at,

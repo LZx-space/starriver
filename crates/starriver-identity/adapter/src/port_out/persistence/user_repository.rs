@@ -13,10 +13,8 @@ use sea_orm::sea_query::Expr;
 use starriver_identity_application::port::user_repository::UserRepository;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::value_object::Email;
-use starriver_shared_base::db::Revision;
+use starriver_shared_base::db::{Executor, Revision};
 use starriver_shared_base::error::RepositoryError;
-use starriver_shared_infra::db::DefaultConnection;
-use starriver_shared_infra::db::DefaultTransaction;
 use starriver_shared_infra::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 
@@ -27,10 +25,13 @@ use crate::port_out::persistence::po::user_po::Entity;
 
 pub struct DefaultUserRepository;
 
-impl DefaultUserRepository {
+impl<T> UserRepository<T> for DefaultUserRepository
+where
+    T: Executor + ConnectionTrait,
+{
     async fn find_by_username(
         &self,
-        conn: &impl ConnectionTrait,
+        conn: &T,
         username: &str,
     ) -> Result<Option<User>, RepositoryError> {
         Entity::find()
@@ -54,11 +55,7 @@ impl DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn find_by_email(
-        &self,
-        conn: &impl ConnectionTrait,
-        email: &str,
-    ) -> Result<Option<User>, RepositoryError> {
+    async fn find_by_email(&self, conn: &T, email: &str) -> Result<Option<User>, RepositoryError> {
         let email = Email::normalize(email);
         Entity::find()
             .filter(Column::Email.eq(email.as_str()))
@@ -81,11 +78,7 @@ impl DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn insert(
-        &self,
-        conn: &impl ConnectionTrait,
-        user: User,
-    ) -> Result<User, RepositoryError> {
+    async fn insert(&self, conn: &T, user: User) -> Result<User, RepositoryError> {
         let (
             id,
             username,
@@ -95,12 +88,12 @@ impl DefaultUserRepository {
             password_locked_until,
             password_window_start,
             password_attempts,
-        ) = user.dissolve();
+        ) = user.into_parts();
         ActiveModel {
             id: Set(id),
-            username: Set(username.to_string()),
-            password: Set(password.as_str().to_string()),
-            email: Set(email.to_string()),
+            username: Set(username.into_inner()),
+            password: Set(password.into_inner()),
+            email: Set(email.into_inner()),
             life_cycle: Set(life_cycle.into()),
             password_locked_until: Set(password_locked_until),
             password_window_start: Set(password_window_start),
@@ -125,11 +118,7 @@ impl DefaultUserRepository {
         })
     }
 
-    async fn delete(
-        &self,
-        conn: &impl ConnectionTrait,
-        user_id: uuid::Uuid,
-    ) -> Result<bool, RepositoryError> {
+    async fn delete(&self, conn: &T, user_id: uuid::Uuid) -> Result<bool, RepositoryError> {
         Entity::delete_by_id(user_id)
             .exec(conn)
             .await
@@ -137,12 +126,12 @@ impl DefaultUserRepository {
             .map_err(db_2_repo_error)
     }
 
-    async fn update(
-        &self,
-        conn: &impl ConnectionTrait,
-        user: Revision<User>,
-    ) -> Result<User, RepositoryError> {
-        let (original, modified) = user.dissolve();
+    async fn update(&self, conn: &T, user: Revision<User>) -> Result<User, RepositoryError> {
+        if !user.is_changed() {
+            return Ok(user.into_original());
+        }
+
+        let (original, modified) = user.into_parts();
         let (
             user_id,
             username,
@@ -152,7 +141,7 @@ impl DefaultUserRepository {
             password_locked_until,
             password_window_start,
             password_attempts,
-        ) = original.dissolve();
+        ) = original.into_parts();
         let (
             _user_id,
             new_username,
@@ -162,14 +151,16 @@ impl DefaultUserRepository {
             new_password_locked_until,
             new_password_window_start,
             new_password_attempts,
-        ) = modified.dissolve();
+        ) = modified.into_parts();
 
-        let mut username = Unchanged(username.as_str().to_string());
-        username.set_if_not_equals(new_username.as_str().to_string());
-        let mut password = Unchanged(password.as_str().to_string());
-        password.set_if_not_equals(new_password.as_str().to_string());
-        let mut email = Unchanged(email.to_string());
-        email.set_if_not_equals(new_email.to_string());
+        let window_changed = password_window_start != new_password_window_start;
+
+        let mut username = Unchanged(username.into_inner());
+        username.set_if_not_equals(new_username.into_inner());
+        let mut password = Unchanged(password.into_inner());
+        password.set_if_not_equals(new_password.into_inner());
+        let mut email = Unchanged(email.into_inner());
+        email.set_if_not_equals(new_email.into_inner());
         let mut life_cycle = Unchanged(life_cycle.into());
         life_cycle.set_if_not_equals(new_life_cycle.into());
         let mut password_locked_until = Unchanged(password_locked_until);
@@ -187,7 +178,7 @@ impl DefaultUserRepository {
             password_window_start,
             password_attempts: NotSet,
             created_at: NotSet,
-            updated_at: Set(Some(OffsetDateTime::now_utc())),
+            updated_at: Set(OffsetDateTime::now_utc()),
         };
 
         // 保证原子性，避免事务1更新前事务2拿到相同值然后设置一个相同值
@@ -195,14 +186,16 @@ impl DefaultUserRepository {
         // 行锁方案：让连接池和数据库承压，高并发连接挂起影响其它查询，并且数据库压力大
         let attempts_expr_opt = if password_attempts == new_password_attempts {
             None
+        } else if new_password_attempts == 0 {
+            // 认证成功/改密成功：清零
+            Some(Expr::value(0i16))
+        } else if window_changed {
+            // 新窗口：域已经把计数重置为 1，不能拿数据库里的旧窗口计数 +1，
+            // 否则窗口过期后的第一次失败会把上一窗口的计数带进来，导致提前锁定。
+            Some(Expr::value(new_password_attempts as i16))
         } else {
-            let attempts_expr = Expr::case(
-                Expr::value(new_password_attempts).eq(0), // WHEN new = 0
-                Expr::value(0),                           // THEN 0
-            )
-            .finally(Expr::col(Column::PasswordAttempts).add(1)) // ELSE +1
-            .into();
-            Some(attempts_expr)
+            // 同一窗口内的并发失败：不采用实体业务计算值，而在数据库当前值上原子 +1
+            Some(Expr::col(Column::PasswordAttempts).add(1))
         };
 
         user_po::Entity::update_many()
@@ -229,81 +222,5 @@ impl DefaultUserRepository {
                     m.password_attempts as u8,
                 )
             })
-    }
-}
-
-impl UserRepository<DefaultConnection> for DefaultUserRepository {
-    async fn find_by_username(
-        &self,
-        conn: &DefaultConnection,
-        username: &str,
-    ) -> Result<Option<User>, RepositoryError> {
-        self.find_by_username(conn, username).await
-    }
-
-    async fn insert(&self, conn: &DefaultConnection, user: User) -> Result<User, RepositoryError> {
-        self.insert(conn, user).await
-    }
-
-    async fn update(
-        &self,
-        conn: &DefaultConnection,
-        user: Revision<User>,
-    ) -> Result<User, RepositoryError> {
-        self.update(conn, user).await
-    }
-
-    async fn delete(
-        &self,
-        conn: &DefaultConnection,
-        user_id: uuid::Uuid,
-    ) -> Result<bool, RepositoryError> {
-        self.delete(conn, user_id).await
-    }
-
-    fn find_by_email(
-        &self,
-        conn: &DefaultConnection,
-        email: &str,
-    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send {
-        self.find_by_email(conn, email)
-    }
-}
-
-impl UserRepository<DefaultTransaction> for DefaultUserRepository {
-    async fn find_by_username(
-        &self,
-        conn: &DefaultTransaction,
-        username: &str,
-    ) -> Result<Option<User>, RepositoryError> {
-        self.find_by_username(conn, username).await
-    }
-
-    async fn insert(&self, conn: &DefaultTransaction, user: User) -> Result<User, RepositoryError> {
-        self.insert(conn, user).await
-    }
-
-    async fn update(
-        &self,
-        conn: &DefaultTransaction,
-        user: Revision<User>,
-    ) -> Result<User, RepositoryError> {
-        self.update(conn, user).await
-    }
-
-    async fn delete(
-        &self,
-        conn: &DefaultTransaction,
-        user_id: uuid::Uuid,
-    ) -> Result<bool, RepositoryError> {
-        self.delete(conn, user_id).await
-    }
-
-    fn find_by_email(
-        &self,
-        conn: &DefaultTransaction,
-        email: &str,
-    ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send {
-        self.find_by_email(conn, email)
     }
 }

@@ -59,4 +59,6 @@ pub enum RepositoryError {
 pub enum QueryError {
     #[error("查询数据库错误：{0}")]
     DbError(String),
+    #[error("其它错误：{0}")]
+    Other(String),
 }

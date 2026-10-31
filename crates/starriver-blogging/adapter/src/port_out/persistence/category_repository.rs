@@ -5,11 +5,11 @@ use sea_orm::{
 };
 use starriver_blogging_application::port::category_repository::CategoryRepository;
 use starriver_blogging_domain::category::entity::Category;
-use starriver_shared_base::{db::Revision, error::RepositoryError};
-use starriver_shared_infra::{
-    db::{DefaultConnection, DefaultTransaction},
-    error_mapping::db_2_repo_error,
+use starriver_shared_base::{
+    db::{Executor, Revision},
+    error::RepositoryError,
 };
+use starriver_shared_infra::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -17,12 +17,11 @@ use crate::port_out::persistence::po::category_po::{ActiveModel, Entity};
 
 pub struct DefaultCategoryRepository;
 
-impl DefaultCategoryRepository {
-    async fn find_by_id(
-        &self,
-        conn: &impl ConnectionTrait,
-        id: Uuid,
-    ) -> Result<Option<Category>, RepositoryError> {
+impl<T> CategoryRepository<T> for DefaultCategoryRepository
+where
+    T: Executor + ConnectionTrait,
+{
+    async fn find_by_id(&self, conn: &T, id: Uuid) -> Result<Option<Category>, RepositoryError> {
         Entity::find_by_id(id)
             .one(conn)
             .await
@@ -30,11 +29,7 @@ impl DefaultCategoryRepository {
             .map(|e| e.map(|e| Category::from_repo(e.id, e.name)))
     }
 
-    async fn exists_by_id(
-        &self,
-        conn: &impl ConnectionTrait,
-        id: Uuid,
-    ) -> Result<bool, RepositoryError> {
+    async fn exists_by_id(&self, conn: &T, id: Uuid) -> Result<bool, RepositoryError> {
         Entity::find_by_id(id)
             .one(conn)
             .await
@@ -42,12 +37,8 @@ impl DefaultCategoryRepository {
             .map(|e| e.is_some())
     }
 
-    async fn insert(
-        &self,
-        conn: &impl ConnectionTrait,
-        category: Category,
-    ) -> Result<Category, RepositoryError> {
-        let (id, name) = category.dissolve();
+    async fn insert(&self, conn: &T, category: Category) -> Result<Category, RepositoryError> {
+        let (id, name) = category.into_parts();
         ActiveModel {
             id: Set(id),
             name: Set(name),
@@ -62,15 +53,19 @@ impl DefaultCategoryRepository {
 
     async fn update(
         &self,
-        conn: &impl ConnectionTrait,
+        conn: &T,
         category: Revision<Category>,
     ) -> Result<Category, RepositoryError> {
-        let (id, name) = category.dissolve().1.dissolve();
+        if !category.is_changed() {
+            return Ok(category.into_original());
+        }
+
+        let (id, name) = category.into_modified().into_parts();
         ActiveModel {
             id: Unchanged(id),
             name: Set(name),
             created_at: NotSet,
-            updated_at: Set(Some(OffsetDateTime::now_utc())),
+            updated_at: Set(OffsetDateTime::now_utc()),
         }
         .update(conn)
         .await
@@ -78,87 +73,11 @@ impl DefaultCategoryRepository {
         .map(|e| Category::from_repo(e.id, e.name))
     }
 
-    async fn delete(&self, conn: &impl ConnectionTrait, id: Uuid) -> Result<bool, RepositoryError> {
+    async fn delete(&self, conn: &T, id: Uuid) -> Result<bool, RepositoryError> {
         Entity::delete_by_id(id)
             .exec(conn)
             .await
             .map_err(db_2_repo_error)
             .map(|r| r.rows_affected > 0)
-    }
-}
-
-impl CategoryRepository<DefaultConnection> for DefaultCategoryRepository {
-    async fn find_by_id(
-        &self,
-        conn: &DefaultConnection,
-        id: Uuid,
-    ) -> Result<Option<Category>, RepositoryError> {
-        self.find_by_id(conn, id).await
-    }
-
-    async fn exists_by_id(
-        &self,
-        conn: &DefaultConnection,
-        id: Uuid,
-    ) -> Result<bool, RepositoryError> {
-        self.exists_by_id(conn, id).await
-    }
-
-    async fn insert(
-        &self,
-        conn: &DefaultConnection,
-        category: Category,
-    ) -> Result<Category, RepositoryError> {
-        self.insert(conn, category).await
-    }
-
-    async fn update(
-        &self,
-        conn: &DefaultConnection,
-        category: Revision<Category>,
-    ) -> Result<Category, RepositoryError> {
-        self.update(conn, category).await
-    }
-
-    async fn delete(&self, conn: &DefaultConnection, id: Uuid) -> Result<bool, RepositoryError> {
-        self.delete(conn, id).await
-    }
-}
-
-impl CategoryRepository<DefaultTransaction> for DefaultCategoryRepository {
-    async fn find_by_id(
-        &self,
-        conn: &DefaultTransaction,
-        id: Uuid,
-    ) -> Result<Option<Category>, RepositoryError> {
-        self.find_by_id(conn, id).await
-    }
-
-    async fn exists_by_id(
-        &self,
-        conn: &DefaultTransaction,
-        id: Uuid,
-    ) -> Result<bool, RepositoryError> {
-        self.exists_by_id(conn, id).await
-    }
-
-    async fn insert(
-        &self,
-        conn: &DefaultTransaction,
-        category: Category,
-    ) -> Result<Category, RepositoryError> {
-        self.insert(conn, category).await
-    }
-
-    async fn update(
-        &self,
-        conn: &DefaultTransaction,
-        category: Revision<Category>,
-    ) -> Result<Category, RepositoryError> {
-        self.update(conn, category).await
-    }
-
-    async fn delete(&self, conn: &DefaultTransaction, id: Uuid) -> Result<bool, RepositoryError> {
-        self.delete(conn, id).await
     }
 }

@@ -81,6 +81,9 @@ impl From<RepositoryError> for CtxError {
             RepositoryError::NotFound(_) => CtxError::NotFound(e.to_string()),
             RepositoryError::UniqueViolation(_) => CtxError::Conflict(e.to_string()),
             RepositoryError::ForeignKeyViolation(_) => CtxError::Conflict(e.to_string()),
+            RepositoryError::OptimisticLock { entity, id } => {
+                CtxError::Conflict(format!("entity {} id {}", entity, id))
+            }
             // 其他基础设施错误不暴露细节
             _ => {
                 error!(error=%e, "repository error");

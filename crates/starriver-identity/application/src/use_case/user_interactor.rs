@@ -1,10 +1,10 @@
 use starriver_identity_domain::{
-    password_encoder::PasswordEncoder, password_service::PasswordDomainService,
+    error::DomainError, password_encoder::PasswordEncoder, password_service::PasswordDomainService,
     user::factory::UserFactory,
 };
 use starriver_shared_base::{
     db::{Connection, Revision, Transaction},
-    dto::{PageQuery, PageResult},
+    dto::{OffsetPage, OffsetPageQuery},
     error::RepositoryError,
 };
 use std::convert::Infallible;
@@ -12,11 +12,11 @@ use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{
-        req::{
+        input::{
             ChangeMyPasswordCmd, ResetPasswordCmd, SecurityEventCmd, SecurityEventType,
             UserRegisterCmd,
         },
-        res::UserDetailDto,
+        output::UserDetailDto,
     },
     error::CtxError,
     port::{
@@ -41,7 +41,7 @@ where
     Conn: Connection,
     UQ: UserQuery<Conn> + Sync,
     UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
-    SEP: SecurityEventPort<<Conn as Connection>::Transaction> + Sync,
+    SEP: SecurityEventPort<Conn> + Sync,
     VCS: EmailVerificationService + Send + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
@@ -66,7 +66,10 @@ where
         }
     }
 
-    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<UserDetailDto>, CtxError> {
+    pub async fn paginate(
+        &self,
+        q: OffsetPageQuery,
+    ) -> Result<OffsetPage<UserDetailDto>, CtxError> {
         self.user_query
             .paginate(&self.conn, q)
             .await
@@ -100,9 +103,9 @@ where
         let email = cmd.email.as_str();
         let matches = self
             .verification_code_service
-            .validate_code(email, verification_code)
+            .check_code(email, verification_code)
             .await
-            .inspect_err(|e| info!(email=%email, error=%e, "register user validate code failed"))?;
+            .inspect_err(|e| info!(email=%email, error=%e, "register user check code failed"))?;
         if !matches {
             return Err(CtxError::InvalidInput("invalid email code".to_string()));
         }
@@ -115,6 +118,15 @@ where
             .insert(&self.conn, user)
             .await
             .inspect_err(|e| error!(email=%email, error=%e, "repository insert user failed"))?;
+
+        // 业务成功后再消费验证码；消费失败只记日志，用户已经创建成功
+        if let Err(e) = self
+            .verification_code_service
+            .consume_code(email, verification_code)
+            .await
+        {
+            error!(email=%email, error=%e, "consume verification code failed");
+        }
         Ok(())
     }
 
@@ -131,56 +143,72 @@ where
                 "new password and confirm password do not match".to_string(),
             ));
         }
-        let tx = self.conn.begin().await.map_err(|e| {
-            error!(error = %e, "begin transaction failed");
-            CtxError::Internal
-        })?;
+        let user_opt = self
+            .user_repo
+            .find_by_username(&self.conn, username)
+            .await?;
+        let mut user = user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
 
-        let result: Result<(), CtxError> = async {
-            let user_opt = self.user_repo.find_by_username(&tx, username).await?;
-            let mut user =
-                user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
+        let user_id = *user.id();
+        let original = user.clone();
+        let changed = self.pwd_service.change_password(
+            &mut user,
+            cmd.cur_password.as_str(),
+            cmd.new_password.as_str(),
+        );
 
-            let user_id = *user.id();
-            let original = user.clone();
-            self.pwd_service.change_password(
-                &mut user,
-                cmd.cur_password.as_str(),
-                cmd.new_password.as_str(),
-            )?;
-
-            self.user_repo
-                .update(&tx, Revision::new(original, user))
-                .await?;
-            self.security_event_port
-                .insert(
-                    &tx,
-                    SecurityEventCmd {
-                        user_id,
-                        event_type: SecurityEventType::PasswordChanged,
-                        payload: "password changed".to_string(),
-                    },
-                )
-                .await?;
-            Ok(())
-        }
-        .await;
-
-        match result {
+        match changed {
             Ok(_) => {
-                tx.commit().await.map_err(|e| {
-                    error!(error=%e, "commit transaction failed");
+                // 主业务写入只有 user 更新；审计在提交后 best-effort 执行。
+                let tx = self.conn.begin().await.map_err(|e| {
+                    error!(error = %e, "begin transaction failed");
                     CtxError::Internal
                 })?;
-                Ok(())
+
+                let result: Result<(), CtxError> = async {
+                    self.user_repo
+                        .update(&tx, Revision::new(original, user))
+                        .await?;
+                    Ok(())
+                }
+                .await;
+
+                match result {
+                    Ok(_) => {
+                        tx.commit().await.map_err(|e| {
+                            error!(error=%e, "commit transaction failed");
+                            CtxError::Internal
+                        })?;
+                        self.security_event_port
+                            .insert(
+                                &self.conn,
+                                SecurityEventCmd::new(
+                                    user_id,
+                                    username,
+                                    SecurityEventType::PasswordChanged,
+                                    "password changed",
+                                ),
+                            )
+                            .await;
+                        Ok(())
+                    }
+                    Err(e) => {
+                        tx.rollback().await.map_err(|e| {
+                            error!(username=%username, error=%e, "rollback transaction failed");
+                            CtxError::Internal
+                        })?;
+                        Err(e)
+                    }
+                }
             }
-            Err(e) => {
-                tx.rollback().await.map_err(|e| {
-                    error!(username=%username, error=%e, "rollback transaction failed");
-                    CtxError::Internal
-                })?;
-                Err(e)
+            Err(DomainError::BadPassword) => {
+                // 失败计数需要持久化：单条更新，不需要事务
+                self.user_repo
+                    .update(&self.conn, Revision::new(original, user))
+                    .await?;
+                Err(CtxError::from(DomainError::BadPassword))
             }
+            Err(e) => Err(CtxError::from(e)),
         }
     }
 
@@ -230,7 +258,7 @@ where
         // 先验码后查库：验证码无效时零 DB 访问，且“账号不存在”与“验证码错误”响应完全一致，防枚举
         let matches = self
             .verification_code_service
-            .validate_code(email, &cmd.verification_code)
+            .check_code(email, &cmd.verification_code)
             .await
             .map_err(|e| CtxError::internal("reset password", e))?;
         if !matches {
@@ -239,34 +267,28 @@ where
             ));
         }
 
+        let Some(mut user) = self.user_repo.find_by_email(&self.conn, email).await? else {
+            // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
+            warn!(email = %email, "account not found after code validation");
+            return Err(CtxError::InvalidInput(
+                "verification code invalid".to_owned(),
+            ));
+        };
+        let user_id = *user.id();
+        let event_username = user.username().to_string();
+        let origin = user.clone();
+        // 密码编码（Argon2）在事务外完成
+        self.pwd_service
+            .reset_password(&mut user, &cmd.new_password)?;
+
+        // 主业务写入只有 user 更新；审计在提交后 best-effort 执行。
         let tx = self.conn.begin().await.map_err(|e| {
             error!(error = %e, "begin transaction failed");
             CtxError::Internal
         })?;
         let result = async {
-            let Some(mut user) = self.user_repo.find_by_email(&tx, email).await? else {
-                // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
-                warn!(email = %email, "account not found after code validation");
-                return Err(CtxError::InvalidInput(
-                    "verification code invalid".to_owned(),
-                ));
-            };
-            let user_id = *user.id();
-            let origin = user.clone();
-            self.pwd_service
-                .reset_password(&mut user, &cmd.new_password)?;
             self.user_repo
                 .update(&tx, Revision::new(origin, user))
-                .await?;
-            self.security_event_port
-                .insert(
-                    &tx,
-                    SecurityEventCmd {
-                        user_id,
-                        event_type: SecurityEventType::PasswordChanged,
-                        payload: "password reset with verification code".to_string(),
-                    },
-                )
                 .await?;
             Ok(())
         }
@@ -278,6 +300,27 @@ where
                     error!(email = %email, error=%e, "commit transaction failed");
                     CtxError::Internal
                 })?;
+
+                self.security_event_port
+                    .insert(
+                        &self.conn,
+                        SecurityEventCmd::new(
+                            user_id,
+                            event_username,
+                            SecurityEventType::PasswordReset,
+                            "password reset with verification code",
+                        ),
+                    )
+                    .await;
+
+                // 业务提交成功后再消费验证码；消费失败只记日志
+                if let Err(e) = self
+                    .verification_code_service
+                    .consume_code(email, &cmd.verification_code)
+                    .await
+                {
+                    error!(email=%email, error=%e, "consume verification code failed");
+                }
                 Ok(())
             }
             Err(e) => {

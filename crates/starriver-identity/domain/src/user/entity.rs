@@ -10,7 +10,8 @@ use crate::user::{
 
 // -----Aggregate Root User------------------------------------------------------
 /// The user aggregate. User is the aggregate root.
-#[derive(Clone, Debug, Getters, Dissolve)]
+#[derive(Clone, Debug, Getters, Dissolve, PartialEq)]
+#[dissolve(rename = "into_parts")]
 pub struct User {
     id: Uuid,
     username: Username,

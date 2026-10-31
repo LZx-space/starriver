@@ -3,11 +3,11 @@ use sea_orm::{
     sea_query::NullOrdering,
 };
 use starriver_identity_application::{
-    dto::user_dto::res::UserDetailDto, port::user_query::UserQuery,
+    dto::user_dto::output::UserDetailDto, port::user_query::UserQuery,
 };
 use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::{
-    dto::{PageQuery, PageResult},
+    dto::{OffsetPage, OffsetPageQuery},
     error::QueryError,
 };
 use starriver_shared_infra::db::DefaultConnection;
@@ -20,8 +20,8 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
     async fn paginate(
         &self,
         conn: &DefaultConnection,
-        q: PageQuery,
-    ) -> Result<PageResult<UserDetailDto>, QueryError> {
+        q: OffsetPageQuery,
+    ) -> Result<OffsetPage<UserDetailDto>, QueryError> {
         let paginator = Entity::find()
             .order_by_with_nulls(Column::UpdatedAt, Order::Desc, NullOrdering::Last)
             .paginate(conn, q.page_size);
@@ -44,7 +44,7 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
             .num_items()
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(PageResult::new(q.page, q.page_size, total_items, users))
+        Ok(OffsetPage::new(q.page, q.page_size, total_items, users))
     }
 
     async fn exists_by_email(

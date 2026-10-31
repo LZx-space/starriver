@@ -21,7 +21,7 @@ pub trait PostRepository<T: Executor> {
         post: Post,
     ) -> impl Future<Output = Result<Post, RepositoryError>> + Send;
 
-    /// 删除
+    /// 删除，内含附件关联清理，注意事务性
     fn delete(
         &self,
         conn: &T,

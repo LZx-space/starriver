@@ -1,4 +1,4 @@
-pub mod req {
+pub mod input {
     use serde::Deserialize;
     use validator::Validate;
 
@@ -9,7 +9,7 @@ pub mod req {
     }
 }
 
-pub mod res {
+pub mod output {
     use serde::Serialize;
     use time::OffsetDateTime;
     use uuid::Uuid;
@@ -19,6 +19,6 @@ pub mod res {
         pub id: Uuid,
         pub name: String,
         pub created_at: OffsetDateTime,
-        pub updated_at: Option<OffsetDateTime>,
+        pub updated_at: OffsetDateTime,
     }
 }

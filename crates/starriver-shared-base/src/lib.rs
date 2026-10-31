@@ -6,4 +6,5 @@ pub mod error;
 pub mod io;
 pub mod random;
 pub mod regex_patterns;
+pub mod singanature;
 pub mod upload_file;

@@ -11,7 +11,7 @@ use starriver_shared_base::{
 use uuid::Uuid;
 
 use crate::{
-    dto::attachment_dto::res::AttachmentDto, error::CtxError,
+    dto::attachment_dto::output::AttachmentDto, error::CtxError,
     port::attachment_repository::AttachmentRepository,
 };
 
@@ -95,7 +95,7 @@ where
         let attachment = self.factory.create_attachment(
             attachment_id,
             &magic_checker_buf,
-            &extension,
+            extension,
             file_size,
         )?;
         let attachment = self.repo.insert(&self.conn, attachment).await?;
@@ -103,7 +103,7 @@ where
         let file_name = attachment.file_name();
         let url = self.upload_location_resolver.url(&file_name);
         Ok(AttachmentDto {
-            id: attachment.dissolve().0,
+            id: attachment.into_parts().0,
             file_name,
             url,
         })

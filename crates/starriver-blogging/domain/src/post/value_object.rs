@@ -2,11 +2,13 @@ use std::fmt::{Display, Formatter};
 
 use ammonia::clean;
 use html_escape::{decode_html_entities, encode_text};
+use serde::Serialize;
 use striptags::strip_tags;
 
 use crate::shared_error::DomainError;
 
-#[derive(Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PostState {
     #[default]
     Draft,
@@ -26,16 +28,21 @@ impl Display for PostState {
 
 //////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Title(pub(crate) String);
 
 impl Title {
     pub(crate) fn new(value: String) -> Result<Self, DomainError> {
+        // 清洗会把 `<`/`&` 转义为实体，长度可能变长；必须对最终入库的字符串限长
+        let value = clean(&value);
         if value.chars().count() > 50 {
             return Err(DomainError::PostTitleTooLong(value));
         }
-        let value = clean(&value);
         Ok(Self(value))
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
     }
 }
 
@@ -45,7 +52,7 @@ impl Display for Title {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Content(pub(crate) String);
 
 impl Content {
@@ -74,7 +81,7 @@ impl Content {
         const ELLIPSIS: &str = "...";
 
         if len <= TARGET_LEN {
-            return escaped.to_string();
+            return escaped.into_owned();
         }
 
         // 文本长度大于TARGET_LEN，在 [TARGET_LEN, MAX_EXCERPT_LEN) 区间内查找第一个分隔符
@@ -112,6 +119,32 @@ impl Content {
 
     pub(crate) fn strip_html_tags(&self) -> String {
         strip_tags(&self.0)
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
+#[cfg(test)]
+mod title_tests {
+    use super::*;
+
+    #[test]
+    fn title_length_is_checked_after_sanitizing() {
+        // ammonia 会把每个 `<` 转义为 `&lt;`，清洗后长度为原来的 4 倍，
+        // 若在清洗前校验，这串 50 字符的标题会突破 varchar(50) 列宽。
+        let oversized = "<".repeat(50);
+        assert!(matches!(
+            Title::new(oversized),
+            Err(DomainError::PostTitleTooLong(_))
+        ));
+    }
+
+    #[test]
+    fn sanitized_title_at_limit_is_accepted() {
+        let title = Title::new("a".repeat(50)).expect("50 chars fits column width");
+        assert_eq!(title.0.chars().count(), 50);
     }
 }
 

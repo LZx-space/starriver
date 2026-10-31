@@ -9,7 +9,6 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub attachment_id: Uuid,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -26,30 +26,75 @@ ammonia = { version = "^4" }
 axum = { version = "^0", features = ["macros", "multipart"] }
 axum-extra = { version = "^0", features = ["cookie", "form"] }
 argon2 = "^0"
+base64 = "^0"
 chrono = "^0"
 config = "^0"
 derive-getters = "^0"
+equivalent = "^1"
 futures-util = "^0"
+hmac = "0"
 html-escape = "^0"
 infer = "^0"
 jsonwebtoken = { version = "^11", features = ["rust_crypto"] }
-lettre = { version = "^0", default-features = false, features = ["builder", "pool", "ring", "smtp-transport", "tokio1-rustls", "rustls-platform-verifier"] }
+lettre = { version = "^0", default-features = false, features = [
+    "builder",
+    "pool",
+    "ring",
+    "smtp-transport",
+    "tokio1-rustls",
+    "rustls-platform-verifier",
+] }
 moka = { version = "^0", features = ["future"] }
 rand = "^0"
 regex = { version = "^1" }
 serde = { version = "^1", features = ["derive"] }
 serde_json = "^1"
-sea-orm = { version = "^2", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-json", "with-time", "with-uuid"] }
+sea-orm = { version = "^2", default-features = false, features = [
+    "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-json",
+    "with-time",
+    "with-uuid",
+] }
+sha2 = "^0"
 striptags = { version = "^0" }
-time = { version = "^0", features = ["serde-human-readable", "serde-well-known"] }
+time = { version = "^0", features = [
+    "serde-human-readable",
+    "serde-well-known",
+] }
 thiserror = "^2"
-tokio = { version = "^1", features = ["rt-multi-thread", "net", "fs", "macros", "signal"] }
+tokio = { version = "^1", features = [
+    "rt-multi-thread",
+    "net",
+    "fs",
+    "macros",
+    "signal",
+] }
 tracing = "^0"
-tracing-subscriber = { version = "^0", features = ["env-filter", "json", "local-time"] }
+tracing-subscriber = { version = "^0", features = [
+    "env-filter",
+    "json",
+    "local-time",
+] }
 tracing-appender = "^0"
 tower = { version = "^0" }
-tower-http = { version = "^0", features = ["catch-panic", "compression-br", "compression-gzip", "csrf", "fs", "request-id", "trace"] }
-uuid = { version = "^1", default-features = false, features = [ "std", "v7", "fast-rng", "serde", "macro-diagnostics"] }
+tower-http = { version = "^0", features = [
+    "catch-panic",
+    "compression-br",
+    "compression-gzip",
+    "csrf",
+    "fs",
+    "request-id",
+    "trace",
+] }
+uuid = { version = "^1", default-features = false, features = [
+    "std",
+    "v7",
+    "fast-rng",
+    "serde",
+    "macro-diagnostics",
+] }
 validator = { version = "^0", features = ["derive"] }
 
 [profile.dev]

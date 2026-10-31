@@ -22,7 +22,7 @@ pub struct Model {
     // 注意 sqlx-postgres 不支持读取 u8（仅写入可用），这里用 i16 承接以不污染外部配置文件及实体
     pub password_attempts: i16,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

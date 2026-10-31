@@ -3,7 +3,7 @@ CREATE TABLE public.category
     id         uuid PRIMARY KEY         NOT NULL,
     name       character varying(10)    NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table comment

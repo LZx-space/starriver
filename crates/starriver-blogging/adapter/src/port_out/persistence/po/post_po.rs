@@ -25,7 +25,7 @@ pub struct Model {
     #[sea_orm(indexed)]
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: OffsetDateTime,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

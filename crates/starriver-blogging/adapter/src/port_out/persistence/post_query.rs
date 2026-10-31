@@ -5,17 +5,17 @@ use sea_orm::{
 };
 use starriver_blogging_application::{
     dto::{
-        attachment_dto::res::AttachmentDto,
+        attachment_dto::output::AttachmentDto,
         post_dto::{
-            req::PageQuery,
-            res::{PostDetailDto, PostExcerptDto, PostSearchDto},
+            input::{PageQuery, SearchQuery},
+            output::{PostDetailDto, PostExcerptDto, PostSearchDto},
         },
     },
     port::post_query::PostQuery,
 };
 use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
-    dto::{IdName, PageResult, PageSearch},
+    dto::{IdName, OffsetPage},
     error::QueryError,
     upload_file::UploadLocationResolver,
 };
@@ -45,19 +45,8 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         &self,
         conn: &DefaultConnection,
         q: PageQuery,
-    ) -> Result<PageResult<PostExcerptDto>, QueryError> {
-        let mut cond = Condition::all();
-        let order;
-        if q.published_only {
-            cond = cond.add(Column::State.eq(PostStatePo::Published));
-            order = Column::PublishedAt;
-        } else {
-            order = Column::UpdatedAt;
-        }
-        if let Some(category_id) = q.category_id {
-            cond = cond.add(Column::CategoryId.eq(category_id));
-        }
-        let paginator = Entity::find()
+    ) -> Result<OffsetPage<PostExcerptDto>, QueryError> {
+        let mut select = Entity::find()
             .select_only()
             .columns([
                 Column::Id,
@@ -69,13 +58,28 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                 Column::UpdatedAt,
             ])
             .join(JoinType::LeftJoin, Relation::Category.def())
-            .column_as(category_po::Column::Name, "category")
+            .column_as(category_po::Column::Name, "category");
+
+        let mut cond = Condition::all();
+        if q.published_only {
+            cond = cond.add(Column::State.eq(PostStatePo::Published));
+            select =
+                select.order_by_with_nulls(Column::PublishedAt, Order::Desc, NullOrdering::Last);
+        } else {
+            select = select.order_by(Column::UpdatedAt, Order::Desc);
+        };
+
+        if let Some(category_id) = q.category_id {
+            cond = cond.add(Column::CategoryId.eq(category_id));
+        }
+
+        let paginator = select
+            .order_by(Column::Id, Order::Desc)
             .filter(cond)
-            .order_by_with_nulls(order, Order::Desc, NullOrdering::Last)
             .into_model::<PostExcerptRow>()
-            .paginate(conn, q.page_size);
+            .paginate(conn, q.pagination.page_size);
         let posts = paginator
-            .fetch_page(q.page)
+            .fetch_page(q.pagination.page)
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?
             .into_iter()
@@ -85,7 +89,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .num_items()
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(PageResult::new(q.page, q.page_size, total_items, posts))
+        Ok(OffsetPage::from_query(q.pagination, total_items, posts))
     }
 
     async fn find_detail(
@@ -136,7 +140,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             id,
             title: post.title,
             content: post.content,
-            state: PostState::from(post.state).to_string(),
+            state: PostState::from(post.state),
             category: IdName {
                 id: post.category_id,
                 name: post.category_name,
@@ -151,10 +155,10 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
     async fn search(
         &self,
         conn: &DefaultConnection,
-        q: PageSearch,
-    ) -> Result<PageResult<PostSearchDto>, QueryError> {
+        q: SearchQuery,
+    ) -> Result<OffsetPage<PostSearchDto>, QueryError> {
         if q.q.is_empty() {
-            return Ok(PageResult::new(q.page, q.page_size, 0, vec![]));
+            return Ok(OffsetPage::from_query(q.pagination, 0, vec![]));
         }
 
         // pgroonga扩展实现搜索功能
@@ -231,20 +235,21 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                	LEFT JOIN category ON filtered.category_id = category.id
             ORDER BY
                	score DESC,
-                published_at DESC NULLS LAST
+                published_at DESC NULLS LAST,
+                filtered.id DESC
             OFFSET
                 $1
             LIMIT
                	$2;
             "#,
-            [(q.page * q.page_size).into(), q.page_size.into(), q.q.into()],
+            [(q.pagination.page * q.pagination.page_size).into(), q.pagination.page_size.into(), q.q.into()],
         ))
         .all(conn)
         .await
         .map_err(|e| QueryError::DbError(e.to_string()))?;
 
         if rows.is_empty() {
-            return Ok(PageResult::new(q.page, q.page_size, 0, vec![]));
+            return Ok(OffsetPage::from_query(q.pagination, 0, vec![]));
         }
 
         let total_count = rows[0].total_count;
@@ -259,9 +264,8 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
                 score: e.score,
             })
             .collect();
-        Ok(PageResult::new(
-            q.page,
-            q.page_size,
+        Ok(OffsetPage::from_query(
+            q.pagination,
             total_count as u64,
             items,
         ))

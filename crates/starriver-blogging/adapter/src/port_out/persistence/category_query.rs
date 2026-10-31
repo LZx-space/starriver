@@ -1,7 +1,7 @@
 use crate::port_out::persistence::po::category_po::{Column, Entity};
 use sea_orm::{EntityTrait, QueryOrder};
 use starriver_blogging_application::{
-    dto::category_dto::res::CategoryDetailDto, port::category_query::CategoryQuery,
+    dto::category_dto::output::CategoryDetailDto, port::category_query::CategoryQuery,
 };
 use starriver_shared_base::error::QueryError;
 use starriver_shared_infra::db::DefaultConnection;

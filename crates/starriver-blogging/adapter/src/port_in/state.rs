@@ -2,14 +2,14 @@ use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
 use starriver_blogging_application::{
     dto::{
-        category_dto::res::CategoryDetailDto,
-        post_dto::res::{PostDetailDto, PostExcerptDto},
+        category_dto::output::CategoryDetailDto,
+        post_dto::output::{PostDetailDto, PostExcerptDto},
     },
-    port::post_cache::{PostCaches, PostPageKey},
+    port::{category_cache::CategoryListKey, post_cache::PostPageKey},
     use_case::{attachment_interactor, category_interactor, post_interactor},
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
-use starriver_shared_base::{dto::PageResult, random::duration_with_jitter};
+use starriver_shared_base::{dto::OffsetPage, random::duration_with_jitter};
 use starriver_shared_infra::{
     cache::DefaultCache,
     config::{Auth, Uploads},
@@ -36,7 +36,7 @@ type PostInteractor = post_interactor::PostInteractor<
     DefaultPostQuery,
     DefaultPostRepository,
     DefaultCategoryRepository,
-    DefaultCache<PostPageKey, PageResult<PostExcerptDto>>,
+    DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
 
@@ -44,7 +44,9 @@ type CategoryInteractor = category_interactor::CategoryInteractor<
     DefaultConnection,
     DefaultCategoryQuery,
     DefaultCategoryRepository,
-    DefaultCache<(), Vec<CategoryDetailDto>>,
+    DefaultCache<CategoryListKey, Vec<CategoryDetailDto>>,
+    DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
+    DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
 
 type AttachmentInteractor = attachment_interactor::AttachmentInteractor<
@@ -76,15 +78,19 @@ impl BloggingState {
         let conn = DefaultConnection::new(conn);
 
         let cache_cfg = &cfg.cache;
+        let post_page_cache = DefaultCache::new(
+            cache_cfg.post_page_cache_max_capacity,
+            cache_jitter_ttl(cache_cfg),
+        );
+        let post_item_cache = DefaultCache::new(100, cache_jitter_ttl(cache_cfg));
+
         let post_interactor = PostInteractor::new(
             conn.clone(),
             DefaultPostQuery::new(upload_file_url_builder.clone()),
             DefaultPostRepository,
             DefaultCategoryRepository,
-            PostCaches::new(
-                DefaultCache::new(1, cache_jitter_ttl(cache_cfg)),
-                DefaultCache::new(100, cache_jitter_ttl(cache_cfg)),
-            ),
+            post_page_cache.clone(),
+            post_item_cache.clone(),
         )
         .into();
 
@@ -93,6 +99,8 @@ impl BloggingState {
             DefaultCategoryQuery,
             DefaultCategoryRepository,
             DefaultCache::new(1, cache_jitter_ttl(cache_cfg)),
+            post_page_cache,
+            post_item_cache,
         )
         .into();
 

@@ -1,10 +1,11 @@
-use starriver_shared_base::{
-    db::Connection,
-    dto::{PageQuery, PageResult},
-};
+use starriver_shared_base::{db::Connection, dto::CursorPage};
 
 use crate::{
-    dto::user_dto::res::SecurityEventDto, error::CtxError,
+    dto::user_dto::{
+        input::{SecurityEventCursor, SecurityEventQuery},
+        output::SecurityEventDto,
+    },
+    error::CtxError,
     port::security_event_port::SecurityEventPort,
 };
 
@@ -25,10 +26,13 @@ where
         }
     }
 
-    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<SecurityEventDto>, CtxError> {
+    pub async fn paginate(
+        &self,
+        q: SecurityEventQuery,
+    ) -> Result<CursorPage<SecurityEventCursor, SecurityEventDto>, CtxError> {
         self.security_event_port
             .paginate(&self.conn, q)
             .await
-            .map_err(|e| CtxError::internal("paginate security events failed", e))
+            .map_err(|e| CtxError::internal("search security events failed", e))
     }
 }

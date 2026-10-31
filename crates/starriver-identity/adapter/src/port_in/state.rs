@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
 use starriver_identity_application::{
-    dto::user_dto::req::UserValidateCxt,
+    dto::user_dto::input::UserValidateCxt,
     use_case::{
         authentication_interactor::AuthenticationInteractor,
         security_event_interactor::SecurityEventInteractor, user_interactor::UserInteractor,

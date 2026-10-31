@@ -3,41 +3,40 @@ use starriver_shared_base::{
     authentication::principal::DefaultUser,
     cache::Cache,
     db::{Connection, Revision, Transaction},
-    dto::{PageResult, PageSearch},
+    dto::OffsetPage,
 };
 use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::{
     dto::post_dto::{
-        req::{PageQuery, SaveOrUpdatePostCmd},
-        res::{PostDetailDto, PostExcerptDto, PostSearchDto},
+        input::{PageQuery, SaveOrUpdatePostCmd, SearchQuery},
+        output::{PostDetailDto, PostExcerptDto, PostSearchDto},
     },
     error::CtxError,
     port::{
-        category_repository::CategoryRepository,
-        post_cache::{PostCaches, PostPageKey},
-        post_query::PostQuery,
+        category_repository::CategoryRepository, post_cache::PostPageKey, post_query::PostQuery,
         post_repository::PostRepository,
     },
 };
 
-pub struct PostInteractor<Conn, Q, PR, CR, PC, DC> {
+pub struct PostInteractor<Conn, Q, PR, CR, PC, IC> {
     conn: Conn,
     query: Q,
     post_repo: PR,
     category_repo: CR,
-    cache: PostCaches<PC, DC>,
+    page_cache: PC,
+    item_cache: IC,
 }
 
-impl<Conn, Q, PR, CR, PC, DC> PostInteractor<Conn, Q, PR, CR, PC, DC>
+impl<Conn, Q, PR, CR, PC, IC> PostInteractor<Conn, Q, PR, CR, PC, IC>
 where
     Conn: Connection,
     Q: PostQuery<Conn>,
     PR: PostRepository<Conn> + PostRepository<<Conn as Connection>::Transaction>,
     CR: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
-    PC: Cache<PostPageKey, PageResult<PostExcerptDto>>,
-    DC: Cache<Uuid, Option<PostDetailDto>>,
+    PC: Cache<PostPageKey, OffsetPage<PostExcerptDto>>,
+    IC: Cache<Uuid, Option<PostDetailDto>>,
 {
     /// 新建
     pub fn new(
@@ -45,32 +44,42 @@ where
         query: Q,
         post_repo: PR,
         category_repo: CR,
-        cache: PostCaches<PC, DC>,
+        page_cache: PC,
+        item_cache: IC,
     ) -> Self {
         Self {
             conn,
             query,
             post_repo,
             category_repo,
-            cache,
+            page_cache,
+            item_cache,
         }
     }
 
-    pub async fn paginate(&self, q: PageQuery) -> Result<PageResult<PostExcerptDto>, CtxError> {
-        let key = PostPageKey {
-            page: q.page,
-            page_size: q.page_size,
-            published_only: q.published_only,
-            category_id: q.category_id,
-        };
-        self.cache
-            .page_cache()
-            .try_get_with(key, async { self.query.paginate(&self.conn, q).await })
-            .await
-            .map_err(|e| CtxError::internal("paginate posts failed", e))
+    pub const CACHE_PAGE_LIMIT: u64 = 3;
+
+    pub async fn paginate(&self, q: PageQuery) -> Result<OffsetPage<PostExcerptDto>, CtxError> {
+        if q.pagination.page >= Self::CACHE_PAGE_LIMIT {
+            self.query
+                .paginate(&self.conn, q)
+                .await
+                .map_err(|e| CtxError::internal("paginate posts failed", e))
+        } else {
+            let key = PostPageKey {
+                page: q.pagination.page,
+                page_size: q.pagination.page_size,
+                published_only: q.published_only,
+                category_id: q.category_id,
+            };
+            self.page_cache
+                .try_get_with(key, async { self.query.paginate(&self.conn, q).await })
+                .await
+                .map_err(|e| CtxError::internal("paginate posts failed", e))
+        }
     }
 
-    pub async fn search(&self, q: PageSearch) -> Result<PageResult<PostSearchDto>, CtxError> {
+    pub async fn search(&self, q: SearchQuery) -> Result<OffsetPage<PostSearchDto>, CtxError> {
         self.query
             .search(&self.conn, q)
             .await
@@ -78,8 +87,7 @@ where
     }
 
     pub async fn find(&self, id: Uuid) -> Result<PostDetailDto, CtxError> {
-        self.cache
-            .detail_cache()
+        self.item_cache
             .try_get_with(id, async { self.query.find_detail(&self.conn, id).await })
             .await
             .map_err(|e| CtxError::internal("find post failed", e))
@@ -129,8 +137,8 @@ where
                     error!(error = %e, "commit transaction failed");
                     CtxError::Internal
                 })?;
-                // 提交成功后，清除所有帖子缓存
-                self.cache.invalidate_all();
+                // 提交成功后，清除帖子分页缓存
+                self.page_cache.invalidate_all();
                 let post_id = created.id().to_owned();
                 self.find(post_id).await
             }
@@ -200,7 +208,8 @@ where
                     CtxError::Internal
                 })?;
                 // 更新帖子后，清除所有帖子缓存
-                self.cache.invalidate_all();
+                self.page_cache.invalidate_all();
+                self.item_cache.invalidate(&id).await;
                 Ok(())
             }
             Err(e) => {
@@ -219,13 +228,34 @@ where
             post_id = %id,
             "deleting post"
         );
-        self.post_repo
-            .delete(&self.conn, id)
-            .await
-            .map_err(CtxError::from)
-            .inspect(|_| {
-                // 删除帖子后，清除所有帖子缓存
-                self.cache.invalidate_all();
-            })
+
+        // 帖子与附件关联的删除必须同属一个事务
+        let tx = self.conn.begin().await.map_err(|e| {
+            error!(error = %e, "begin transaction failed");
+            CtxError::Internal
+        })?;
+
+        let result = self.post_repo.delete(&tx, id).await.map_err(CtxError::from);
+
+        match result {
+            Ok(deleted) => {
+                tx.commit().await.map_err(|e| {
+                    error!(user_id=%operator.id, error=%e, "commit transaction failed");
+                    CtxError::Internal
+                })?;
+                if deleted {
+                    self.page_cache.invalidate_all();
+                    self.item_cache.invalidate(&id).await;
+                }
+                Ok(deleted)
+            }
+            Err(e) => {
+                tx.rollback().await.map_err(|e| {
+                    error!(user_id=%operator.id, error=%e, "rollback transaction failed");
+                    CtxError::Internal
+                })?;
+                Err(e)
+            }
+        }
     }
 }

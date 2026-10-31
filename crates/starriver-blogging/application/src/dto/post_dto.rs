@@ -1,14 +1,14 @@
-pub mod req {
+pub mod input {
     use serde::Deserialize;
+    use starriver_shared_base::dto::OffsetPageQuery;
     use uuid::Uuid;
     use validator::Validate;
 
-    #[derive(Debug, Deserialize, PartialEq, Eq, Validate)]
+    #[derive(Debug, Deserialize, Validate)]
     pub struct PageQuery {
-        #[validate(range(min = 0, max = 10))]
-        pub page: u64,
-        #[validate(range(min = 1, max = 20))]
-        pub page_size: u64,
+        #[serde(flatten)]
+        #[validate(nested)]
+        pub pagination: OffsetPageQuery,
         /// some， when need to filter by category
         pub category_id: Option<Uuid>,
         #[serde(default)]
@@ -17,6 +17,9 @@ pub mod req {
 
     #[derive(Debug, Deserialize, Validate)]
     pub struct SearchQuery {
+        #[serde(flatten)]
+        #[validate(nested)]
+        pub pagination: OffsetPageQuery,
         #[validate(length(min = 1, max = 10))]
         pub q: String,
     }
@@ -34,26 +37,26 @@ pub mod req {
     }
 }
 
-pub mod res {
-
+pub mod output {
     use serde::Serialize;
+    use starriver_blogging_domain::post::value_object::PostState;
     use starriver_shared_base::dto::IdName;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
-    use crate::dto::attachment_dto::res::AttachmentDto;
+    use crate::dto::attachment_dto::output::AttachmentDto;
 
     #[derive(Clone, Serialize)]
     pub struct PostDetailDto {
         pub id: Uuid,
         pub title: String,
         pub content: String,
-        pub state: String,
+        pub state: PostState,
         pub category: IdName<Uuid>,
         pub attachments: Vec<AttachmentDto>,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
-        pub updated_at: Option<OffsetDateTime>,
+        pub updated_at: OffsetDateTime,
     }
 
     #[derive(Clone, Serialize)]
@@ -61,11 +64,11 @@ pub mod res {
         pub id: Uuid,
         pub title: String,
         pub excerpt: String,
-        pub state: String,
+        pub state: PostState,
         pub category: String,
         pub published_at: Option<OffsetDateTime>,
         pub created_at: OffsetDateTime,
-        pub updated_at: Option<OffsetDateTime>,
+        pub updated_at: OffsetDateTime,
     }
 
     #[derive(Clone, Serialize)]

@@ -1,5 +1,5 @@
 use axum::{extract::State, response::IntoResponse};
-use starriver_blogging_application::dto::category_dto::req::CreateOrUpdateCategoryCmd;
+use starriver_blogging_application::dto::category_dto::input::CreateOrUpdateCategoryCmd;
 use starriver_shared_infra::{
     extract::{Json, Path},
     middleware::authentication::default_impl::AuthenticatedJwtClaims,

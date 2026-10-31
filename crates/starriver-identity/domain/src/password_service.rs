@@ -69,30 +69,53 @@ where
         Ok(())
     }
 
+    /// # params
+    /// - `cur_pwd` is the current password of the user
+    /// - `new_pwd` is the new password that the user wants to use
+    ///
+    /// # returns
+    /// - `Ok(())` - password changed successfully
+    /// - `Err(DomainError::UserDisabled)` - user is disabled or deleted
+    /// - `Err(DomainError::UserLocked)` - user is locked
+    /// - `Err(DomainError::SamePassword)` - new password is same as current password
+    /// - `Err(DomainError::BadPassword)` - incorrect current password
+    /// - `Err(DomainError::InvalidPasswordFormat)` - invalid password format
+    /// - `Err(DomainError::PasswordEncoding(_))` - password verification or encoding failed
+    /// - `Err(DomainError::InvalidPasswordHash)` - encoder produced an invalid hash
+    ///
     pub fn change_password(
         &self,
         user: &mut User,
         cur_pwd: &str,
         new_pwd: &str,
     ) -> Result<(), DomainError> {
+        match user.life_cycle() {
+            LifeCycle::Active => {}
+            LifeCycle::Disabled | LifeCycle::Deleted => return Err(DomainError::UserDisabled),
+        }
+        if user.is_locked() {
+            return Err(DomainError::UserLocked);
+        }
         if cur_pwd == new_pwd {
             return Err(DomainError::SamePassword);
         }
         let matches = self.pwd_encoder.verify(cur_pwd, user.password().as_str())?;
         if !matches {
+            user.record_password_attempts(&self.pwd_policy, OffsetDateTime::now_utc());
             return Err(DomainError::BadPassword);
         }
         self.pwd_spec.validate(new_pwd)?;
-        let hashed_pwd = &self.pwd_encoder.encode(new_pwd)?;
+        let hashed_pwd = self.pwd_encoder.encode(new_pwd)?;
         let password = HashedPassword::new(hashed_pwd)?;
 
         user.change_password(password);
+        user.reset_password_attempts();
         Ok(())
     }
 
     pub fn reset_password(&self, user: &mut User, new_pwd: &str) -> Result<(), DomainError> {
         self.pwd_spec.validate(new_pwd)?;
-        let hashed_pwd = &self.pwd_encoder.encode(new_pwd)?;
+        let hashed_pwd = self.pwd_encoder.encode(new_pwd)?;
         let password = HashedPassword::new(hashed_pwd)?;
 
         user.change_password(password);

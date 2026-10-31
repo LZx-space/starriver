@@ -68,9 +68,8 @@ where
         let original = user.clone();
         match self.pwd_service.authenticate(&mut user, password) {
             Ok(_) => {
-                // 认证成功：清理失败计数/计数窗口/锁定（若有）。
-                // 单条更新，不需要事务。
-                if user.has_password_attempts() {
+                // 认证成功：如账户当前被锁则清理失败计数/计数窗口/锁定
+                if original.is_locked() {
                     user.reset_password_attempts();
                     let user = self
                         .user_repo

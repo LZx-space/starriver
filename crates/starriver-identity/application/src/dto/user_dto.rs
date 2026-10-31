@@ -145,9 +145,7 @@ pub mod input {
         pub pagination: CursorPageQuery<SecurityEventCursor>,
         pub user_id: Option<Uuid>,
         pub event_type: Option<SecurityEventType>,
-        /// RFC3339，包含边界
         pub from: Option<OffsetDateTime>,
-        /// RFC3339，包含边界
         pub to: Option<OffsetDateTime>,
     }
 

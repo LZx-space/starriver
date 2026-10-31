@@ -33,9 +33,9 @@ pub struct Title(pub(crate) String);
 
 impl Title {
     pub(crate) fn new(value: String) -> Result<Self, DomainError> {
-        // 清洗会把 `<`/`&` 转义为实体，长度可能变长；必须对最终入库的字符串限长
+        const MAX_LENGTH: usize = 50; // same with table ddl
         let value = clean(&value);
-        if value.chars().count() > 50 {
+        if value.chars().count() > MAX_LENGTH {
             return Err(DomainError::PostTitleTooLong(value));
         }
         Ok(Self(value))
@@ -57,10 +57,11 @@ pub struct Content(pub(crate) String);
 
 impl Content {
     pub(crate) fn new(value: String) -> Result<Self, DomainError> {
-        if value.chars().count() > 50000 {
+        const MAX_LENGTH: usize = 50000;
+        let value = clean(&value);
+        if value.chars().count() > MAX_LENGTH {
             return Err(DomainError::PostContentTooLong(value));
         }
-        let value = clean(&value);
         Ok(Self(value))
     }
 

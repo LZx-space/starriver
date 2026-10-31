@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use validator::Validate;
 
-use crate::singanature::{sign, verify};
+use crate::siganature::{sign, verify};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IdName<T> {
@@ -23,7 +23,7 @@ pub struct IdValue<I, V> {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct OffsetPageQuery {
-    #[validate(range(min = 0))]
+    #[validate(range(min = 0, max = 10000))]
     #[serde(deserialize_with = "deserialize_u64_from_str")]
     pub page: u64,
     #[validate(range(min = 1, max = 20))]

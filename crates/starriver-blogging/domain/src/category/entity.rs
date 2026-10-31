@@ -14,10 +14,11 @@ pub struct Category {
 
 impl Category {
     pub fn new(name: String) -> Result<Self, DomainError> {
-        if name.chars().count() > 10 {
+        const MAX_LENGTH: usize = 10; // same with table ddl
+        let name = clean(&name);
+        if name.chars().count() > MAX_LENGTH {
             return Err(DomainError::PostCategoryTooLong(name));
         }
-        let name = clean(&name);
         if name.is_empty() {
             return Err(DomainError::PostCategoryIsNone);
         }

@@ -119,6 +119,7 @@ where
         let password = HashedPassword::new(hashed_pwd)?;
 
         user.change_password(password);
+        user.reset_password_attempts();
         Ok(())
     }
 }

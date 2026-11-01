@@ -39,7 +39,7 @@ pub enum RepositoryError {
     #[error("事务错误: {reason}")]
     Transaction { reason: String },
 
-    /// 其他基础设施错误，保留底层细节但不泄露具体库（如 sqlx::Error）
+    /// 其他基础设施错误，保留底层细节但不泄露具体库（如`sqlx::Error`）
     #[error("基础设施错误: {0}")]
     Infrastructure(String),
 

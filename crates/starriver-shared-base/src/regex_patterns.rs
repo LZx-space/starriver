@@ -38,7 +38,7 @@ mod patterns_tests {
             // password: 与 config 中的 regexes.password 保持一致
             r"^[A-Za-z0-9@$!%*?&]{8,12}$",
         )
-        .unwrap()
+        .expect("test patterns error")
     }
 
     // ── email ──

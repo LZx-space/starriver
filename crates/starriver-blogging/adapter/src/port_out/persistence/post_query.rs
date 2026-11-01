@@ -89,7 +89,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .num_items()
             .await
             .map_err(|e| QueryError::DbError(e.to_string()))?;
-        Ok(OffsetPage::from_query(q.pagination, total_items, posts))
+        Ok(OffsetPage::from_query(&q.pagination, total_items, posts))
     }
 
     async fn find_detail(
@@ -158,7 +158,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         q: SearchQuery,
     ) -> Result<OffsetPage<PostSearchDto>, QueryError> {
         if q.q.is_empty() {
-            return Ok(OffsetPage::from_query(q.pagination, 0, vec![]));
+            return Ok(OffsetPage::from_query(&q.pagination, 0, vec![]));
         }
 
         // pgroonga扩展实现搜索功能
@@ -249,7 +249,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         .map_err(|e| QueryError::DbError(e.to_string()))?;
 
         if rows.is_empty() {
-            return Ok(OffsetPage::from_query(q.pagination, 0, vec![]));
+            return Ok(OffsetPage::from_query(&q.pagination, 0, vec![]));
         }
 
         let total_count = rows[0].total_count;
@@ -265,7 +265,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             })
             .collect();
         Ok(OffsetPage::from_query(
-            q.pagination,
+            &q.pagination,
             total_count as u64,
             items,
         ))

@@ -2,5 +2,5 @@
 ///
 /// * Examples:
 ///     * Multi-field types: username & password
-///     * Single-field types: OAuth2 access token
+///     * Single-field types: `OAuth2` access token
 pub trait AuthenticationRequest: Send + Sync {}

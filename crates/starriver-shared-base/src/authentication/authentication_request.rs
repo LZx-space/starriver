@@ -18,6 +18,7 @@ pub enum UserIdentifier<'a> {
 }
 
 impl<'a> UserIdentifier<'a> {
+    #[must_use]
     pub fn new(identifier: &'a str) -> Self {
         // 统一去掉首尾空白：邮箱查询会 normalize，但用户名是精确匹配，
         let identifier = identifier.trim();

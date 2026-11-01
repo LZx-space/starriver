@@ -13,7 +13,7 @@ use starriver_identity_application::{
 };
 use starriver_shared_base::{
     db::Executor,
-    dto::{CursorPage, Signed},
+    dto::{Cursor, CursorPage},
     error::QueryError,
 };
 use time::OffsetDateTime;
@@ -38,12 +38,10 @@ where
     ) -> Result<CursorPage<SecurityEventCursor, SecurityEventDto>, QueryError> {
         const SIGNATURE_KEY: &[u8] = b"tmp";
 
-        let limit = query.pagination.limit as usize;
-        let cursor = query
-            .pagination
-            .cursor
-            .map(|e| e.decode(SIGNATURE_KEY))
-            .transpose()
+        let pagination = query.pagination;
+        let limit = pagination.limit as usize;
+        let cursor = pagination
+            .decode_cursor(SIGNATURE_KEY)
             .map_err(|e| QueryError::Other(e.to_string()))?;
 
         let mut cond = Condition::all();
@@ -93,7 +91,7 @@ where
                 QueryError::Other("has_more=true but rows shorter than limit".into())
             })?;
 
-            Signed::encode(
+            Cursor::encode(
                 SIGNATURE_KEY,
                 &SecurityEventCursor {
                     occurred_at: last.occurred_at,

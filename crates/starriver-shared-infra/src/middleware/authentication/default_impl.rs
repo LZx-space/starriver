@@ -103,7 +103,7 @@ where
                 .map_err(|_infallible| {
                     ApiError::new(
                         StatusCode::UNAUTHORIZED,
-                        "authentication required".to_string(),
+                        "Authentication required".to_string(),
                     )
                 })?;
 
@@ -113,7 +113,7 @@ where
                 info!("authentication cookie not found in request");
                 ApiError::new(
                     StatusCode::UNAUTHORIZED,
-                    "authentication required".to_string(),
+                    "Authentication required".to_string(),
                 )
             })?
             .value();
@@ -133,7 +133,7 @@ where
             error!(error = %e, "JWS token decode failed");
             ApiError::new(
                 StatusCode::UNAUTHORIZED,
-                "authentication required".to_string(),
+                "Authentication required".to_string(),
             )
         })
     }
@@ -186,7 +186,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             Ok(token) => token,
             Err(err) => {
                 error!(error = %err, "failed to serialize JWS principal claims");
-                return (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
                     .into_response();
             }
         };
@@ -205,7 +205,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             .body(Body::empty())
             .unwrap_or_else(|e| {
                 error!(error = %e, "failed to build authentication success response");
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error").into_response()
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
             })
     }
 }

@@ -82,7 +82,7 @@ impl From<RepositoryError> for CtxError {
             RepositoryError::UniqueViolation(_) => CtxError::Conflict(e.to_string()),
             RepositoryError::ForeignKeyViolation(_) => CtxError::Conflict(e.to_string()),
             RepositoryError::OptimisticLock { entity, id } => {
-                CtxError::Conflict(format!("entity {} id {}", entity, id))
+                CtxError::Conflict(format!("Entity {} id {}", entity, id))
             }
             // 其他基础设施错误不暴露细节
             _ => {

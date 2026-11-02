@@ -62,7 +62,7 @@ where
         self.repo
             .find_by_id(&self.conn, id)
             .await?
-            .ok_or_else(|| CtxError::NotFound(format!("category[{}]not exist", id)))
+            .ok_or_else(|| CtxError::NotFound(format!("Category [{}] not exist", id)))
     }
 
     pub async fn create(&self, operator: DefaultUser, name: String) -> Result<Category, CtxError> {
@@ -92,7 +92,7 @@ where
 
         let category = self.repo.find_by_id(&self.conn, id).await?;
         let Some(mut category) = category else {
-            return Err(CtxError::NotFound(format!("category[{}]not exist", id)));
+            return Err(CtxError::NotFound(format!("Category [{}] not exist", id)));
         };
         let original = category.clone();
         category.update(name)?;
@@ -120,9 +120,9 @@ where
                 self.cache.invalidate_all();
                 Ok(())
             }
-            Ok(false) => Err(CtxError::NotFound(format!("category[{}]not exist", id))),
+            Ok(false) => Err(CtxError::NotFound(format!("Category [{}] not exist", id))),
             Err(RepositoryError::ForeignKeyViolation(_)) => Err(CtxError::Conflict(format!(
-                "category[{}] is referenced by posts and cannot be deleted",
+                "Category [{}] is referenced by posts and cannot be deleted",
                 id
             ))),
             Err(e) => Err(e.into()),

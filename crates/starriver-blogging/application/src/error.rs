@@ -62,7 +62,7 @@ impl From<RepositoryError> for CtxError {
             RepositoryError::UniqueViolation(_) => CtxError::Conflict(e.to_string()),
             RepositoryError::ForeignKeyViolation(_) => CtxError::Conflict(e.to_string()),
             RepositoryError::OptimisticLock { entity, id } => {
-                CtxError::Conflict(format!("entity {} id {}", entity, id))
+                CtxError::Conflict(format!("Entity {} id {}", entity, id))
             }
             // 其他基础设施错误不暴露细节
             _ => {
@@ -84,7 +84,7 @@ impl From<AsyncReaderError> for CtxError {
     fn from(value: AsyncReaderError) -> Self {
         match value {
             AsyncReaderError::TooLarge => {
-                CtxError::PayloadTooLarge("uploaded payload exceeds the size limit".to_string())
+                CtxError::PayloadTooLarge("Uploaded payload exceeds the size limit".to_string())
             }
             other => {
                 error!(error=%other, "IO error");

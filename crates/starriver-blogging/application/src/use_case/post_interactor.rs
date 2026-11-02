@@ -91,7 +91,7 @@ where
             .try_get_with(id, async { self.query.find_detail(&self.conn, id).await })
             .await
             .map_err(|e| CtxError::internal("find post failed", e))
-            .and_then(|r| r.ok_or_else(|| CtxError::NotFound(format!("post [{}] not exist", id))))
+            .and_then(|r| r.ok_or_else(|| CtxError::NotFound(format!("Post [{}] not exist", id))))
     }
 
     pub async fn create(
@@ -111,7 +111,7 @@ where
             .await?
         {
             return Err(CtxError::NotFound(format!(
-                "category [{}] not exist",
+                "Category [{}] not exist",
                 cmd.category_id
             )));
         }
@@ -170,7 +170,7 @@ where
             .await?
         {
             return Err(CtxError::NotFound(format!(
-                "category [{}] not exist",
+                "Category [{}] not exist",
                 cmd.category_id
             )));
         }
@@ -183,7 +183,7 @@ where
             // 读-改-写必须留在同一事务内
             let post = self.post_repo.find_by_id(&tx, id).await?;
             let Some(mut found) = post else {
-                return Err(CtxError::NotFound(format!("post [{}] not exist", id)));
+                return Err(CtxError::NotFound(format!("Post [{}] not exist", id)));
             };
             let cmd = PostUpdate {
                 title: cmd.title,

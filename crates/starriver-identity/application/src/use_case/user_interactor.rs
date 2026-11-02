@@ -107,7 +107,7 @@ where
             .await
             .inspect_err(|e| info!(email=%email, error=%e, "register user check code failed"))?;
         if !matches {
-            return Err(CtxError::InvalidInput("invalid email code".to_string()));
+            return Err(CtxError::InvalidInput("Invalid email code".to_string()));
         }
         let user = self
             .user_factory
@@ -140,7 +140,7 @@ where
     ) -> Result<(), CtxError> {
         if cmd.new_password != cmd.new_password_confirm {
             return Err(CtxError::InvalidInput(
-                "new password and confirm password do not match".to_string(),
+                "New password and confirm password do not match".to_string(),
             ));
         }
         let user_opt = self
@@ -251,7 +251,7 @@ where
     ) -> Result<(), CtxError> {
         if cmd.new_password.ne(&cmd.new_password_confirm) {
             return Err(CtxError::InvalidInput(
-                "new password does not match".to_owned(),
+                "New password does not match".to_owned(),
             ));
         }
         let email = &cmd.email;
@@ -263,7 +263,7 @@ where
             .map_err(|e| CtxError::internal("reset password", e))?;
         if !matches {
             return Err(CtxError::InvalidInput(
-                "verification code invalid".to_owned(),
+                "Verification code invalid".to_owned(),
             ));
         }
 
@@ -271,7 +271,7 @@ where
             // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
             warn!(email = %email, "account not found after code validation");
             return Err(CtxError::InvalidInput(
-                "verification code invalid".to_owned(),
+                "Verification code invalid".to_owned(),
             ));
         };
         let user_id = *user.id();

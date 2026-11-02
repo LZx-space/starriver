@@ -218,25 +218,28 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
     type Response = Response;
 
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
-        info!(error=%err, "authentication failed");
+        info!(error=%err, "Authentication failed");
         let (status, message) = match err {
             // 内部错误：状态码 500，但绝不向客户端泄漏内部细节
             AuthenticationError::InnerError { message } => {
-                error!(error=%message, "authentication failed inner error");
+                error!(error=%message, "Authentication failed inner error");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error".to_string(),
+                    "Internal server error".to_string(),
                 )
             }
             // 请求格式错误（无法解析）：400，同样不泄漏账号信息
             AuthenticationError::MalformedRequest => (
                 StatusCode::BAD_REQUEST,
-                "invalid authentication request".to_string(),
+                "Invalid authentication request".to_string(),
             ),
-            // 其余所有失败（未找到/空/密码错/锁定/禁用/删除）统一文案，防止账号状态枚举
+            AuthenticationError::UserLocked => {
+                (StatusCode::LOCKED, "Account is locked".to_string())
+            }
+            // 其余所有失败（未找到/空/密码错/禁用/删除）统一文案，防止账号状态枚举
             _ => (
                 StatusCode::BAD_REQUEST,
-                "username or password incorrect".to_string(),
+                "Username or password incorrect".to_string(),
             ),
         };
         ApiError::new(status, message).into_response()

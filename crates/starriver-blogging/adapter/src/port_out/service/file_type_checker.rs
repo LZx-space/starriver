@@ -5,8 +5,6 @@ use starriver_blogging_domain::{
 pub struct DefaultFileTypeChecker {}
 
 impl FileTypeChecker for DefaultFileTypeChecker {
-    const MAGIC_CHECKER_HEADER_SIZE: usize = 100;
-
     fn check(&self, header: &[u8], claimed_extension: &str) -> Result<bool, DomainError> {
         if let Some(file_type) = infer::get(header) {
             // infer 对同一格式只返回一个规范后缀（JPEG → "jpg"），

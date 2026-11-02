@@ -1,7 +1,7 @@
 use crate::shared_error::DomainError;
 
 pub trait FileTypeChecker {
-    const MAGIC_CHECKER_HEADER_SIZE: usize;
+    const MAGIC_HEADER_MAX_BYTES: usize = 32;
 
     /// # params
     /// - `header`: the first few bytes of the file

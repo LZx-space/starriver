@@ -138,7 +138,7 @@ pub struct CursorPage<C: Serialize, T: Serialize> {
 
 #[derive(Debug, Error)]
 pub enum CursorError {
-    #[error("Cursor is malformed: {0}")]
+    #[error("Malformed cursor: {0}")]
     Malformed(String),
     #[error("Serialization error: {0}")]
     SerializationError(String),

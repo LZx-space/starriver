@@ -58,7 +58,7 @@ impl IntoResponse for ApiError {
     }
 }
 
-/// panic 时的响应：panic 详情只进服务端日志，客户端收到与其它错误一致的 500。
+/// panic 时的响应：panic 详情只进服务端日志，客户端收到与其他错误一致的 500。
 ///
 /// 用法：`CatchPanicLayer::custom(PanicResponse)`。
 #[derive(Clone, Copy)]

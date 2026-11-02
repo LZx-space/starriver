@@ -239,7 +239,7 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
             // 其余所有失败（未找到/空/密码错/禁用/删除）统一文案，防止账号状态枚举
             _ => (
                 StatusCode::BAD_REQUEST,
-                "Username or password incorrect".to_string(),
+                "Incorrect username or password".to_string(),
             ),
         };
         ApiError::new(status, message).into_response()

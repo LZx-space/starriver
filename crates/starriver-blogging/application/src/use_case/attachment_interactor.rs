@@ -68,7 +68,7 @@ where
                 // 超限立即中止：返回 Err 时本块不会被写入
                 if !FileSize::allows(written as i64, chunk.len() as i64) {
                     return Err(CtxError::PayloadTooLarge(format!(
-                        "Attachment size {} bytes exceeds max size of {} bytes",
+                        "Attachment size {} bytes exceeds the maximum allowed size of {} bytes",
                         written + chunk.len() as u64,
                         FileSize::MAX_SIZE
                     )));

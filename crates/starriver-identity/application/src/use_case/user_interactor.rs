@@ -107,7 +107,9 @@ where
             .await
             .inspect_err(|e| info!(email=%email, error=%e, "register user check code failed"))?;
         if !matches {
-            return Err(CtxError::InvalidInput("Invalid email code".to_string()));
+            return Err(CtxError::InvalidInput(
+                "Invalid verification code".to_string(),
+            ));
         }
         let user = self
             .user_factory
@@ -140,14 +142,14 @@ where
     ) -> Result<(), CtxError> {
         if cmd.new_password != cmd.new_password_confirm {
             return Err(CtxError::InvalidInput(
-                "New password and confirm password do not match".to_string(),
+                "New password and confirmation do not match".to_string(),
             ));
         }
         let user_opt = self
             .user_repo
             .find_by_username(&self.conn, username)
             .await?;
-        let mut user = user_opt.ok_or(RepositoryError::NotFound("user not found".to_string()))?;
+        let mut user = user_opt.ok_or(RepositoryError::NotFound("User not found".to_string()))?;
 
         let user_id = *user.id();
         let original = user.clone();
@@ -251,7 +253,7 @@ where
     ) -> Result<(), CtxError> {
         if cmd.new_password.ne(&cmd.new_password_confirm) {
             return Err(CtxError::InvalidInput(
-                "New password does not match".to_owned(),
+                "New password and confirmation do not match".to_owned(),
             ));
         }
         let email = &cmd.email;
@@ -263,7 +265,7 @@ where
             .map_err(|e| CtxError::internal("reset password", e))?;
         if !matches {
             return Err(CtxError::InvalidInput(
-                "Verification code invalid".to_owned(),
+                "Invalid verification code".to_owned(),
             ));
         }
 
@@ -271,7 +273,7 @@ where
             // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
             warn!(email = %email, "account not found after code validation");
             return Err(CtxError::InvalidInput(
-                "Verification code invalid".to_owned(),
+                "Invalid verification code".to_owned(),
             ));
         };
         let user_id = *user.id();

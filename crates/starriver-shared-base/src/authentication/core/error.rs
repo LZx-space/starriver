@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AuthenticationError {
-    #[error("Identifier not found")]
+    #[error("User not found")]
     IdentifierNotFound,
 
     #[error("Identifier is empty")]
@@ -18,14 +18,14 @@ pub enum AuthenticationError {
     BadPassword,
 
     ///// transient states ///////////////
-    #[error("User locked")]
+    #[error("User account is locked")]
     UserLocked,
 
     ///// life cycle ////////////////////
-    #[error("User disabled")]
+    #[error("User account is disabled")]
     UserDisabled,
 
-    #[error("User deleted")]
+    #[error("User account is deleted")]
     UserDeleted,
 
     /////////////////////////

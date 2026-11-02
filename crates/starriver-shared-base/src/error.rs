@@ -3,24 +3,24 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum RepositoryError {
     /// 实体未找到（业务可预期的错误）
-    #[error("实体不存在: {0}")]
+    #[error("实体不存在：{0}")]
     NotFound(String),
 
     /// 唯一约束冲突，例如重复插入唯一键
-    #[error("唯一约束冲突: {0}")]
+    #[error("唯一约束冲突：{0}")]
     UniqueViolation(String),
 
     /// 外键约束失败（例如删除仍被引用的父记录）
-    #[error("外键约束失败: {0}")]
+    #[error("外键约束失败：{0}")]
     ForeignKeyViolation(String),
 
     /// 数据完整性错误（如字段过长、非空违反、类型不匹配）
     /// 注：最好由领域层提前校验，但数据库可能仍有触发
-    #[error("数据完整性错误: {detail}")]
+    #[error("数据完整性错误：{detail}")]
     DataIntegrity { detail: String },
 
     /// 乐观锁冲突（版本号或时间戳不匹配，需重试整个事务）
-    #[error("乐观锁冲突, 实体已被修改: {entity} id={id}")]
+    #[error("乐观锁冲突，实体已被修改：{entity}（id={id}）")]
     OptimisticLock { entity: &'static str, id: String },
 
     /// 死锁，通常是事务间资源竞争
@@ -28,37 +28,37 @@ pub enum RepositoryError {
     Deadlock,
 
     /// 连接失败（网络、数据库宕机等可重试错误）
-    #[error("数据库连接失败: {0}")]
+    #[error("数据库连接失败：{0}")]
     ConnectionFailed(String),
 
     /// 查询超时
-    #[error("查询超时: {statement}")]
+    #[error("查询超时：{statement}")]
     Timeout { statement: String },
 
     /// 事务错误（如已经开始、提交失败）
-    #[error("事务错误: {reason}")]
+    #[error("事务错误：{reason}")]
     Transaction { reason: String },
 
     /// 其他基础设施错误，保留底层细节但不泄露具体库（如`sqlx::Error`）
-    #[error("基础设施错误: {0}")]
+    #[error("基础设施错误：{0}")]
     Infrastructure(String),
 
     /// 数据格式错误（如无效的日期、字符串等）
-    #[error("数据格式错误: {0}")]
+    #[error("数据格式错误：{0}")]
     BadData(String),
 
-    #[error("权限拒绝: {0}")]
+    #[error("权限拒绝：{0}")]
     PermissionDenied(String),
 
     /// 未知或未分类的错误
-    #[error("未知的数据库错误: {message}")]
+    #[error("未知数据库错误：{message}")]
     Unexpected { message: String },
 }
 
 #[derive(Debug, Error)]
 pub enum QueryError {
-    #[error("查询数据库错误：{0}")]
+    #[error("数据库查询失败：{0}")]
     DbError(String),
-    #[error("其它错误：{0}")]
+    #[error("其他错误：{0}")]
     Other(String),
 }

@@ -145,7 +145,11 @@ pub mod input {
         pub pagination: CursorPageQuery<SecurityEventCursor>,
         pub user_id: Option<Uuid>,
         pub event_type: Option<SecurityEventType>,
+        /// example: 2026-11-01T05:49:04.3137462Z
+        #[serde(with = "time::serde::rfc3339::option", default)]
         pub from: Option<OffsetDateTime>,
+        /// example: 2026-11-01T05:49:04.3137462Z
+        #[serde(with = "time::serde::rfc3339::option", default)]
         pub to: Option<OffsetDateTime>,
     }
 

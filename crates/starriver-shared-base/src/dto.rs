@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
-use validator::Validate;
+use validator::{Validate, ValidationError, ValidationErrors};
 
 use crate::siganature::{sign, verify};
 
@@ -150,7 +150,7 @@ pub enum CursorError {
     SignatureVerificationError,
 }
 
-///// Common ////////////////////////////////////////////////////////////////////////////
+///// Pagination Common ////////////////////////////////////////////////////////////////////////////
 
 fn deserialize_u64_from_str<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
@@ -162,4 +162,81 @@ where
 
 fn default_limit() -> u64 {
     10
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Deserialize)]
+pub struct Range<T> {
+    /// The lower bound of the range (inclusive).
+    pub from: T,
+    /// The upper bound of the range (exclusive).
+    pub to: T,
+}
+
+pub trait RangeBound {
+    fn is_valid_range(from: &Self, to: &Self) -> bool;
+}
+
+impl<T> Validate for Range<T>
+where
+    T: RangeBound,
+{
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        if T::is_valid_range(&self.from, &self.to) {
+            Ok(())
+        } else {
+            let mut errors = ValidationErrors::new();
+            errors.add(
+                "from",
+                ValidationError::new("invalid_range, `form` cannot be greater or equal to `to`"),
+            );
+            errors.add(
+                "to",
+                ValidationError::new("invalid_range, `to` cannot be less or equal than `from`"),
+            );
+            Err(errors)
+        }
+    }
+}
+
+impl RangeBound for Option<usize> {
+    fn is_valid_range(from: &Self, to: &Self) -> bool {
+        match (from, to) {
+            (Some(a), Some(b)) => a < b,
+            _ => true,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_range_validate() {
+        let r1 = Range {
+            from: None,
+            to: Some(0),
+        };
+        assert!(r1.validate().is_ok());
+
+        let r2 = Range {
+            from: Some(0),
+            to: None,
+        };
+        assert!(r2.validate().is_ok());
+
+        let r3 = Range {
+            from: Some(0),
+            to: Some(1),
+        };
+        assert!(r3.validate().is_ok());
+
+        let r4 = Range {
+            from: None,
+            to: None,
+        };
+        assert!(r4.validate().is_ok());
+    }
 }

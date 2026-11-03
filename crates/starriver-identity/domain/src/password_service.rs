@@ -8,7 +8,7 @@ use crate::password_encoder::PasswordEncoder;
 use crate::user::entity::User;
 use crate::user::policy::BadPasswordPolicy;
 use crate::user::specification::PasswordSpec;
-use crate::user::value_object::{HashedPassword, LifeCycle};
+use crate::user::value_object::{AccountStatus, HashedPassword};
 
 #[derive(Clone)]
 pub struct PasswordDomainService<PE> {
@@ -46,19 +46,19 @@ where
         user: &mut User,
         raw_password: &str,
     ) -> Result<(), AuthenticationError> {
-        match user.life_cycle() {
-            LifeCycle::Active => {}
-            LifeCycle::Disabled => return Err(AuthenticationError::UserDisabled),
-            LifeCycle::Deleted => return Err(AuthenticationError::UserDeleted),
+        match user.status() {
+            AccountStatus::Active => {}
+            AccountStatus::Disabled => return Err(AuthenticationError::UserDisabled),
+            AccountStatus::Deleted => return Err(AuthenticationError::UserDeleted),
         };
 
         if user.is_locked() {
             return Err(AuthenticationError::UserLocked);
         }
 
-        let matches = self
-            .pwd_encoder
-            .verify(raw_password, user.password().as_str())
+        let matches = user
+            .password()
+            .verify(raw_password, self.pwd_encoder.as_ref())
             .map_err(|e| AuthenticationError::InnerError {
                 message: e.to_string(),
             })?;
@@ -89,24 +89,27 @@ where
         cur_pwd: &str,
         new_pwd: &str,
     ) -> Result<(), DomainError> {
-        match user.life_cycle() {
-            LifeCycle::Active => {}
-            LifeCycle::Disabled | LifeCycle::Deleted => return Err(DomainError::UserDisabled),
+        match user.status() {
+            AccountStatus::Active => {}
+            AccountStatus::Disabled | AccountStatus::Deleted => {
+                return Err(DomainError::UserDisabled);
+            }
         }
         if user.is_locked() {
             return Err(DomainError::UserLocked);
         }
         if cur_pwd == new_pwd {
             return Err(DomainError::SamePassword);
-        }
-        let matches = self.pwd_encoder.verify(cur_pwd, user.password().as_str())?;
+        };
+        let matches = user
+            .password()
+            .verify(cur_pwd, self.pwd_encoder.as_ref())
+            .is_ok();
         if !matches {
             user.record_password_attempts(&self.pwd_policy, OffsetDateTime::now_utc());
             return Err(DomainError::BadPassword);
         }
-        self.pwd_spec.validate(new_pwd)?;
-        let hashed_pwd = self.pwd_encoder.encode(new_pwd)?;
-        let password = HashedPassword::new(hashed_pwd)?;
+        let password = HashedPassword::new(new_pwd, &self.pwd_spec, self.pwd_encoder.as_ref())?;
 
         user.change_password(password);
         user.reset_password_attempts();
@@ -114,9 +117,7 @@ where
     }
 
     pub fn reset_password(&self, user: &mut User, new_pwd: &str) -> Result<(), DomainError> {
-        self.pwd_spec.validate(new_pwd)?;
-        let hashed_pwd = self.pwd_encoder.encode(new_pwd)?;
-        let password = HashedPassword::new(hashed_pwd)?;
+        let password = HashedPassword::new(new_pwd, &self.pwd_spec, self.pwd_encoder.as_ref())?;
 
         user.change_password(password);
         user.reset_password_attempts();

@@ -1,4 +1,4 @@
-use starriver_identity_domain::error::{DomainError, PasswordEncoderError};
+use starriver_identity_domain::{error::DomainError, password_encoder::EncodeError};
 use starriver_shared_base::error::RepositoryError;
 use thiserror::Error;
 use tracing::error;
@@ -59,15 +59,14 @@ impl From<DomainError> for CtxError {
             DomainError::InvalidUsernameFormat
             | DomainError::InvalidEmailFormat
             | DomainError::InvalidPasswordFormat
-            | DomainError::InvalidPasswordHash
             | DomainError::SamePassword => CtxError::InvalidInput(e.to_string()),
 
             // 认证类 → AuthenticationFailed
             DomainError::BadPassword | DomainError::UserLocked | DomainError::UserDisabled => {
                 CtxError::AuthenticationFailed(e.to_string())
             }
-            // 密码编码/验证失败是内部问题
-            DomainError::PasswordEncoding(_) => {
+            // 密码编码/校验是内部问题
+            DomainError::PasswordEncoding(_) | DomainError::PasswordVerification(_) => {
                 error!(error=%e, "password encoding error");
                 CtxError::Internal
             }
@@ -94,8 +93,8 @@ impl From<RepositoryError> for CtxError {
     }
 }
 
-impl From<PasswordEncoderError> for CtxError {
-    fn from(e: PasswordEncoderError) -> Self {
+impl From<EncodeError> for CtxError {
+    fn from(e: EncodeError) -> Self {
         error!(error=%e, "password encoder error");
         CtxError::Internal
     }

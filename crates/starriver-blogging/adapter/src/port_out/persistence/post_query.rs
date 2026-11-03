@@ -26,7 +26,7 @@ use crate::port_out::persistence::{
     dto::post_row::{PostDetailRow, PostExcerptRow, PostSearchRow},
     po::{
         attachment_po, category_po, post_attachment_po,
-        post_po::{Column, Entity, PostStatePo, Relation},
+        post_po::{Column, Entity, PostStateDb, Relation},
     },
 };
 
@@ -62,7 +62,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
 
         let mut cond = Condition::all();
         if q.published_only {
-            cond = cond.add(Column::State.eq(PostStatePo::Published));
+            cond = cond.add(Column::State.eq(PostStateDb::Published));
             select =
                 select.order_by_with_nulls(Column::PublishedAt, Order::Desc, NullOrdering::Last);
         } else {

@@ -1,10 +1,14 @@
-use starriver_blogging_domain::post::{entity::Post, params::PostUpdate, value_object::PostState};
+use starriver_blogging_domain::post::{
+    entity::Post,
+    value_object::{Content, Title},
+};
 use starriver_shared_base::{
     authentication::principal::DefaultUser,
     cache::Cache,
     db::{Connection, Revision, Transaction},
     dto::OffsetPage,
 };
+use time::OffsetDateTime;
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -99,12 +103,6 @@ where
         author: DefaultUser,
         cmd: SaveOrUpdatePostCmd,
     ) -> Result<PostDetailDto, CtxError> {
-        let author_id = author.id;
-        let state = match cmd.publish {
-            true => PostState::Published,
-            false => PostState::Draft,
-        };
-
         if !self
             .category_repo
             .exists_by_id(&self.conn, cmd.category_id)
@@ -115,14 +113,13 @@ where
                 cmd.category_id
             )));
         }
-        let post = Post::new(
-            cmd.title,
-            cmd.content,
-            state,
-            author_id,
-            cmd.category_id,
-            cmd.attachments,
-        )?;
+
+        let title = Title::new(cmd.title)?;
+        let content = Content::new(cmd.content)?;
+        let mut post = Post::new(title, content, author.id, cmd.category_id, cmd.attachments);
+        if cmd.publish {
+            post.publish(OffsetDateTime::now_utc())?;
+        }
 
         // post_repo.add() 包含post与附件关联的写入，需事务
         let tx = self.conn.begin().await.map_err(|e| {
@@ -185,15 +182,15 @@ where
             let Some(mut found) = post else {
                 return Err(CtxError::NotFound(format!("Post [{}] not found", id)));
             };
-            let cmd = PostUpdate {
-                title: cmd.title,
-                content: cmd.content,
-                category_id: cmd.category_id,
-                attachments: cmd.attachments,
-                published: cmd.publish,
-            };
+
             let original = found.clone();
-            found.update(cmd)?;
+
+            let title = Title::new(cmd.title)?;
+            let content = Content::new(cmd.content)?;
+            found.update(title, content, cmd.category_id, cmd.attachments);
+            if cmd.publish {
+                found.publish(OffsetDateTime::now_utc())?;
+            }
             self.post_repo
                 .update(&tx, Revision::new(original, found))
                 .await

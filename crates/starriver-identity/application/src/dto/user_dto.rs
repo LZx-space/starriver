@@ -117,6 +117,7 @@ pub mod input {
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "snake_case")]
     pub enum SecurityEventType {
+        LoginSucceeded,
         TryLoginWithBadPwd,
         UserUnlocked,
         PasswordChanged,
@@ -126,6 +127,7 @@ pub mod input {
     impl Display for SecurityEventType {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
+                SecurityEventType::LoginSucceeded => write!(f, "LoginSucceeded")?,
                 SecurityEventType::TryLoginWithBadPwd => write!(f, "TryLoginWithBadPwd")?,
                 SecurityEventType::UserUnlocked => write!(f, "UserUnlocked")?,
                 SecurityEventType::PasswordChanged => write!(f, "PasswordChanged")?,
@@ -219,7 +221,7 @@ pub mod input {
 pub mod output {
     use super::input::SecurityEventType;
     use serde::Serialize;
-    use starriver_identity_domain::user::value_object::LifeCycle;
+    use starriver_identity_domain::user::value_object::AccountStatus;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -235,7 +237,7 @@ pub mod output {
         pub id: Uuid,
         pub username: String,
         pub email: String,
-        pub life_cycle: LifeCycle,
+        pub account_status: AccountStatus,
         pub password_locked_until: Option<OffsetDateTime>,
         pub password_window_start: Option<OffsetDateTime>,
         pub password_attempts: i16,

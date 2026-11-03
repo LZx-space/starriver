@@ -41,14 +41,16 @@ impl<PE: PasswordEncoder> UserFactory<PE> {
         email: &str,
     ) -> Result<User, DomainError> {
         let username = Username::new(username, &self.username_spec)?;
-        self.password_spec.validate(password)?;
-        let hashed_pwd = self.password_encoder.encode(password)?;
-        let password = HashedPassword::new(hashed_pwd)?;
+        let hashed_password = HashedPassword::new(
+            password,
+            self.password_spec.as_ref(),
+            self.password_encoder.as_ref(),
+        )?;
         let email = Email::new(email, &self.email_spec)?;
         Ok(User::new(
             Uuid::now_v7(),
             username,
-            password,
+            hashed_password,
             email,
             Default::default(),
         ))

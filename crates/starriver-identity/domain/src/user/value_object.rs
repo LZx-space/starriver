@@ -1,13 +1,17 @@
 use std::fmt::Display;
 
+use derive_getters::Dissolve;
 use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 
 use crate::error::DomainError;
-use crate::user::specification::{EmailSpec, UsernameSpec};
+use crate::password_encoder::PasswordEncoder;
+use crate::user::policy::BadPasswordPolicy;
+use crate::user::specification::{EmailSpec, PasswordSpec, UsernameSpec};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum LifeCycle {
+pub enum AccountStatus {
     /// 正常
     #[default]
     Active,
@@ -17,10 +21,82 @@ pub enum LifeCycle {
     Deleted,
 }
 
+#[derive(Debug, Clone, Dissolve, PartialEq)]
+#[dissolve(rename = "into_parts")]
+pub struct LoginAttemptState {
+    password_locked_until: Option<OffsetDateTime>,
+    password_window_start: Option<OffsetDateTime>,
+    password_attempts: u8,
+}
+
+impl LoginAttemptState {
+    pub fn new(
+        password_locked_until: Option<OffsetDateTime>,
+        password_window_start: Option<OffsetDateTime>,
+        password_attempts: u8,
+    ) -> Self {
+        Self {
+            password_locked_until,
+            password_window_start,
+            password_attempts,
+        }
+    }
+
+    ///// 业务方法必须只能是实体才能访问 ///////////////////////////////////////////////////////////////
+
+    pub(crate) fn is_locked(&self) -> bool {
+        self.password_locked_until
+            .is_some_and(|time| time > OffsetDateTime::now_utc())
+    }
+
+    /// 是否存在待清理的密码失败状态（失败计数/计数窗口/锁定）
+    pub(crate) fn has_password_attempts(&self) -> bool {
+        self.password_attempts != 0
+            || self.password_window_start.is_some()
+            || self.password_locked_until.is_some()
+    }
+
+    pub(crate) fn reset_password_attempts(&mut self) {
+        self.password_locked_until = None;
+        self.password_window_start = None;
+        self.password_attempts = 0;
+    }
+
+    pub(crate) fn record_password_attempts(
+        &mut self,
+        policy: &BadPasswordPolicy,
+        now: OffsetDateTime,
+    ) {
+        if self.is_locked() {
+            return;
+        }
+
+        let window_duration = Duration::minutes(policy.window_minutes.into());
+        let within_window = self
+            .password_window_start
+            .is_some_and(|start| now - start <= window_duration);
+
+        if within_window {
+            // 窗口内：计数递增
+            self.password_attempts += 1;
+        } else {
+            // 窗口不存在或已过期：开启新窗口，计数从1开始
+            self.password_window_start = Some(now);
+            self.password_attempts = 1;
+        }
+
+        if self.password_attempts >= policy.max_attempts {
+            let lockout_duration = Duration::minutes(policy.lockout_minutes.into());
+            let lockout_until = now + lockout_duration;
+            self.password_locked_until = Some(lockout_until);
+        }
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Username(pub(crate) String);
+pub struct Username(String);
 
 impl Username {
     pub fn new(username: &str, spec: &UsernameSpec) -> Result<Self, DomainError> {
@@ -28,7 +104,7 @@ impl Username {
         Ok(Self(username.to_string()))
     }
 
-    pub(crate) fn from_repo(username: String) -> Self {
+    pub fn from_persisted(username: String) -> Self {
         Self(username)
     }
 
@@ -50,25 +126,25 @@ impl Display for Username {
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HashedPassword(pub(crate) String);
+pub struct HashedPassword(String);
 
 impl HashedPassword {
     /// # returns
-    ///  -  `Ok(HashedPassword)`
-    ///  - `Err(DomainError::InvalidPasswordHash)`
-    pub fn new(hashed_password: String) -> Result<Self, DomainError> {
-        if hashed_password.is_empty() {
-            return Err(DomainError::InvalidPasswordHash);
-        }
-        // 任意现代密码哈希（argon2/bcrypt/scrypt）都远超 50 字符
-        debug_assert!(
-            hashed_password.len() >= 50,
-            "HashedPassword 应来自密码编码器，收到非法输入"
-        );
+    ///  - `Ok(Self)`
+    ///  - `Err(DomainError::InvalidPasswordFormat)`
+    pub fn new<PE: PasswordEncoder>(
+        raw: &str,
+        spec: &PasswordSpec,
+        encoder: &PE,
+    ) -> Result<Self, DomainError> {
+        spec.validate(raw)?;
+        let hashed_password = encoder
+            .encode(raw)
+            .map_err(|_e| DomainError::InvalidPasswordFormat)?;
         Ok(Self(hashed_password))
     }
 
-    pub(crate) fn from_repo(hashed_password: String) -> Self {
+    pub fn from_persisted(hashed_password: String) -> Self {
         Self(hashed_password)
     }
 
@@ -78,6 +154,19 @@ impl HashedPassword {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    ///// 业务方法必须只能是实体才能访问 ///////////////////////////////////////////////////////////////
+
+    /// 验证明文是否匹配
+    pub(crate) fn verify<PE: PasswordEncoder>(
+        &self,
+        raw: &str,
+        encoder: &PE,
+    ) -> Result<bool, DomainError> {
+        encoder
+            .verify(raw, &self.0)
+            .map_err(|_e| DomainError::BadPassword)
     }
 }
 
@@ -90,7 +179,7 @@ impl Display for HashedPassword {
 ///////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Email(pub(crate) String);
+pub struct Email(String);
 
 impl Email {
     /// 与 `user.email` 列宽 `varchar(254)` 保持一致（RFC 5321 的上限）。
@@ -114,12 +203,15 @@ impl Email {
         Ok(Self(email))
     }
 
-    pub(crate) fn from_repo(email: String) -> Self {
+    pub fn from_persisted(email: String) -> Self {
         Self(email)
     }
 
+    ///// 业务方法必须只能是实体才能访问 ///////////////////////////////////////////////////////////////
+
     /// Returns a masked email address, showing only the first character of the local part
-    pub fn masking(&self) -> String {
+    #[allow(unused)]
+    pub(crate) fn masking(&self) -> String {
         let parts: Vec<&str> = self.0.split('@').collect();
         if parts.len() != 2 {
             return self.0.clone();
@@ -201,7 +293,7 @@ mod email_masking_tests {
     fn mask_no_at_sign_passthrough() {
         // 无 @ 时直接返回原文
         assert_eq!(
-            Email::from_repo("no_at_sign".into()).masking(),
+            Email::from_persisted("no_at_sign".into()).masking(),
             "no_at_sign"
         );
     }
@@ -252,24 +344,45 @@ mod email_normalization_tests {
 
 #[cfg(test)]
 mod hashed_password_tests {
+    use regex::Regex;
+
+    use crate::password_encoder::{EncodeError, VerifyError};
+
     use super::*;
 
-    #[test]
-    fn new_rejects_empty() {
-        assert!(HashedPassword::new("".into()).is_err());
+    struct FakeEncoder {}
+
+    impl FakeEncoder {
+        fn never_err() -> Self {
+            Self {}
+        }
+    }
+
+    impl PasswordEncoder for FakeEncoder {
+        fn encode(&self, raw: &str) -> Result<String, EncodeError> {
+            Ok(format!("hashed:{}", raw))
+        }
+
+        fn verify(&self, raw: &str, hashed: &str) -> Result<bool, VerifyError> {
+            Ok(hashed == format!("hashed:{}", raw))
+        }
+    }
+
+    fn dummy_spec() -> PasswordSpec {
+        PasswordSpec::new(Regex::new(r"^[A-Za-z0-9@$!%*?&]{8,12}$").expect("valid test regex"))
     }
 
     #[test]
-    #[should_panic(expected = "HashedPassword 应来自密码编码器")]
-    fn new_panics_on_too_short() {
-        // < 50 字符在 debug 模式下触发 panic
-        let _ = HashedPassword::new("short".into());
-    }
-
-    #[test]
-    fn new_accepts_long_hash() {
-        let hash = "a".repeat(60);
-        let pwd = HashedPassword::new(hash.clone()).unwrap();
-        assert_eq!(pwd.0, hash);
+    fn test_returns_invalid_format() {
+        let spec = dummy_spec();
+        let never_err = FakeEncoder::never_err();
+        let result = HashedPassword::new("short", &spec, &never_err);
+        assert!(result.is_err());
+        let result = HashedPassword::new("long1234567890", &spec, &never_err);
+        assert!(result.is_err());
+        let result = HashedPassword::new("notallow^", &spec, &never_err);
+        assert!(result.is_err());
+        let result = HashedPassword::new("abc12345", &spec, &never_err);
+        assert!(result.is_ok());
     }
 }

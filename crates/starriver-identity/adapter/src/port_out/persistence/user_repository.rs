@@ -13,6 +13,9 @@ use sea_orm::sea_query::Expr;
 use starriver_identity_application::port::user_repository::UserRepository;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::value_object::Email;
+use starriver_identity_domain::user::value_object::HashedPassword;
+use starriver_identity_domain::user::value_object::LoginAttemptState;
+use starriver_identity_domain::user::value_object::Username;
 use starriver_shared_base::db::{Executor, Revision};
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_infra::error_mapping::db_2_repo_error;
@@ -40,15 +43,17 @@ where
             .await
             .map(|e| {
                 e.map(|e| {
-                    User::from_repo(
+                    User::from_persisted(
                         e.id,
-                        e.username,
-                        e.password,
-                        e.email,
-                        e.life_cycle.into(),
-                        e.password_locked_until,
-                        e.password_window_start,
-                        e.password_attempts as u8,
+                        Username::from_persisted(e.username),
+                        HashedPassword::from_persisted(e.password),
+                        Email::from_persisted(e.email),
+                        e.account_status.into(),
+                        LoginAttemptState::new(
+                            e.password_locked_until,
+                            e.password_window_start,
+                            e.password_attempts as u8,
+                        ),
                     )
                 })
             })
@@ -63,15 +68,17 @@ where
             .await
             .map(|e| {
                 e.map(|e| {
-                    User::from_repo(
+                    User::from_persisted(
                         e.id,
-                        e.username,
-                        e.password,
-                        e.email,
-                        e.life_cycle.into(),
-                        e.password_locked_until,
-                        e.password_window_start,
-                        e.password_attempts as u8,
+                        Username::from_persisted(e.username),
+                        HashedPassword::from_persisted(e.password),
+                        Email::from_persisted(e.email),
+                        e.account_status.into(),
+                        LoginAttemptState::new(
+                            e.password_locked_until,
+                            e.password_window_start,
+                            e.password_attempts as u8,
+                        ),
                     )
                 })
             })
@@ -79,22 +86,16 @@ where
     }
 
     async fn insert(&self, conn: &T, user: User) -> Result<User, RepositoryError> {
-        let (
-            id,
-            username,
-            password,
-            email,
-            life_cycle,
-            password_locked_until,
-            password_window_start,
-            password_attempts,
-        ) = user.into_parts();
+        let (id, username, password, email, life_cycle, login_attempt_state) = user.into_parts();
+        let (password_locked_until, password_window_start, password_attempts) =
+            login_attempt_state.into_parts();
+
         ActiveModel {
             id: Set(id),
             username: Set(username.into_inner()),
             password: Set(password.into_inner()),
             email: Set(email.into_inner()),
-            life_cycle: Set(life_cycle.into()),
+            account_status: Set(life_cycle.into()),
             password_locked_until: Set(password_locked_until),
             password_window_start: Set(password_window_start),
             password_attempts: Set(password_attempts as i16),
@@ -105,15 +106,17 @@ where
         .await
         .map_err(db_2_repo_error)
         .map(|m| {
-            User::from_repo(
+            User::from_persisted(
                 m.id,
-                m.username,
-                m.password,
-                m.email,
-                m.life_cycle.into(),
-                m.password_locked_until,
-                m.password_window_start,
-                m.password_attempts as u8,
+                Username::from_persisted(m.username),
+                HashedPassword::from_persisted(m.password),
+                Email::from_persisted(m.email),
+                m.account_status.into(),
+                LoginAttemptState::new(
+                    m.password_locked_until,
+                    m.password_window_start,
+                    m.password_attempts as u8,
+                ),
             )
         })
     }
@@ -132,26 +135,21 @@ where
         }
 
         let (original, modified) = user.into_parts();
-        let (
-            user_id,
-            username,
-            password,
-            email,
-            life_cycle,
-            password_locked_until,
-            password_window_start,
-            password_attempts,
-        ) = original.into_parts();
+        let (user_id, username, password, email, life_cycle, login_attempt_state) =
+            original.into_parts();
+        let (password_locked_until, password_window_start, password_attempts) =
+            login_attempt_state.into_parts();
+
         let (
             _user_id,
             new_username,
             new_password,
             new_email,
             new_life_cycle,
-            new_password_locked_until,
-            new_password_window_start,
-            new_password_attempts,
+            new_login_attempt_state,
         ) = modified.into_parts();
+        let (new_password_locked_until, new_password_window_start, new_password_attempts) =
+            new_login_attempt_state.into_parts();
 
         let window_changed = password_window_start != new_password_window_start;
 
@@ -173,7 +171,7 @@ where
             username,
             password,
             email,
-            life_cycle,
+            account_status: life_cycle,
             password_locked_until,
             password_window_start,
             password_attempts: NotSet,
@@ -211,15 +209,17 @@ where
             .next()
             .ok_or_else(|| db_2_repo_error(DbErr::RecordNotFound("user not found".into())))
             .map(|m| {
-                User::from_repo(
+                User::from_persisted(
                     m.id,
-                    m.username,
-                    m.password,
-                    m.email,
-                    m.life_cycle.into(),
-                    m.password_locked_until,
-                    m.password_window_start,
-                    m.password_attempts as u8,
+                    Username::from_persisted(m.username),
+                    HashedPassword::from_persisted(m.password),
+                    Email::from_persisted(m.email),
+                    m.account_status.into(),
+                    LoginAttemptState::new(
+                        m.password_locked_until,
+                        m.password_window_start,
+                        m.password_attempts as u8,
+                    ),
                 )
             })
     }

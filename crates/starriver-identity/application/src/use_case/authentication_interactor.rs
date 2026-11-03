@@ -71,12 +71,6 @@ where
                 // 认证成功：如账户当前被锁则清理失败计数/计数窗口/锁定
                 if original.is_locked() {
                     user.reset_password_attempts();
-                    let user = self
-                        .user_repo
-                        .update(&self.conn, Revision::new(original, user))
-                        .await
-                        .map_err(mapping_repo_error())?;
-
                     self.security_event_port
                         .insert(
                             &self.conn,
@@ -88,10 +82,13 @@ where
                             ),
                         )
                         .await;
-                    Ok(into_user_detail(user))
-                } else {
-                    Ok(into_user_detail(user))
                 }
+                let user = self
+                    .user_repo
+                    .update(&self.conn, Revision::new(original, user))
+                    .await
+                    .map_err(mapping_repo_error())?;
+                Ok(into_user_detail(user))
             }
             Err(AuthenticationError::BadPassword) => {
                 // 失败计数是主业务；审计写入在其后 best-effort 执行，失败不回滚计数。

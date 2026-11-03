@@ -4,7 +4,10 @@ use sea_orm::{
     ConnectionTrait, EntityTrait,
 };
 use starriver_blogging_application::port::attachment_repository::AttachmentRepository;
-use starriver_blogging_domain::attachment::entity::Attachment;
+use starriver_blogging_domain::attachment::{
+    entity::Attachment,
+    value_object::{Extension, FileSize},
+};
 use starriver_shared_base::{db::Executor, error::RepositoryError};
 use starriver_shared_infra::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
@@ -36,7 +39,17 @@ where
         .insert(conn)
         .await
         .map_err(db_2_repo_error)
-        .map(|e| Attachment::from_repo(e.id, e.file_name, e.file_size))
+        .map(|e| {
+            let extension = e
+                .file_name
+                .split(".")
+                .last()
+                .unwrap_or_default()
+                .to_string();
+            let extension = Extension::from_persisted(extension);
+            let file_size = FileSize::from_persisted(e.file_size);
+            Attachment::from_persisted(e.id, extension, file_size)
+        })
     }
 
     async fn delete(&self, conn: &T, id: Uuid) -> Result<bool, RepositoryError> {

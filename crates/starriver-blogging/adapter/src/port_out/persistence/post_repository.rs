@@ -4,7 +4,10 @@ use sea_orm::{
     ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter,
 };
 use starriver_blogging_application::port::post_repository::PostRepository;
-use starriver_blogging_domain::post::entity::Post;
+use starriver_blogging_domain::post::{
+    entity::Post,
+    value_object::{Content, Title},
+};
 use starriver_shared_base::{
     db::{Executor, Revision},
     error::RepositoryError,
@@ -36,10 +39,10 @@ where
             .into_iter()
             .map(|e| e.attachment_id)
             .collect::<Vec<_>>();
-        Ok(Some(Post::from_repo(
+        Ok(Some(Post::from_persisted(
             id,
-            post.title,
-            post.content_html,
+            Title::from_persisted(post.title),
+            Content::from_persisted(post.content_html),
             post.state.into(),
             post.author_id,
             post.category_id,
@@ -76,10 +79,10 @@ where
         self.insert_post_attachments(conn, id, &attachments).await?;
 
         // 构建 Post 实体
-        Ok(Post::from_repo(
+        Ok(Post::from_persisted(
             model.id,
-            model.title,
-            model.content_html,
+            Title::from_persisted(model.title),
+            Content::from_persisted(model.content_html),
             model.state.into(),
             model.author_id,
             model.category_id,
@@ -192,10 +195,10 @@ where
         // 只插新增的
         self.insert_post_attachments(conn, id, &to_insert).await?;
 
-        Ok(Post::from_repo(
+        Ok(Post::from_persisted(
             updated.id,
-            updated.title,
-            updated.content_html,
+            Title::from_persisted(updated.title),
+            Content::from_persisted(updated.content_html),
             updated.state.into(),
             updated.author_id,
             updated.category_id,

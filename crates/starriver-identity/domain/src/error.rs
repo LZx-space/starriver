@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::password_encoder::{EncodeError, VerifyError};
+
 #[derive(Debug, Error)]
 pub enum DomainError {
     #[error("用户已被锁定")]
@@ -17,9 +19,6 @@ pub enum DomainError {
     #[error("密码格式无效")]
     InvalidPasswordFormat,
 
-    #[error("密码哈希无效")]
-    InvalidPasswordHash,
-
     #[error("当前密码与新密码相同")]
     SamePassword,
 
@@ -27,14 +26,8 @@ pub enum DomainError {
     BadPassword,
 
     #[error(transparent)]
-    PasswordEncoding(#[from] PasswordEncoderError),
-}
+    PasswordEncoding(#[from] EncodeError),
 
-#[derive(Debug, Error)]
-pub enum PasswordEncoderError {
-    #[error("密码哈希失败：{0}")]
-    EncodingFailed(String),
-
-    #[error("密码校验失败：{0}")]
-    VerificationFailed(String),
+    #[error(transparent)]
+    PasswordVerification(#[from] VerifyError),
 }

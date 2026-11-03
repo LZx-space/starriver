@@ -2,7 +2,7 @@ use sea_orm::DerivePrimaryKey;
 use sea_orm::entity::prelude::*;
 use sea_orm::sqlx::types::time::OffsetDateTime;
 use sea_orm::{ActiveModelBehavior, DeriveEntityModel, DeriveRelation, EnumIter};
-use starriver_identity_domain::user::value_object::LifeCycle;
+use starriver_identity_domain::user::value_object::AccountStatus;
 use uuid::Uuid;
 
 /// 用户
@@ -16,7 +16,7 @@ pub struct Model {
     pub password: String,
     #[sea_orm(unique)]
     pub email: String,
-    pub life_cycle: UserLifeCycle,
+    pub account_status: AccountStatusDb,
     pub password_locked_until: Option<OffsetDateTime>,
     pub password_window_start: Option<OffsetDateTime>,
     // 注意 sqlx-postgres 不支持读取 u8（仅写入可用），这里用 i16 承接以不污染外部配置文件及实体
@@ -34,7 +34,7 @@ pub enum Relation {}
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
-pub enum UserLifeCycle {
+pub enum AccountStatusDb {
     #[default]
     #[sea_orm(num_value = 0)]
     Active, // 正常
@@ -45,22 +45,22 @@ pub enum UserLifeCycle {
 }
 
 /////////////////////////////////////////////////////////////
-impl From<UserLifeCycle> for LifeCycle {
-    fn from(value: UserLifeCycle) -> Self {
+impl From<AccountStatusDb> for AccountStatus {
+    fn from(value: AccountStatusDb) -> Self {
         match value {
-            UserLifeCycle::Active => LifeCycle::Active,
-            UserLifeCycle::Disabled => LifeCycle::Disabled,
-            UserLifeCycle::Deleted => LifeCycle::Deleted,
+            AccountStatusDb::Active => AccountStatus::Active,
+            AccountStatusDb::Disabled => AccountStatus::Disabled,
+            AccountStatusDb::Deleted => AccountStatus::Deleted,
         }
     }
 }
 
-impl From<LifeCycle> for UserLifeCycle {
-    fn from(value: LifeCycle) -> Self {
+impl From<AccountStatus> for AccountStatusDb {
+    fn from(value: AccountStatus) -> Self {
         match value {
-            LifeCycle::Active => UserLifeCycle::Active,
-            LifeCycle::Disabled => UserLifeCycle::Disabled,
-            LifeCycle::Deleted => UserLifeCycle::Deleted,
+            AccountStatus::Active => AccountStatusDb::Active,
+            AccountStatus::Disabled => AccountStatusDb::Disabled,
+            AccountStatus::Deleted => AccountStatusDb::Deleted,
         }
     }
 }

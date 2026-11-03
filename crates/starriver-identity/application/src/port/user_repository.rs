@@ -1,4 +1,7 @@
-use starriver_identity_domain::user::entity::User;
+use starriver_identity_domain::user::{
+    entity::User,
+    value_object::{Email, Username},
+};
 use starriver_shared_base::{
     db::{Executor, Revision},
     error::RepositoryError,
@@ -9,13 +12,13 @@ pub trait UserRepository<T: Executor> {
     fn find_by_username(
         &self,
         conn: &T,
-        username: &str,
+        username: &Username,
     ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
 
     fn find_by_email(
         &self,
         conn: &T,
-        email: &str,
+        email: &Email,
     ) -> impl Future<Output = Result<Option<User>, RepositoryError>> + Send;
 
     fn insert(

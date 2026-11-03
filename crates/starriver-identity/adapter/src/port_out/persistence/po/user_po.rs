@@ -16,7 +16,7 @@ pub struct Model {
     pub password: String,
     #[sea_orm(unique)]
     pub email: String,
-    pub account_status: AccountStatusDb,
+    pub status: AccountStatusDb,
     pub password_locked_until: Option<OffsetDateTime>,
     pub password_window_start: Option<OffsetDateTime>,
     // 注意 sqlx-postgres 不支持读取 u8（仅写入可用），这里用 i16 承接以不污染外部配置文件及实体

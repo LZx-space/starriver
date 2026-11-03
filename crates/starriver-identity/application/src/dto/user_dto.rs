@@ -1,57 +1,40 @@
 pub mod input {
-    use std::{borrow::Cow, fmt::Display, sync::Arc};
+    use std::{borrow::Cow, fmt::Display};
 
     use serde::{Deserialize, Serialize};
-    use starriver_identity_domain::user::{
-        specification::{EmailSpec, PasswordSpec, UsernameSpec},
-        value_object::Email,
-    };
     use starriver_shared_base::dto::CursorPageQuery;
     use time::OffsetDateTime;
     use tracing::warn;
     use uuid::Uuid;
-    use validator::{Validate, ValidationError};
+    use validator::Validate;
 
     #[derive(Debug, Deserialize, Validate)]
-    #[validate(context = UserValidateCxt)]
     pub struct UserRegisterCmd {
-        #[validate(custom(function = "validate_username", use_context))]
         pub username: String,
-        #[validate(custom(function = "validate_password", use_context))]
         pub password: String,
-        #[validate(custom(function = "validate_email", use_context))]
         pub email: String,
         #[validate(length(equal = 6))]
         pub verification_code: String,
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    #[validate(context = UserValidateCxt)]
     pub struct ChangeMyPasswordCmd {
         pub cur_password: String,
-        #[validate(custom(function = "validate_password", use_context))]
         pub new_password: String,
-        #[validate(custom(function = "validate_password", use_context))]
         pub new_password_confirm: String,
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    #[validate(context = UserValidateCxt)]
     pub struct SendVerificationCodeCmd {
-        #[validate(custom(function = "validate_email", use_context))]
         pub email: String,
     }
 
     #[derive(Debug, Deserialize, Validate)]
-    #[validate(context = UserValidateCxt)]
     pub struct ResetPasswordCmd {
-        #[validate(custom(function = "validate_email", use_context))]
         pub email: String,
         #[validate(length(equal = 6))]
         pub verification_code: String,
-        #[validate(custom(function = "validate_password", use_context))]
         pub new_password: String,
-        #[validate(custom(function = "validate_password", use_context))]
         pub new_password_confirm: String,
     }
 
@@ -163,35 +146,6 @@ pub mod input {
 
     //////////////////////////////////////////////////////////////////////////////////////
 
-    #[derive(Clone)]
-    pub struct UserValidateCxt {
-        pub username_spec: Arc<UsernameSpec>,
-        pub password_spec: Arc<PasswordSpec>,
-        pub email_spec: Arc<EmailSpec>,
-    }
-
-    fn validate_username(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
-        ctx.username_spec.validate(value).map_err(|e| {
-            ValidationError::new("invalid_username").with_message(e.to_string().into())
-        })?;
-        Ok(())
-    }
-
-    fn validate_password(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
-        ctx.password_spec.validate(value).map_err(|e| {
-            ValidationError::new("invalid_password").with_message(e.to_string().into())
-        })?;
-        Ok(())
-    }
-
-    fn validate_email(value: &str, ctx: &UserValidateCxt) -> Result<(), ValidationError> {
-        let email = Email::normalize(value);
-        ctx.email_spec.validate(&email).map_err(|e| {
-            ValidationError::new("invalid_email").with_message(e.to_string().into())
-        })?;
-        Ok(())
-    }
-
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -237,7 +191,7 @@ pub mod output {
         pub id: Uuid,
         pub username: String,
         pub email: String,
-        pub account_status: AccountStatus,
+        pub status: AccountStatus,
         pub password_locked_until: Option<OffsetDateTime>,
         pub password_window_start: Option<OffsetDateTime>,
         pub password_attempts: i16,

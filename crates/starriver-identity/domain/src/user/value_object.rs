@@ -21,7 +21,7 @@ pub enum AccountStatus {
     Deleted,
 }
 
-#[derive(Debug, Clone, Dissolve, PartialEq)]
+#[derive(Default, Debug, Clone, Dissolve, PartialEq)]
 #[dissolve(rename = "into_parts")]
 pub struct LoginAttemptState {
     password_locked_until: Option<OffsetDateTime>,
@@ -126,20 +126,32 @@ impl Display for Username {
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RawPassword(String);
+
+impl RawPassword {
+    pub fn new(raw: &str, spec: &PasswordSpec) -> Result<Self, DomainError> {
+        spec.validate(raw)?;
+        Ok(Self(raw.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HashedPassword(String);
 
 impl HashedPassword {
     /// # returns
     ///  - `Ok(Self)`
     ///  - `Err(DomainError::InvalidPasswordFormat)`
-    pub fn new<PE: PasswordEncoder>(
-        raw: &str,
-        spec: &PasswordSpec,
-        encoder: &PE,
+    pub fn from_raw(
+        raw: &RawPassword,
+        encoder: &impl PasswordEncoder,
     ) -> Result<Self, DomainError> {
-        spec.validate(raw)?;
         let hashed_password = encoder
-            .encode(raw)
+            .encode(&raw.0)
             .map_err(|_e| DomainError::InvalidPasswordFormat)?;
         Ok(Self(hashed_password))
     }
@@ -159,10 +171,16 @@ impl HashedPassword {
     ///// 业务方法必须只能是实体才能访问 ///////////////////////////////////////////////////////////////
 
     /// 验证明文是否匹配
-    pub(crate) fn verify<PE: PasswordEncoder>(
+    /// # Parameters
+    ///  - `raw` - 传入的明文密码，不传入`RawPassword`类型，因为老密码可能不符合当前密码规则
+    ///  - `encoder` - 密码编码器
+    /// # returns
+    ///  - `Ok(bool)` - 如果明文密码与密码匹配，则返回 `true`，否则返回 `false
+    ///  - `Err(DomainError::BadPassword)` - 如果密码不匹配，则返回 `DomainError::BadPassword`
+    pub(crate) fn verify(
         &self,
         raw: &str,
-        encoder: &PE,
+        encoder: &impl PasswordEncoder,
     ) -> Result<bool, DomainError> {
         encoder
             .verify(raw, &self.0)
@@ -344,29 +362,8 @@ mod email_normalization_tests {
 
 #[cfg(test)]
 mod hashed_password_tests {
-    use regex::Regex;
-
-    use crate::password_encoder::{EncodeError, VerifyError};
-
     use super::*;
-
-    struct FakeEncoder {}
-
-    impl FakeEncoder {
-        fn never_err() -> Self {
-            Self {}
-        }
-    }
-
-    impl PasswordEncoder for FakeEncoder {
-        fn encode(&self, raw: &str) -> Result<String, EncodeError> {
-            Ok(format!("hashed:{}", raw))
-        }
-
-        fn verify(&self, raw: &str, hashed: &str) -> Result<bool, VerifyError> {
-            Ok(hashed == format!("hashed:{}", raw))
-        }
-    }
+    use regex::Regex;
 
     fn dummy_spec() -> PasswordSpec {
         PasswordSpec::new(Regex::new(r"^[A-Za-z0-9@$!%*?&]{8,12}$").expect("valid test regex"))
@@ -375,14 +372,13 @@ mod hashed_password_tests {
     #[test]
     fn test_returns_invalid_format() {
         let spec = dummy_spec();
-        let never_err = FakeEncoder::never_err();
-        let result = HashedPassword::new("short", &spec, &never_err);
+        let result = RawPassword::new("short", &spec);
         assert!(result.is_err());
-        let result = HashedPassword::new("long1234567890", &spec, &never_err);
+        let result = RawPassword::new("long1234567890", &spec);
         assert!(result.is_err());
-        let result = HashedPassword::new("notallow^", &spec, &never_err);
+        let result = RawPassword::new("notallow^", &spec);
         assert!(result.is_err());
-        let result = HashedPassword::new("abc12345", &spec, &never_err);
+        let result = RawPassword::new("abc12345", &spec);
         assert!(result.is_ok());
     }
 }

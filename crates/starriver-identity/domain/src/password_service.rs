@@ -7,32 +7,30 @@ use crate::error::DomainError;
 use crate::password_encoder::PasswordEncoder;
 use crate::user::entity::User;
 use crate::user::policy::BadPasswordPolicy;
-use crate::user::specification::PasswordSpec;
-use crate::user::value_object::{AccountStatus, HashedPassword};
+use crate::user::value_object::{AccountStatus, HashedPassword, RawPassword};
 
 #[derive(Clone)]
 pub struct PasswordDomainService<PE> {
     pwd_policy: BadPasswordPolicy,
     pwd_encoder: Arc<PE>,
-    pwd_spec: Arc<PasswordSpec>,
 }
 
 impl<PE> PasswordDomainService<PE>
 where
     PE: PasswordEncoder,
 {
-    pub fn new(
-        pwd_policy: BadPasswordPolicy,
-        pwd_encoder: Arc<PE>,
-        pwd_spec: Arc<PasswordSpec>,
-    ) -> Self {
+    pub fn new(pwd_policy: BadPasswordPolicy, pwd_encoder: Arc<PE>) -> Self {
         Self {
             pwd_policy,
             pwd_encoder,
-            pwd_spec,
         }
     }
 
+    /// # Parameters
+    ///
+    /// - `user`: 用户
+    /// - `raw_password`: 原始密码，不用值类型，避免动态修改规则老密码无法传入
+    ///
     /// # Returns
     ///
     /// - `Ok(())` - 密码匹配，用户认证成功
@@ -66,12 +64,13 @@ where
             user.record_password_attempts(&self.pwd_policy, OffsetDateTime::now_utc());
             return Err(AuthenticationError::BadPassword);
         }
+        user.reset_password_attempts();
         Ok(())
     }
 
     /// # params
-    /// - `cur_pwd` is the current password of the user
-    /// - `new_pwd` is the new password that the user wants to use
+    /// - `cur_pwd` the current password of the user
+    /// - `new_pwd` the new password that the user wants to use
     ///
     /// # returns
     /// - `Ok(())` - password changed successfully
@@ -80,14 +79,11 @@ where
     /// - `Err(DomainError::SamePassword)` - new password is same as current password
     /// - `Err(DomainError::BadPassword)` - incorrect current password
     /// - `Err(DomainError::InvalidPasswordFormat)` - invalid password format
-    /// - `Err(DomainError::PasswordEncoding(_))` - password verification or encoding failed
-    /// - `Err(DomainError::InvalidPasswordHash)` - encoder produced an invalid hash
-    ///
     pub fn change_password(
         &self,
         user: &mut User,
         cur_pwd: &str,
-        new_pwd: &str,
+        new_pwd: &RawPassword,
     ) -> Result<(), DomainError> {
         match user.status() {
             AccountStatus::Active => {}
@@ -98,7 +94,7 @@ where
         if user.is_locked() {
             return Err(DomainError::UserLocked);
         }
-        if cur_pwd == new_pwd {
+        if cur_pwd == new_pwd.as_str() {
             return Err(DomainError::SamePassword);
         };
         let matches = user
@@ -109,15 +105,19 @@ where
             user.record_password_attempts(&self.pwd_policy, OffsetDateTime::now_utc());
             return Err(DomainError::BadPassword);
         }
-        let password = HashedPassword::new(new_pwd, &self.pwd_spec, self.pwd_encoder.as_ref())?;
+        let password = HashedPassword::from_raw(new_pwd, self.pwd_encoder.as_ref())?;
 
         user.change_password(password);
         user.reset_password_attempts();
         Ok(())
     }
 
-    pub fn reset_password(&self, user: &mut User, new_pwd: &str) -> Result<(), DomainError> {
-        let password = HashedPassword::new(new_pwd, &self.pwd_spec, self.pwd_encoder.as_ref())?;
+    pub fn reset_password(
+        &self,
+        user: &mut User,
+        new_pwd: &RawPassword,
+    ) -> Result<(), DomainError> {
+        let password = HashedPassword::from_raw(new_pwd, self.pwd_encoder.as_ref())?;
 
         user.change_password(password);
         user.reset_password_attempts();

@@ -1,5 +1,13 @@
+use std::sync::Arc;
+
 use starriver_identity_domain::{
-    password_encoder::PasswordEncoder, password_service::PasswordDomainService, user::entity::User,
+    password_encoder::PasswordEncoder,
+    password_service::PasswordDomainService,
+    user::{
+        entity::User,
+        specification::{EmailSpec, UsernameSpec},
+        value_object::{Email, Username},
+    },
 };
 use starriver_shared_base::{
     authentication::authentication_request::{IdentifierPasswordRequest, UserIdentifier},
@@ -21,7 +29,9 @@ pub struct AuthenticationInteractor<Conn, UR, SEP, PE> {
     conn: Conn,
     user_repo: UR,
     security_event_port: SEP,
-    pwd_service: PasswordDomainService<PE>,
+    password_service: PasswordDomainService<PE>,
+    email_spec: Arc<EmailSpec>,
+    username_spec: Arc<UsernameSpec>,
 }
 
 impl<Conn, UR, SEP, PE> AuthenticationInteractor<Conn, UR, SEP, PE>
@@ -36,13 +46,17 @@ where
         conn: Conn,
         user_repo: UR,
         security_event_port: SEP,
-        pwd_service: PasswordDomainService<PE>,
+        password_service: PasswordDomainService<PE>,
+        email_spec: Arc<EmailSpec>,
+        username_spec: Arc<UsernameSpec>,
     ) -> Self {
         Self {
             conn,
             user_repo,
             security_event_port,
-            pwd_service,
+            password_service,
+            email_spec,
+            username_spec,
         }
     }
 
@@ -56,9 +70,15 @@ where
         // 读用户与密码校验（Argon2）都在事务外完成，避免长时间占用连接
         let user_result = match UserIdentifier::new(identifier) {
             UserIdentifier::Username(username) => {
+                let username = &Username::new(username, &self.username_spec)
+                    .map_err(|_| AuthenticationError::InvalidUsernameFormat)?;
                 self.user_repo.find_by_username(&self.conn, username).await
             }
-            UserIdentifier::Email(email) => self.user_repo.find_by_email(&self.conn, email).await,
+            UserIdentifier::Email(email) => {
+                let email = &Email::new(email, &self.email_spec)
+                    .map_err(|_| AuthenticationError::InvalidEmailFormat)?;
+                self.user_repo.find_by_email(&self.conn, email).await
+            }
         };
         let mut user = user_result.map_err(mapping_repo_error())?.ok_or_else(|| {
             info!(identifier = %identifier, "user not found");
@@ -66,48 +86,47 @@ where
         })?;
 
         let original = user.clone();
-        match self.pwd_service.authenticate(&mut user, password) {
+        let auth_result = self.password_service.authenticate(&mut user, password);
+        let user_unlocked = !user.is_locked() && original.is_locked();
+        let user = self
+            .user_repo
+            .update(&self.conn, Revision::new(original, user))
+            .await
+            .map_err(mapping_repo_error())?;
+
+        let user_id = user.id();
+        let username = user.username().as_str();
+        match auth_result {
             Ok(_) => {
-                // 认证成功：如账户当前被锁则清理失败计数/计数窗口/锁定
-                if original.is_locked() {
-                    user.reset_password_attempts();
-                    self.security_event_port
-                        .insert(
-                            &self.conn,
-                            SecurityEventCmd::new(
-                                *user.id(),
-                                user.username().to_string(),
-                                SecurityEventType::UserUnlocked,
-                                "password lock expired",
-                            ),
-                        )
-                        .await;
+                let mut events = vec![SecurityEventCmd::new(
+                    *user_id,
+                    username,
+                    SecurityEventType::LoginSucceeded,
+                    "login succeeded",
+                )];
+                if user_unlocked {
+                    events.push(SecurityEventCmd::new(
+                        *user_id,
+                        username,
+                        SecurityEventType::UserUnlocked,
+                        "password lock expired",
+                    ));
                 }
-                let user = self
-                    .user_repo
-                    .update(&self.conn, Revision::new(original, user))
-                    .await
-                    .map_err(mapping_repo_error())?;
+                self.security_event_port
+                    .insert_many(&self.conn, events)
+                    .await;
                 Ok(into_user_detail(user))
             }
             Err(AuthenticationError::BadPassword) => {
-                // 失败计数是主业务；审计写入在其后 best-effort 执行，失败不回滚计数。
-                let user = self
-                    .user_repo
-                    .update(&self.conn, Revision::new(original, user))
-                    .await
-                    .map_err(mapping_repo_error())?;
-
-                let (user_id, username, ..) = user.into_parts();
                 self.security_event_port
-                    .insert(
+                    .insert_many(
                         &self.conn,
-                        SecurityEventCmd::new(
-                            user_id,
-                            username.into_inner(),
+                        vec![SecurityEventCmd::new(
+                            *user_id,
+                            username,
                             SecurityEventType::TryLoginWithBadPwd,
                             "bad password",
-                        ),
+                        )],
                     )
                     .await;
                 Err(AuthenticationError::BadPassword)

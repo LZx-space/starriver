@@ -1,8 +1,8 @@
 use std::convert::Infallible;
 
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, ConnectionTrait, EntityTrait,
-    QueryFilter, QueryOrder, QuerySelect,
+    ActiveValue::Set, ColumnTrait, Condition, ConnectionTrait, EntityTrait, QueryFilter,
+    QueryOrder, QuerySelect,
 };
 use starriver_identity_application::{
     dto::user_dto::{
@@ -113,21 +113,24 @@ where
         Ok(CursorPage { items, next_cursor })
     }
 
-    async fn insert(&self, conn: &T, event: SecurityEventCmd) -> Result<(), Infallible> {
-        let (user_id, username, event_type, payload, occurred_at) = event.into_parts();
-        let result = ActiveModel {
-            id: Set(Uuid::now_v7()),
-            user_id: Set(user_id),
-            username: Set(username),
-            event_type: Set(event_type.into()),
-            message: Set(payload.into_owned()),
-            occurred_at: Set(occurred_at),
-            created_at: Set(OffsetDateTime::now_utc()),
-        }
-        .insert(conn)
-        .await;
+    async fn insert_many(&self, conn: &T, events: Vec<SecurityEventCmd>) -> Result<(), Infallible> {
+        let models: Vec<ActiveModel> = events
+            .into_iter()
+            .map(|event| {
+                let (user_id, username, event_type, payload, occurred_at) = event.into_parts();
+                ActiveModel {
+                    id: Set(Uuid::now_v7()),
+                    user_id: Set(user_id),
+                    username: Set(username),
+                    event_type: Set(event_type.into()),
+                    message: Set(payload.into_owned()),
+                    occurred_at: Set(occurred_at),
+                    created_at: Set(OffsetDateTime::now_utc()),
+                }
+            })
+            .collect();
 
-        if let Err(e) = result {
+        if let Err(e) = Entity::insert_many(models).exec(conn).await {
             error!(error=%e, "insert security event failed");
         }
         Ok(())

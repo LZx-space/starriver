@@ -2,17 +2,18 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use sea_orm::DatabaseConnection;
-use starriver_identity_application::{
-    dto::user_dto::input::UserValidateCxt,
-    use_case::{
-        authentication_interactor::AuthenticationInteractor,
-        security_event_interactor::SecurityEventInteractor, user_interactor::UserInteractor,
+use starriver_identity_application::use_case::{
+    authentication_interactor::AuthenticationInteractor,
+    security_event_interactor::SecurityEventInteractor,
+    user::{
+        change_my_password_interactor::ChangeMyPasswordInteractor,
+        paginate_interactor::PaginateInteractor, register_interactor::RegisterInteractor,
+        reset_password_interactor::ResetPasswordInteractor,
     },
 };
 use starriver_identity_domain::{
     password_service::PasswordDomainService,
     user::{
-        factory::UserFactory,
         policy::BadPasswordPolicy,
         specification::{EmailSpec, PasswordSpec, UsernameSpec},
     },
@@ -41,9 +42,28 @@ pub struct IdentityState {
     pub email_spec: Arc<EmailSpec>,
     pub username_spec: Arc<UsernameSpec>,
     pub password_spec: Arc<PasswordSpec>,
-    //////////////////////////////////////////
-    pub user_interactor: Arc<
-        UserInteractor<
+
+    /////////////////////////////////////////////////////////////////////////////////////
+    pub change_my_password_interactor: Arc<
+        ChangeMyPasswordInteractor<
+            DefaultConnection,
+            DefaultUserRepository,
+            DefaultSecurityEventPort,
+            Argon2PasswordEncoder,
+        >,
+    >,
+    pub paginate_interactor: Arc<PaginateInteractor<DefaultConnection, DefaultUserQuery>>,
+    pub register_interactor: Arc<
+        RegisterInteractor<
+            DefaultConnection,
+            DefaultUserQuery,
+            DefaultUserRepository,
+            SmtpVerificationService,
+            Argon2PasswordEncoder,
+        >,
+    >,
+    pub reset_password_interactor: Arc<
+        ResetPasswordInteractor<
             DefaultConnection,
             DefaultUserQuery,
             DefaultUserRepository,
@@ -52,6 +72,8 @@ pub struct IdentityState {
             Argon2PasswordEncoder,
         >,
     >,
+
+    /////////////////////////////////////////////////////////////////////////////////////
     pub authentication_interactor: Arc<
         AuthenticationInteractor<
             DefaultConnection,
@@ -86,33 +108,47 @@ impl IdentityState {
         let verification_code_service =
             SmtpVerificationService::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
 
-        let user_factory = UserFactory::new(
-            email_spec.clone(),
-            username_spec.clone(),
-            password_spec.clone(),
-            password_encoder.clone(),
-        );
         let bad_password_policy = BadPasswordPolicy {
             window_minutes: cfg.bad_password.window_minutes,
             max_attempts: cfg.bad_password.max_attempts,
             lockout_minutes: cfg.bad_password.lockout_minutes,
         };
 
-        let pwd_service = PasswordDomainService::new(
-            bad_password_policy,
-            password_encoder,
-            password_spec.clone(),
-        );
+        let pwd_service = PasswordDomainService::new(bad_password_policy, password_encoder.clone());
 
         let conn = DefaultConnection::new(conn.clone());
-        let user_interactor = UserInteractor::new(
+        ///////////////////////////////////////////////////////
+
+        let change_my_password_interactor = ChangeMyPasswordInteractor::new(
+            conn.clone(),
+            DefaultUserRepository,
+            DefaultSecurityEventPort,
+            pwd_service.clone(),
+            username_spec.clone(),
+            password_spec.clone(),
+        )
+        .into();
+        let paginate_interactor = PaginateInteractor::new(conn.clone(), DefaultUserQuery).into();
+        let register_interactor = RegisterInteractor::new(
+            conn.clone(),
+            DefaultUserQuery,
+            DefaultUserRepository,
+            verification_code_service.clone(),
+            email_spec.clone(),
+            username_spec.clone(),
+            password_spec.clone(),
+            password_encoder.clone(),
+        )
+        .into();
+        let reset_password_interactor = ResetPasswordInteractor::new(
             conn.clone(),
             DefaultUserQuery,
             DefaultUserRepository,
             DefaultSecurityEventPort,
-            user_factory,
-            verification_code_service,
+            verification_code_service.clone(),
             pwd_service.clone(),
+            password_spec.clone(),
+            email_spec.clone(),
         )
         .into();
 
@@ -121,6 +157,8 @@ impl IdentityState {
             DefaultUserRepository,
             DefaultSecurityEventPort,
             pwd_service.clone(),
+            email_spec.clone(),
+            username_spec.clone(),
         )
         .into();
 
@@ -132,20 +170,13 @@ impl IdentityState {
             email_spec,
             username_spec,
             password_spec,
-            user_interactor,
+            change_my_password_interactor,
+            paginate_interactor,
+            register_interactor,
+            reset_password_interactor,
             authentication_interactor,
             security_event_interactor,
         })
-    }
-}
-
-impl FromRef<IdentityState> for UserValidateCxt {
-    fn from_ref(state: &IdentityState) -> UserValidateCxt {
-        UserValidateCxt {
-            username_spec: state.username_spec.clone(),
-            password_spec: state.password_spec.clone(),
-            email_spec: state.email_spec.clone(),
-        }
     }
 }
 

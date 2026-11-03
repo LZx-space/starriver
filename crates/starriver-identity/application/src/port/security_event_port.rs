@@ -15,9 +15,9 @@ pub trait SecurityEventPort<T: Executor> {
         query: SecurityEventQuery,
     ) -> impl Future<Output = Result<CursorPage<SecurityEventCursor, SecurityEventDto>, QueryError>> + Send;
 
-    fn insert(
+    fn insert_many(
         &self,
         conn: &T,
-        event: SecurityEventCmd,
+        events: Vec<SecurityEventCmd>,
     ) -> impl Future<Output = Result<(), Infallible>> + Send;
 }

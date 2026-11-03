@@ -34,7 +34,7 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
                 id: e.id,
                 username: e.username,
                 email: e.email,
-                account_status: e.account_status.into(),
+                status: e.status.into(),
                 password_locked_until: e.password_locked_until,
                 password_window_start: e.password_window_start,
                 password_attempts: e.password_attempts,
@@ -50,9 +50,8 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
     async fn exists_by_email(
         &self,
         conn: &DefaultConnection,
-        email: &str,
+        email: &Email,
     ) -> Result<bool, QueryError> {
-        let email = Email::normalize(email);
         Entity::find()
             .filter(user_po::Column::Email.eq(email.as_str()))
             .exists(conn)

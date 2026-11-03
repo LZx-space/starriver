@@ -22,21 +22,14 @@ pub struct User {
 }
 
 impl User {
-    pub(crate) fn new(
-        id: Uuid,
-        username: Username,
-        password: HashedPassword,
-        email: Email,
-        status: AccountStatus,
-    ) -> Self {
-        let login_attempt_state = LoginAttemptState::new(None, None, 0);
+    pub fn new(username: Username, password: HashedPassword, email: Email) -> Self {
         Self {
-            id,
+            id: Uuid::now_v7(),
             username,
             password,
             email,
-            status,
-            login_attempt_state,
+            status: Default::default(),
+            login_attempt_state: Default::default(),
         }
     }
 

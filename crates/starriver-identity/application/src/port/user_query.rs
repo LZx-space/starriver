@@ -1,3 +1,4 @@
+use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::{
     db::Executor,
     dto::{OffsetPage, OffsetPageQuery},
@@ -17,6 +18,6 @@ pub trait UserQuery<T: Executor> {
     fn exists_by_email(
         &self,
         conn: &T,
-        email: &str,
+        email: &Email,
     ) -> impl Future<Output = Result<bool, QueryError>>;
 }

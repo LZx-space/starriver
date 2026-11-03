@@ -8,6 +8,12 @@ pub enum AuthenticationError {
     #[error("Identifier is empty")]
     IdentifierEmpty,
 
+    #[error("Invalid username format")]
+    InvalidUsernameFormat,
+
+    #[error("Invalid email format")]
+    InvalidEmailFormat,
+
     #[error("Password is empty")]
     PasswordEmpty,
 

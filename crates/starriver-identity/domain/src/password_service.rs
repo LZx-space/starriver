@@ -97,10 +97,11 @@ where
         if cur_pwd == new_pwd.as_str() {
             return Err(DomainError::SamePassword);
         };
-        let matches = user
-            .password()
-            .verify(cur_pwd, self.pwd_encoder.as_ref())
-            .is_ok();
+
+        let matches = matches!(
+            user.password().verify(cur_pwd, self.pwd_encoder.as_ref()),
+            Ok(true)
+        );
         if !matches {
             user.record_password_attempts(&self.pwd_policy, OffsetDateTime::now_utc());
             return Err(DomainError::BadPassword);
@@ -122,5 +123,73 @@ where
         user.change_password(password);
         user.reset_password_attempts();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use regex::Regex;
+    use uuid::Uuid;
+
+    use super::*;
+    use crate::password_encoder::{EncodeError, VerifyError};
+    use crate::user::specification::PasswordSpec;
+    use crate::user::value_object::{Email, LoginAttemptState, Username};
+
+    struct FakeEncoder;
+
+    impl PasswordEncoder for FakeEncoder {
+        fn encode(&self, password: &str) -> Result<String, EncodeError> {
+            Ok(format!("hashed:{password}"))
+        }
+
+        fn verify(&self, raw_password: &str, encoded_password: &str) -> Result<bool, VerifyError> {
+            Ok(encoded_password == format!("hashed:{raw_password}"))
+        }
+    }
+
+    fn service() -> PasswordDomainService<FakeEncoder> {
+        PasswordDomainService::new(BadPasswordPolicy::new(10, 5, 60), Arc::new(FakeEncoder))
+    }
+
+    fn password_spec() -> PasswordSpec {
+        PasswordSpec::new(Regex::new(r"^.{8,20}$").expect("valid test regex"))
+    }
+
+    fn active_user(stored_password: &str) -> User {
+        User::from_persisted(
+            Uuid::now_v7(),
+            Username::from_persisted("alice".to_string()),
+            HashedPassword::from_persisted(stored_password.to_string()),
+            Email::from_persisted("alice@example.com".to_string()),
+            AccountStatus::Active,
+            LoginAttemptState::default(),
+        )
+    }
+
+    #[test]
+    fn change_password_rejects_wrong_current_password() {
+        let mut user = active_user("hashed:correct");
+        let new_password = RawPassword::new("NewPass1!", &password_spec()).expect("valid password");
+
+        let result = service().change_password(&mut user, "wrong", &new_password);
+
+        assert!(matches!(result, Err(DomainError::BadPassword)));
+        assert_eq!(user.password().as_str(), "hashed:correct");
+        assert!(user.has_password_attempts());
+    }
+
+    #[test]
+    fn change_password_accepts_correct_current_password() {
+        let mut user = active_user("hashed:correct");
+        let new_password = RawPassword::new("NewPass1!", &password_spec()).expect("valid password");
+
+        assert!(
+            service()
+                .change_password(&mut user, "correct", &new_password)
+                .is_ok()
+        );
+        assert_eq!(user.password().as_str(), "hashed:NewPass1!");
+        assert!(!user.has_password_attempts());
     }
 }

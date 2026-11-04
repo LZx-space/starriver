@@ -175,8 +175,9 @@ impl HashedPassword {
     ///  - `raw` - 传入的明文密码，不传入`RawPassword`类型，因为老密码可能不符合当前密码规则
     ///  - `encoder` - 密码编码器
     /// # returns
-    ///  - `Ok(bool)` - 如果明文密码与密码匹配，则返回 `true`，否则返回 `false
-    ///  - `Err(DomainError::BadPassword)` - 如果密码不匹配，则返回 `DomainError::BadPassword`
+    ///  - `Ok(true)` - 明文密码与密码匹配
+    ///  - `Ok(false)` - 明文密码与密码不匹配（**不是** `Err`，调用方必须检查布尔值）
+    ///  - `Err(DomainError::BadPassword)` - 密码编码器故障，无法完成校验
     pub(crate) fn verify(
         &self,
         raw: &str,

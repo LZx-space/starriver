@@ -1,4 +1,4 @@
-use std::{hash::Hash, marker::PhantomData, time::Duration};
+use std::{hash::Hash, time::Duration};
 
 use moka::Equivalent;
 use starriver_shared_base::cache::{Cache, Invalidator};
@@ -9,8 +9,6 @@ where
     V: Clone + Send + Sync + 'static,
 {
     inner: moka::future::Cache<K, V>,
-    _k: PhantomData<K>,
-    _v: PhantomData<V>,
 }
 
 impl<K, V> DefaultCache<K, V>
@@ -24,8 +22,6 @@ where
                 .max_capacity(capacity)
                 .time_to_live(ttl)
                 .build(),
-            _k: PhantomData,
-            _v: PhantomData,
         }
     }
 }
@@ -74,8 +70,6 @@ where
     fn clone(&self) -> Self {
         DefaultCache {
             inner: self.inner.clone(),
-            _k: PhantomData,
-            _v: PhantomData,
         }
     }
 }

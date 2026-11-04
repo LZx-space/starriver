@@ -32,13 +32,17 @@ impl Display for PostState {
 pub struct Title(pub(crate) String);
 
 impl Title {
-    pub(crate) fn new(value: String) -> Result<Self, DomainError> {
-        // 清洗会把 `<`/`&` 转义为实体，长度可能变长；必须对最终入库的字符串限长
+    pub fn new(value: String) -> Result<Self, DomainError> {
+        const MAX_LENGTH: usize = 50; // same with table ddl
         let value = clean(&value);
-        if value.chars().count() > 50 {
+        if value.chars().count() > MAX_LENGTH {
             return Err(DomainError::PostTitleTooLong(value));
         }
         Ok(Self(value))
+    }
+
+    pub fn from_persisted(value: String) -> Self {
+        Self(value)
     }
 
     pub fn into_inner(self) -> String {
@@ -56,13 +60,24 @@ impl Display for Title {
 pub struct Content(pub(crate) String);
 
 impl Content {
-    pub(crate) fn new(value: String) -> Result<Self, DomainError> {
-        if value.chars().count() > 50000 {
+    pub fn new(value: String) -> Result<Self, DomainError> {
+        const MAX_LENGTH: usize = 50000;
+        let value = clean(&value);
+        if value.chars().count() > MAX_LENGTH {
             return Err(DomainError::PostContentTooLong(value));
         }
-        let value = clean(&value);
         Ok(Self(value))
     }
+
+    pub fn from_persisted(value: String) -> Self {
+        Self(value)
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
+    ///// 业务方法必须只能是实体才能访问 ///////////////////////////////////////////////////////////////
 
     pub(crate) fn excerpt(&self) -> String {
         // 先解码实体：
@@ -119,10 +134,6 @@ impl Content {
 
     pub(crate) fn strip_html_tags(&self) -> String {
         strip_tags(&self.0)
-    }
-
-    pub fn into_inner(self) -> String {
-        self.0
     }
 }
 

@@ -2,33 +2,39 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AuthenticationError {
-    #[error("identifier not found")]
+    #[error("User not found")]
     IdentifierNotFound,
 
-    #[error("identifier is empty")]
+    #[error("Identifier is empty")]
     IdentifierEmpty,
 
-    #[error("password is empty")]
+    #[error("Invalid username format")]
+    InvalidUsernameFormat,
+
+    #[error("Invalid email format")]
+    InvalidEmailFormat,
+
+    #[error("Password is empty")]
     PasswordEmpty,
 
-    #[error("malformed authentication request")]
+    #[error("Malformed authentication request")]
     MalformedRequest,
 
-    #[error("bad password")]
+    #[error("Bad password")]
     BadPassword,
 
     ///// transient states ///////////////
-    #[error("user locked")]
+    #[error("User account is locked")]
     UserLocked,
 
     ///// life cycle ////////////////////
-    #[error("user disabled")]
+    #[error("User account is disabled")]
     UserDisabled,
 
-    #[error("user deleted")]
+    #[error("User account is deleted")]
     UserDeleted,
 
     /////////////////////////
-    #[error("inner error: {message}")]
+    #[error("Inner error: {message}")]
     InnerError { message: String },
 }

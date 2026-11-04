@@ -19,7 +19,7 @@ pub struct Model {
     pub content_text: String,
     #[sea_orm(column_type = "Text")]
     pub excerpt: String,
-    pub state: PostStatePo,
+    pub state: PostStateDb,
     pub author_id: Uuid,
     pub category_id: Uuid,
     #[sea_orm(indexed)]
@@ -73,7 +73,7 @@ impl Related<super::attachment_po::Entity> for Entity {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
-pub enum PostStatePo {
+pub enum PostStateDb {
     #[sea_orm(num_value = 0)]
     #[default]
     Draft,
@@ -85,22 +85,22 @@ pub enum PostStatePo {
 
 //////////////////////////////////////////////////////////
 
-impl From<PostStatePo> for PostState {
-    fn from(value: PostStatePo) -> Self {
+impl From<PostStateDb> for PostState {
+    fn from(value: PostStateDb) -> Self {
         match value {
-            PostStatePo::Draft => PostState::Draft,
-            PostStatePo::Published => PostState::Published,
-            PostStatePo::Archived => PostState::Archived,
+            PostStateDb::Draft => PostState::Draft,
+            PostStateDb::Published => PostState::Published,
+            PostStateDb::Archived => PostState::Archived,
         }
     }
 }
 
-impl From<PostState> for PostStatePo {
+impl From<PostState> for PostStateDb {
     fn from(value: PostState) -> Self {
         match value {
-            PostState::Draft => PostStatePo::Draft,
-            PostState::Published => PostStatePo::Published,
-            PostState::Archived => PostStatePo::Archived,
+            PostState::Draft => PostStateDb::Draft,
+            PostState::Published => PostStateDb::Published,
+            PostState::Archived => PostStateDb::Archived,
         }
     }
 }

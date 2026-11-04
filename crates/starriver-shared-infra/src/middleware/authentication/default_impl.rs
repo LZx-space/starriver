@@ -103,7 +103,7 @@ where
                 .map_err(|_infallible| {
                     ApiError::new(
                         StatusCode::UNAUTHORIZED,
-                        "authentication required".to_string(),
+                        "Authentication required".to_string(),
                     )
                 })?;
 
@@ -113,7 +113,7 @@ where
                 info!("authentication cookie not found in request");
                 ApiError::new(
                     StatusCode::UNAUTHORIZED,
-                    "authentication required".to_string(),
+                    "Authentication required".to_string(),
                 )
             })?
             .value();
@@ -133,7 +133,7 @@ where
             error!(error = %e, "JWS token decode failed");
             ApiError::new(
                 StatusCode::UNAUTHORIZED,
-                "authentication required".to_string(),
+                "Authentication required".to_string(),
             )
         })
     }
@@ -186,7 +186,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             Ok(token) => token,
             Err(err) => {
                 error!(error = %err, "failed to serialize JWS principal claims");
-                return (StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
                     .into_response();
             }
         };
@@ -205,7 +205,7 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
             .body(Body::empty())
             .unwrap_or_else(|e| {
                 error!(error = %e, "failed to build authentication success response");
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error").into_response()
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error").into_response()
             })
     }
 }
@@ -218,25 +218,28 @@ impl AuthenticationFailureHandler for DefaultAuthenticationFailureHandler {
     type Response = Response;
 
     async fn on_authentication_failure(&self, err: AuthenticationError) -> Self::Response {
-        info!(error=%err, "authentication failed");
+        info!(error=%err, "Authentication failed");
         let (status, message) = match err {
             // 内部错误：状态码 500，但绝不向客户端泄漏内部细节
             AuthenticationError::InnerError { message } => {
-                error!(error=%message, "authentication failed inner error");
+                error!(error=%message, "Authentication failed inner error");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error".to_string(),
+                    "Internal server error".to_string(),
                 )
             }
             // 请求格式错误（无法解析）：400，同样不泄漏账号信息
             AuthenticationError::MalformedRequest => (
                 StatusCode::BAD_REQUEST,
-                "invalid authentication request".to_string(),
+                "Invalid authentication request".to_string(),
             ),
-            // 其余所有失败（未找到/空/密码错/锁定/禁用/删除）统一文案，防止账号状态枚举
+            AuthenticationError::UserLocked => {
+                (StatusCode::LOCKED, "Account is locked".to_string())
+            }
+            // 其余所有失败（未找到/空/密码错/禁用/删除）统一文案，防止账号状态枚举
             _ => (
                 StatusCode::BAD_REQUEST,
-                "username or password incorrect".to_string(),
+                "Incorrect username or password".to_string(),
             ),
         };
         ApiError::new(status, message).into_response()

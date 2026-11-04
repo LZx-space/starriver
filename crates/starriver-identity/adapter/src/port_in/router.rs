@@ -14,15 +14,15 @@ pub fn create_router(state: IdentityState) -> impl Into<Router> {
         )
         .route(
             "/users/email-verification-codes",
-            post(user_handler::send_email_verification_code),
+            post(user_handler::send_register_email),
         )
         .route(
             "/users",
-            get(user_handler::paginate).post(user_handler::register_user),
+            get(user_handler::paginate).post(user_handler::register),
         )
         .route(
             "/password-resets/verification-codes",
-            post(user_handler::send_reset_password_verification_code),
+            post(user_handler::send_reset_password_code),
         )
         .route(
             "/password-resets",

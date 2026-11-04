@@ -13,33 +13,34 @@ pub struct Category {
 }
 
 impl Category {
+    const MAX_LENGTH: usize = 10; // same with table ddl
+
     pub fn new(name: String) -> Result<Self, DomainError> {
-        if name.chars().count() > 10 {
-            return Err(DomainError::PostCategoryTooLong(name));
-        }
-        let name = clean(&name);
-        if name.is_empty() {
-            return Err(DomainError::PostCategoryIsNone);
-        }
+        let name = validate_name(name)?;
         Ok(Self {
             id: Uuid::now_v7(),
             name,
         })
     }
 
-    pub fn from_repo(id: Uuid, name: String) -> Self {
+    pub fn from_persisted(id: Uuid, name: String) -> Self {
         Self { id, name }
     }
 
     pub fn update(&mut self, name: String) -> Result<(), DomainError> {
-        if name.chars().count() > 10 {
-            return Err(DomainError::PostCategoryTooLong(name));
-        }
-        let name = clean(&name);
-        if name.is_empty() {
-            return Err(DomainError::PostCategoryIsNone);
-        }
+        let name = validate_name(name)?;
         self.name = name;
         Ok(())
     }
+}
+
+fn validate_name(name: String) -> Result<String, DomainError> {
+    if name.is_empty() {
+        return Err(DomainError::PostCategoryIsNone);
+    }
+    let name = clean(&name);
+    if name.chars().count() > Category::MAX_LENGTH {
+        return Err(DomainError::PostCategoryTooLong(name));
+    }
+    Ok(name)
 }

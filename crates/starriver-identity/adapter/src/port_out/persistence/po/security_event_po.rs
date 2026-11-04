@@ -22,23 +22,25 @@ impl ActiveModelBehavior for ActiveModel {}
 pub enum Relation {}
 
 /////////////////////////////////////////////////////////////////
-#[derive(Default, Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
 pub enum SecurityEventTypePo {
-    #[default]
     #[sea_orm(num_value = 0)]
-    TryLoginWithBadPwd,
+    LoginSucceeded,
     #[sea_orm(num_value = 1)]
-    UserUnlocked,
+    TryLoginWithBadPwd,
     #[sea_orm(num_value = 2)]
-    PasswordChanged,
+    UserUnlocked,
     #[sea_orm(num_value = 3)]
+    PasswordChanged,
+    #[sea_orm(num_value = 4)]
     PasswordReset,
 }
 
 impl From<SecurityEventTypePo> for SecurityEventType {
     fn from(event_type: SecurityEventTypePo) -> Self {
         match event_type {
+            SecurityEventTypePo::LoginSucceeded => Self::LoginSucceeded,
             SecurityEventTypePo::TryLoginWithBadPwd => Self::TryLoginWithBadPwd,
             SecurityEventTypePo::UserUnlocked => Self::UserUnlocked,
             SecurityEventTypePo::PasswordChanged => Self::PasswordChanged,
@@ -50,6 +52,7 @@ impl From<SecurityEventTypePo> for SecurityEventType {
 impl From<SecurityEventType> for SecurityEventTypePo {
     fn from(event_type: SecurityEventType) -> Self {
         match event_type {
+            SecurityEventType::LoginSucceeded => Self::LoginSucceeded,
             SecurityEventType::TryLoginWithBadPwd => Self::TryLoginWithBadPwd,
             SecurityEventType::UserUnlocked => Self::UserUnlocked,
             SecurityEventType::PasswordChanged => Self::PasswordChanged,

@@ -153,7 +153,7 @@ fn mapping_bad_request_err<E: Display>(e: E) -> ApiError {
 fn mapping_valid_err(e: ValidationErrors) -> ApiError {
     ApiError::with_details(
         StatusCode::UNPROCESSABLE_ENTITY,
-        "validation failed".to_string(),
+        "Validation failed".to_string(),
         serde_json::json!(e.errors()),
     )
 }

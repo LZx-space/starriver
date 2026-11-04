@@ -13,6 +13,7 @@ pub struct Attachment {
 }
 
 impl Attachment {
+    /// 虽然和`from_persisted`一样，但是还是都保留以提示开发注意重建和新建的概念
     pub(crate) fn new(id: Uuid, extension: Extension, file_size: FileSize) -> Self {
         Self {
             id,
@@ -21,10 +22,7 @@ impl Attachment {
         }
     }
 
-    pub fn from_repo(id: Uuid, file_name: String, file_size: i64) -> Self {
-        let ext = file_name.split(".").last().unwrap_or_default().to_string();
-        let extension = Extension(ext);
-        let file_size = FileSize(file_size);
+    pub fn from_persisted(id: Uuid, extension: Extension, file_size: FileSize) -> Self {
         Self {
             id,
             extension,

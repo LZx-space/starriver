@@ -21,7 +21,7 @@ impl Display for AsyncReaderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AsyncReaderError::IO(e) => write!(f, "IO error: {e}"),
-            AsyncReaderError::TooLarge => write!(f, "payload too large"),
+            AsyncReaderError::TooLarge => write!(f, "Payload too large"),
             AsyncReaderError::Other(e) => write!(f, "Other error: {e}"),
         }
     }

@@ -26,7 +26,7 @@ where
             .one(conn)
             .await
             .map_err(db_2_repo_error)
-            .map(|e| e.map(|e| Category::from_repo(e.id, e.name)))
+            .map(|e| e.map(|e| Category::from_persisted(e.id, e.name)))
     }
 
     async fn exists_by_id(&self, conn: &T, id: Uuid) -> Result<bool, RepositoryError> {
@@ -48,7 +48,7 @@ where
         .insert(conn)
         .await
         .map_err(db_2_repo_error)
-        .map(|e| Category::from_repo(e.id, e.name))
+        .map(|e| Category::from_persisted(e.id, e.name))
     }
 
     async fn update(
@@ -70,7 +70,7 @@ where
         .update(conn)
         .await
         .map_err(db_2_repo_error)
-        .map(|e| Category::from_repo(e.id, e.name))
+        .map(|e| Category::from_persisted(e.id, e.name))
     }
 
     async fn delete(&self, conn: &T, id: Uuid) -> Result<bool, RepositoryError> {

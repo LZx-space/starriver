@@ -14,15 +14,15 @@ pub enum DomainError {
     #[error("博文内容太长：{0}")]
     PostContentTooLong(String),
 
-    #[error("博文分类不能为空")]
+    #[error("分类名称不能为空")]
     PostCategoryIsNone,
 
-    #[error("博文分类名称太长：{0}")]
+    #[error("分类名称太长：{0}")]
     PostCategoryTooLong(String),
 
-    #[error("附件类型违规：{0}")]
+    #[error("不允许的附件类型：{0}")]
     AttachmentExtensionInvalid(String),
 
-    #[error("附件大小违规：{0}")]
+    #[error("附件大小超出限制：{0}")]
     AttachmentFileSizeInvalid(i64),
 }

@@ -9,19 +9,19 @@ use tracing::error;
 #[derive(Debug, Error)]
 pub enum CtxError {
     /// 输入校验失败（标题/内容为空或过长、附件扩展名或大小非法等）
-    #[error("输入无效: {0}")]
+    #[error("输入无效：{0}")]
     InvalidInput(String),
 
     /// 资源不存在
-    #[error("资源不存在: {0}")]
+    #[error("资源不存在：{0}")]
     NotFound(String),
 
     /// 资源冲突（唯一约束冲突）
-    #[error("资源冲突: {0}")]
+    #[error("资源冲突：{0}")]
     Conflict(String),
 
     /// 请求体/上传内容超出大小限制
-    #[error("请求体过大: {0}")]
+    #[error("请求体过大：{0}")]
     PayloadTooLarge(String),
 
     /// 内部错误（基础设施故障，不暴露细节给客户端）
@@ -61,9 +61,10 @@ impl From<RepositoryError> for CtxError {
             RepositoryError::NotFound(_) => CtxError::NotFound(e.to_string()),
             RepositoryError::UniqueViolation(_) => CtxError::Conflict(e.to_string()),
             RepositoryError::ForeignKeyViolation(_) => CtxError::Conflict(e.to_string()),
-            RepositoryError::OptimisticLock { entity, id } => {
-                CtxError::Conflict(format!("entity {} id {}", entity, id))
-            }
+            RepositoryError::OptimisticLock { entity, id } => CtxError::Conflict(format!(
+                "Optimistic lock conflict: entity {}, id {}",
+                entity, id
+            )),
             // 其他基础设施错误不暴露细节
             _ => {
                 error!(error=%e, "database error");
@@ -83,9 +84,9 @@ impl From<QueryError> for CtxError {
 impl From<AsyncReaderError> for CtxError {
     fn from(value: AsyncReaderError) -> Self {
         match value {
-            AsyncReaderError::TooLarge => {
-                CtxError::PayloadTooLarge("uploaded payload exceeds the size limit".to_string())
-            }
+            AsyncReaderError::TooLarge => CtxError::PayloadTooLarge(
+                "Uploaded payload exceeds the maximum allowed size".to_string(),
+            ),
             other => {
                 error!(error=%other, "IO error");
                 CtxError::Internal

@@ -13,6 +13,7 @@ use starriver_identity_domain::user::value_object::Email;
 
 use crate::config::SmtpVerification;
 
+#[derive(Clone)]
 pub struct SmtpVerificationService {
     smtp_client: AsyncSmtpTransport<Tokio1Executor>,
     smtp_username: String,
@@ -56,10 +57,9 @@ impl SmtpVerificationService {
 }
 
 impl EmailVerificationService for SmtpVerificationService {
-    async fn send_code(&self, email_to: &str) -> Result<(), EmailVerificationError> {
-        let email_to = Email::normalize(email_to);
-
-        if self.send_cooldown_cache.contains_key(&email_to) {
+    async fn send_code(&self, email_to: &Email) -> Result<(), EmailVerificationError> {
+        let email_to = email_to.as_str();
+        if self.send_cooldown_cache.contains_key(email_to) {
             return Err(EmailVerificationError::SendCodeError(
                 "Too many requests. Please try again later.".to_string(),
             ));
@@ -90,16 +90,17 @@ impl EmailVerificationService for SmtpVerificationService {
             .map_err(|e| EmailVerificationError::SendCodeError(e.to_string()))?;
 
         // 新码开启新的尝试窗口：重置失败计数，否则旧计数会立即作废新码
-        self.validate_attempts_cache.invalidate(&email_to).await;
-        self.code_cache.insert(email_to.clone(), code).await;
-        self.send_cooldown_cache.insert(email_to, ()).await;
+        self.validate_attempts_cache.invalidate(email_to).await;
+        self.code_cache.insert(email_to.to_string(), code).await;
+        self.send_cooldown_cache
+            .insert(email_to.to_string(), ())
+            .await;
         Ok(())
     }
 
-    async fn check_code(&self, email: &str, code: &str) -> Result<bool, EmailVerificationError> {
-        let email = Email::normalize(email);
-
-        let Some(cached_code) = self.code_cache.get(&email).await else {
+    async fn check_code(&self, email: &Email, code: &str) -> Result<bool, EmailVerificationError> {
+        let email = email.as_str();
+        let Some(cached_code) = self.code_cache.get(email).await else {
             return Ok(false);
         };
 
@@ -110,26 +111,27 @@ impl EmailVerificationService for SmtpVerificationService {
 
         let attempts = self
             .validate_attempts_cache
-            .get_with_by_ref(&email, async { 0 })
+            .get_with_by_ref(email, async { 0 })
             .await
             + 1;
         if attempts >= Self::MAX_VALIDATE_ATTEMPTS {
             // 达到上限：作废验证码并清空计数，防止继续枚举
-            self.code_cache.invalidate(&email).await;
-            self.validate_attempts_cache.invalidate(&email).await;
+            self.code_cache.invalidate(email).await;
+            self.validate_attempts_cache.invalidate(email).await;
         } else {
-            self.validate_attempts_cache.insert(email, attempts).await;
+            self.validate_attempts_cache
+                .insert(email.to_string(), attempts)
+                .await;
         }
         Ok(false)
     }
 
-    async fn consume_code(&self, email: &str, code: &str) -> Result<(), EmailVerificationError> {
-        let email = Email::normalize(email);
-
+    async fn consume_code(&self, email: &Email, code: &str) -> Result<(), EmailVerificationError> {
+        let email = email.as_str();
         // 只消费仍然匹配的码；期间没有被新码覆盖时才清理
-        if self.code_cache.get(&email).await.as_deref() == Some(code) {
-            self.code_cache.invalidate(&email).await;
-            self.validate_attempts_cache.invalidate(&email).await;
+        if self.code_cache.get(email).await.as_deref() == Some(code) {
+            self.code_cache.invalidate(email).await;
+            self.validate_attempts_cache.invalidate(email).await;
         }
         Ok(())
     }

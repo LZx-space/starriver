@@ -50,17 +50,16 @@ where
         mut async_reader: impl AsyncReader,
         mut async_writer: impl AsyncWriter,
     ) -> Result<AttachmentDto, CtxError> {
-        let mut buf = [0u8; 4096];
-        let mut magic_checker_buf = vec![0u8; FC::MAGIC_CHECKER_HEADER_SIZE];
+        let mut buf = [0u8; 8 * 1024];
+        let mut magic_checker_buf = vec![0u8; FC::MAGIC_HEADER_MAX_BYTES];
         let mut magic_filled = 0usize; // 已收集的字节数
-
         let total = copy_stream_with_hook(
             &mut async_reader,
             &mut async_writer,
             &mut buf,
             |chunk, written| {
                 // 未收满时，从本块继续收集 MIME 头
-                let remaining = FC::MAGIC_CHECKER_HEADER_SIZE - magic_filled;
+                let remaining = FC::MAGIC_HEADER_MAX_BYTES - magic_filled;
                 let to_copy = chunk.len().min(remaining);
                 magic_checker_buf[magic_filled..magic_filled + to_copy]
                     .copy_from_slice(&chunk[..to_copy]);
@@ -69,7 +68,7 @@ where
                 // 超限立即中止：返回 Err 时本块不会被写入
                 if !FileSize::allows(written as i64, chunk.len() as i64) {
                     return Err(CtxError::PayloadTooLarge(format!(
-                        "attachment size {} bytes exceeds max size of {} bytes",
+                        "Attachment size {} bytes exceeds the maximum allowed size of {} bytes",
                         written + chunk.len() as u64,
                         FileSize::MAX_SIZE
                     )));
@@ -83,13 +82,6 @@ where
             CopyStreamError::Writer(e) => e.into(),
             CopyStreamError::Hook(e) => e,
         })?;
-
-        // 文件太小，不足以检测 MIME
-        if magic_filled < FC::MAGIC_CHECKER_HEADER_SIZE {
-            return Err(CtxError::InvalidInput(
-                "file too small for MIME detection".to_string(),
-            ));
-        }
 
         let file_size = FileSize::new(total as i64)?;
         let attachment = self.factory.create_attachment(

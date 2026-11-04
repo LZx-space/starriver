@@ -14,7 +14,7 @@ pub async fn paginate(
     state: State<BloggingState>,
     query: Query<PageQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let page = state.post_interactor.paginate(query.0).await?;
+    let page = state.post_paginate_interactor.paginate(query.0).await?;
     Ok(Json(page))
 }
 
@@ -22,15 +22,15 @@ pub async fn search(
     state: State<BloggingState>,
     query: Query<SearchQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let results = state.post_interactor.search(query.0).await?;
+    let results = state.post_search_interactor.search(query.0).await?;
     Ok(Json(results))
 }
 
-pub async fn show(
+pub async fn find(
     state: State<BloggingState>,
     id: Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let post = state.post_interactor.find(id.0).await?;
+    let post = state.post_find_interactor.find(id.0).await?;
     Ok(Json(post))
 }
 
@@ -39,7 +39,10 @@ pub async fn create(
     user: AuthenticatedJwtClaims,
     cmd: Json<SaveOrUpdatePostCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let created = state.post_interactor.create(user.into(), cmd.0).await?;
+    let created = state
+        .post_create_interactor
+        .create(user.into(), cmd.0)
+        .await?;
     Ok(Json(created))
 }
 
@@ -50,7 +53,7 @@ pub async fn update(
     cmd: Json<SaveOrUpdatePostCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     state
-        .post_interactor
+        .post_update_interactor
         .update(user.into(), id.0, cmd.0)
         .await?;
     Ok(Json(()))
@@ -62,7 +65,7 @@ pub async fn delete(
     user: AuthenticatedJwtClaims,
 ) -> Result<impl IntoResponse, ApiError> {
     let deleted = state
-        .post_interactor
+        .post_delete_interactor
         .delete_by_id(user.into(), id.0)
         .await?;
     Ok(Json(deleted))

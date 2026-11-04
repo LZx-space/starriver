@@ -1,7 +1,7 @@
 use crate::shared_error::DomainError;
 
 #[derive(Clone)]
-pub struct FileSize(pub(crate) i64);
+pub struct FileSize(i64);
 impl FileSize {
     /// 附件大小上限（字节）：10 MB
     pub const MAX_SIZE: i64 = 1024 * 1024 * 10;
@@ -19,13 +19,17 @@ impl FileSize {
         Ok(Self(size))
     }
 
+    pub fn from_persisted(size: i64) -> Self {
+        Self(size)
+    }
+
     pub fn size(&self) -> i64 {
         self.0
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Extension(pub(crate) String);
+pub struct Extension(String);
 
 impl Extension {
     /// 允许的文件扩展名白名单
@@ -41,6 +45,10 @@ impl Extension {
             )));
         }
         Ok(Self(normalized))
+    }
+
+    pub fn from_persisted(extension: String) -> Self {
+        Self(extension)
     }
 
     pub fn as_str(&self) -> &str {

@@ -4,7 +4,7 @@ use starriver_blogging_domain::post::value_object::PostState;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::port_out::persistence::po::post_po::PostStatePo;
+use crate::port_out::persistence::po::post_po::PostStateDb;
 
 /// cuz：Left Join Category
 #[derive(FromQueryResult)]
@@ -12,7 +12,7 @@ pub struct PostExcerptRow {
     pub id: Uuid,
     pub title: String,
     pub excerpt: String,
-    pub state: PostStatePo,
+    pub state: PostStateDb,
     pub category: String,
     pub published_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
@@ -25,7 +25,7 @@ pub struct PostDetailRow {
     pub id: Uuid,
     pub title: String,
     pub content: String,
-    pub state: PostStatePo,
+    pub state: PostStateDb,
     pub category_id: Uuid,
     pub category_name: String,
     pub published_at: Option<OffsetDateTime>,

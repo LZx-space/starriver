@@ -4,7 +4,7 @@ CREATE TABLE public."user"
     username   character varying(20)    NOT NULL,
     password   character varying(128)   NOT NULL,
     email      character varying(254)   NOT NULL,
-    life_cycle smallint                 NOT NULL DEFAULT 0,
+    status     smallint                 NOT NULL DEFAULT 0,
     password_locked_until timestamp with time zone,
     password_window_start timestamp with time zone,
     password_attempts     smallint  NOT NULL DEFAULT 0,

@@ -9,10 +9,7 @@ use starriver_shared_infra::db::DefaultConnection;
 pub struct DefaultCategoryQuery;
 
 impl CategoryQuery<DefaultConnection> for DefaultCategoryQuery {
-    async fn list_all(
-        &self,
-        conn: &DefaultConnection,
-    ) -> Result<Vec<CategoryDetailDto>, QueryError> {
+    async fn list(&self, conn: &DefaultConnection) -> Result<Vec<CategoryDetailDto>, QueryError> {
         Entity::find()
             .order_by_asc(Column::CreatedAt)
             .all(conn)

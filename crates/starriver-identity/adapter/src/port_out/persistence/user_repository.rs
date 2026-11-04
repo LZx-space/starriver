@@ -13,6 +13,9 @@ use sea_orm::sea_query::Expr;
 use starriver_identity_application::port::user_repository::UserRepository;
 use starriver_identity_domain::user::entity::User;
 use starriver_identity_domain::user::value_object::Email;
+use starriver_identity_domain::user::value_object::HashedPassword;
+use starriver_identity_domain::user::value_object::LoginAttemptState;
+use starriver_identity_domain::user::value_object::Username;
 use starriver_shared_base::db::{Executor, Revision};
 use starriver_shared_base::error::RepositoryError;
 use starriver_shared_infra::error_mapping::db_2_repo_error;
@@ -32,46 +35,53 @@ where
     async fn find_by_username(
         &self,
         conn: &T,
-        username: &str,
+        username: &Username,
     ) -> Result<Option<User>, RepositoryError> {
         Entity::find()
-            .filter(Column::Username.eq(username))
+            .filter(Column::Username.eq(username.as_str()))
             .one(conn)
             .await
             .map(|e| {
                 e.map(|e| {
-                    User::from_repo(
+                    User::from_persisted(
                         e.id,
-                        e.username,
-                        e.password,
-                        e.email,
-                        e.life_cycle.into(),
-                        e.password_locked_until,
-                        e.password_window_start,
-                        e.password_attempts as u8,
+                        Username::from_persisted(e.username),
+                        HashedPassword::from_persisted(e.password),
+                        Email::from_persisted(e.email),
+                        e.status.into(),
+                        LoginAttemptState::new(
+                            e.password_locked_until,
+                            e.password_window_start,
+                            e.password_attempts as u8,
+                        ),
                     )
                 })
             })
             .map_err(db_2_repo_error)
     }
 
-    async fn find_by_email(&self, conn: &T, email: &str) -> Result<Option<User>, RepositoryError> {
-        let email = Email::normalize(email);
+    async fn find_by_email(
+        &self,
+        conn: &T,
+        email: &Email,
+    ) -> Result<Option<User>, RepositoryError> {
         Entity::find()
             .filter(Column::Email.eq(email.as_str()))
             .one(conn)
             .await
             .map(|e| {
                 e.map(|e| {
-                    User::from_repo(
+                    User::from_persisted(
                         e.id,
-                        e.username,
-                        e.password,
-                        e.email,
-                        e.life_cycle.into(),
-                        e.password_locked_until,
-                        e.password_window_start,
-                        e.password_attempts as u8,
+                        Username::from_persisted(e.username),
+                        HashedPassword::from_persisted(e.password),
+                        Email::from_persisted(e.email),
+                        e.status.into(),
+                        LoginAttemptState::new(
+                            e.password_locked_until,
+                            e.password_window_start,
+                            e.password_attempts as u8,
+                        ),
                     )
                 })
             })
@@ -79,22 +89,16 @@ where
     }
 
     async fn insert(&self, conn: &T, user: User) -> Result<User, RepositoryError> {
-        let (
-            id,
-            username,
-            password,
-            email,
-            life_cycle,
-            password_locked_until,
-            password_window_start,
-            password_attempts,
-        ) = user.into_parts();
+        let (id, username, password, email, status, login_attempt_state) = user.into_parts();
+        let (password_locked_until, password_window_start, password_attempts) =
+            login_attempt_state.into_parts();
+
         ActiveModel {
             id: Set(id),
             username: Set(username.into_inner()),
             password: Set(password.into_inner()),
             email: Set(email.into_inner()),
-            life_cycle: Set(life_cycle.into()),
+            status: Set(status.into()),
             password_locked_until: Set(password_locked_until),
             password_window_start: Set(password_window_start),
             password_attempts: Set(password_attempts as i16),
@@ -105,15 +109,17 @@ where
         .await
         .map_err(db_2_repo_error)
         .map(|m| {
-            User::from_repo(
+            User::from_persisted(
                 m.id,
-                m.username,
-                m.password,
-                m.email,
-                m.life_cycle.into(),
-                m.password_locked_until,
-                m.password_window_start,
-                m.password_attempts as u8,
+                Username::from_persisted(m.username),
+                HashedPassword::from_persisted(m.password),
+                Email::from_persisted(m.email),
+                m.status.into(),
+                LoginAttemptState::new(
+                    m.password_locked_until,
+                    m.password_window_start,
+                    m.password_attempts as u8,
+                ),
             )
         })
     }
@@ -132,26 +138,15 @@ where
         }
 
         let (original, modified) = user.into_parts();
-        let (
-            user_id,
-            username,
-            password,
-            email,
-            life_cycle,
-            password_locked_until,
-            password_window_start,
-            password_attempts,
-        ) = original.into_parts();
-        let (
-            _user_id,
-            new_username,
-            new_password,
-            new_email,
-            new_life_cycle,
-            new_password_locked_until,
-            new_password_window_start,
-            new_password_attempts,
-        ) = modified.into_parts();
+        let (user_id, username, password, email, status, login_attempt_state) =
+            original.into_parts();
+        let (password_locked_until, password_window_start, password_attempts) =
+            login_attempt_state.into_parts();
+
+        let (_user_id, new_username, new_password, new_email, new_status, new_login_attempt_state) =
+            modified.into_parts();
+        let (new_password_locked_until, new_password_window_start, new_password_attempts) =
+            new_login_attempt_state.into_parts();
 
         let window_changed = password_window_start != new_password_window_start;
 
@@ -161,8 +156,8 @@ where
         password.set_if_not_equals(new_password.into_inner());
         let mut email = Unchanged(email.into_inner());
         email.set_if_not_equals(new_email.into_inner());
-        let mut life_cycle = Unchanged(life_cycle.into());
-        life_cycle.set_if_not_equals(new_life_cycle.into());
+        let mut status = Unchanged(status.into());
+        status.set_if_not_equals(new_status.into());
         let mut password_locked_until = Unchanged(password_locked_until);
         password_locked_until.set_if_not_equals(new_password_locked_until);
         let mut password_window_start = Unchanged(password_window_start);
@@ -173,7 +168,7 @@ where
             username,
             password,
             email,
-            life_cycle,
+            status,
             password_locked_until,
             password_window_start,
             password_attempts: NotSet,
@@ -211,15 +206,17 @@ where
             .next()
             .ok_or_else(|| db_2_repo_error(DbErr::RecordNotFound("user not found".into())))
             .map(|m| {
-                User::from_repo(
+                User::from_persisted(
                     m.id,
-                    m.username,
-                    m.password,
-                    m.email,
-                    m.life_cycle.into(),
-                    m.password_locked_until,
-                    m.password_window_start,
-                    m.password_attempts as u8,
+                    Username::from_persisted(m.username),
+                    HashedPassword::from_persisted(m.password),
+                    Email::from_persisted(m.email),
+                    m.status.into(),
+                    LoginAttemptState::new(
+                        m.password_locked_until,
+                        m.password_window_start,
+                        m.password_attempts as u8,
+                    ),
                 )
             })
     }

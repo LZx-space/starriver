@@ -1,4 +1,4 @@
-use starriver_identity_domain::error::{DomainError, PasswordEncoderError};
+use starriver_identity_domain::{error::DomainError, password_encoder::EncodeError};
 use starriver_shared_base::error::RepositoryError;
 use thiserror::Error;
 use tracing::error;
@@ -7,19 +7,19 @@ use tracing::error;
 #[derive(Debug, Error)]
 pub enum CtxError {
     /// 输入校验失败（用户名格式、密码强度、邮箱格式等）
-    #[error("输入无效: {0}")]
+    #[error("输入无效：{0}")]
     InvalidInput(String),
 
     /// 认证失败（密码错误、用户锁定、禁用）
-    #[error("认证失败: {0}")]
+    #[error("认证失败：{0}")]
     AuthenticationFailed(String),
 
     /// 资源不存在
-    #[error("资源不存在: {0}")]
+    #[error("资源不存在：{0}")]
     NotFound(String),
 
     /// 资源冲突（重复注册等）
-    #[error("资源冲突: {0}")]
+    #[error("资源冲突：{0}")]
     Conflict(String),
 
     /// 内部错误（基础设施故障，不暴露细节给客户端）
@@ -37,9 +37,9 @@ impl CtxError {
 
 #[derive(Debug, Error)]
 pub enum EmailVerificationError {
-    #[error("构建客户端错误：{0}")]
+    #[error("创建邮件客户端失败：{0}")]
     BuildClientError(String),
-    #[error("发送验证码错误：{0}")]
+    #[error("发送验证码失败：{0}")]
     SendCodeError(String),
 }
 
@@ -59,15 +59,14 @@ impl From<DomainError> for CtxError {
             DomainError::InvalidUsernameFormat
             | DomainError::InvalidEmailFormat
             | DomainError::InvalidPasswordFormat
-            | DomainError::InvalidPasswordHash
             | DomainError::SamePassword => CtxError::InvalidInput(e.to_string()),
 
             // 认证类 → AuthenticationFailed
             DomainError::BadPassword | DomainError::UserLocked | DomainError::UserDisabled => {
                 CtxError::AuthenticationFailed(e.to_string())
             }
-            // 密码编码/验证失败是内部问题
-            DomainError::PasswordEncoding(_) => {
+            // 密码编码/校验是内部问题
+            DomainError::PasswordEncoding(_) | DomainError::PasswordVerification(_) => {
                 error!(error=%e, "password encoding error");
                 CtxError::Internal
             }
@@ -81,9 +80,10 @@ impl From<RepositoryError> for CtxError {
             RepositoryError::NotFound(_) => CtxError::NotFound(e.to_string()),
             RepositoryError::UniqueViolation(_) => CtxError::Conflict(e.to_string()),
             RepositoryError::ForeignKeyViolation(_) => CtxError::Conflict(e.to_string()),
-            RepositoryError::OptimisticLock { entity, id } => {
-                CtxError::Conflict(format!("entity {} id {}", entity, id))
-            }
+            RepositoryError::OptimisticLock { entity, id } => CtxError::Conflict(format!(
+                "Optimistic lock conflict: entity {}, id {}",
+                entity, id
+            )),
             // 其他基础设施错误不暴露细节
             _ => {
                 error!(error=%e, "repository error");
@@ -93,8 +93,8 @@ impl From<RepositoryError> for CtxError {
     }
 }
 
-impl From<PasswordEncoderError> for CtxError {
-    fn from(e: PasswordEncoderError) -> Self {
+impl From<EncodeError> for CtxError {
+    fn from(e: EncodeError) -> Self {
         error!(error=%e, "password encoder error");
         CtxError::Internal
     }

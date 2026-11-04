@@ -5,10 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    post::{
-        params::PostUpdate,
-        value_object::{Content, PostState, Title},
-    },
+    post::value_object::{Content, PostState, Title},
     shared_error::DomainError,
 };
 
@@ -28,43 +25,35 @@ pub struct Post {
 
 impl Post {
     pub fn new(
-        title: String,
-        content: String,
-        state: PostState,
+        title: Title,
+        content: Content,
         author_id: Uuid,
         category_id: Uuid,
         attachments: Vec<Uuid>,
-    ) -> Result<Self, DomainError> {
-        let published_at = match state {
-            PostState::Draft => None,
-            PostState::Published => Some(OffsetDateTime::now_utc()),
-            PostState::Archived => None,
-        };
-        Ok(Self {
+    ) -> Self {
+        Self {
             id: Uuid::now_v7(),
-            title: Title::new(title)?,
-            content: Content::new(content)?,
-            state,
+            title,
+            content,
+            state: PostState::Draft,
             author_id,
             category_id,
             attachments: dedup_attachments(attachments),
-            published_at,
-        })
+            published_at: None,
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn from_repo(
+    pub fn from_persisted(
         id: Uuid,
-        title: String,
-        content: String,
+        title: Title,
+        content: Content,
         state: PostState,
         author_id: Uuid,
         category_id: Uuid,
         attachments: Vec<Uuid>,
         published_at: Option<OffsetDateTime>,
     ) -> Self {
-        let title = Title(title);
-        let content = Content(content);
         Self {
             id,
             title,
@@ -78,42 +67,46 @@ impl Post {
     }
 
     /// 更新标题、内容、分类与附件，并按 published 同步发布/草稿状态
-    pub fn update(&mut self, update: PostUpdate) -> Result<(), DomainError> {
-        self.title = Title::new(update.title)?;
-        self.content = Content::new(update.content)?;
-        self.category_id = update.category_id;
-        self.attachments = dedup_attachments(update.attachments);
-        if update.published {
-            self.publish()?;
-        } else {
-            self.draft();
-        }
-        Ok(())
+    pub fn update(
+        &mut self,
+        title: Title,
+        content: Content,
+        category_id: Uuid,
+        attachments: Vec<Uuid>,
+    ) {
+        self.title = title;
+        self.content = content;
+        self.category_id = category_id;
+        self.attachments = dedup_attachments(attachments);
     }
 
     /// 将博客状态设置为草稿，已发布等状态的也能设为草稿
     pub fn draft(&mut self) {
-        if matches!(self.state, PostState::Draft) {
-            return; // 已是草稿，不重复清 published_at
+        match self.state {
+            PostState::Draft => {}
+            PostState::Published | PostState::Archived => {
+                self.state = PostState::Draft;
+                self.published_at = None;
+            }
         }
-        self.state = PostState::Draft;
-        self.published_at = None;
     }
 
     /// 发布博客，将状态从草稿变为已发布
-    pub fn publish(&mut self) -> Result<(), DomainError> {
-        if matches!(self.state, PostState::Published) {
-            return Ok(()); // 幂等，不重置 published_at
-        }
+    pub fn publish(&mut self, now: OffsetDateTime) -> Result<(), DomainError> {
         if self.title.0.is_empty() {
             return Err(DomainError::PostTitleIsEmpty);
         }
         if self.content.0.is_empty() {
             return Err(DomainError::PostContentIsEmpty);
         }
-        self.state = PostState::Published;
-        self.published_at = Some(OffsetDateTime::now_utc());
-        Ok(())
+        match self.state {
+            PostState::Published => Ok(()),
+            PostState::Draft | PostState::Archived => {
+                self.state = PostState::Published;
+                self.published_at = Some(now);
+                Ok(())
+            }
+        }
     }
 
     /// 提取正文摘要
@@ -143,15 +136,15 @@ mod tests {
     #[test]
     fn new_deduplicates_attachments() {
         let attachment_id = Uuid::now_v7();
+        let title = Title::new("title".into()).expect("");
+        let content = Content::new("content".into()).expect("");
         let post = Post::new(
-            "title".to_string(),
-            "content".to_string(),
-            PostState::Draft,
+            title,
+            content,
             Uuid::now_v7(),
             Uuid::now_v7(),
             vec![attachment_id, attachment_id],
-        )
-        .expect("valid post");
+        );
 
         assert_eq!(post.attachments(), &vec![attachment_id]);
     }

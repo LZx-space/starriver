@@ -236,7 +236,12 @@ impl Email {
             return self.0.clone();
         }
         let (local, domain) = (parts[0], parts[1]);
-        let masked_local = format!("{}{}", &local[..1], "*".repeat(local.len() - 1));
+        let mut chars = local.chars();
+        let first = match chars.next() {
+            Some(c) => c,
+            None => return self.0.clone(), // local 为空，原样返回或按需处理
+        };
+        let masked_local = format!("{}{}", first, "*".repeat(chars.count()));
         format!("{}@{}", masked_local, domain)
     }
 

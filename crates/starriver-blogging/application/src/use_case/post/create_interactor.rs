@@ -70,7 +70,7 @@ where
         let content = Content::new(cmd.content)?;
         let mut post = Post::new(title, content, author.id, cmd.category_id, cmd.attachments);
         if cmd.publish {
-            post.publish(OffsetDateTime::now_utc())?;
+            post.publish(OffsetDateTime::now_utc)?;
         }
 
         // post_repo.add() 包含post与附件关联的写入，需事务

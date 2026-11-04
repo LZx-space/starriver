@@ -66,7 +66,7 @@ impl Post {
         }
     }
 
-    /// 更新标题、内容、分类与附件，并按 published 同步发布/草稿状态
+    /// 更新标题、内容、分类与附件
     pub fn update(
         &mut self,
         title: Title,
@@ -81,6 +81,7 @@ impl Post {
     }
 
     /// 将博客状态设置为草稿，已发布等状态的也能设为草稿
+    /// - 将清除发布时间
     pub fn draft(&mut self) {
         match self.state {
             PostState::Draft => {}
@@ -92,7 +93,8 @@ impl Post {
     }
 
     /// 发布博客，将状态从草稿变为已发布
-    pub fn publish(&mut self, now: OffsetDateTime) -> Result<(), DomainError> {
+    /// - 已发布不会修改发布时间
+    pub fn publish(&mut self, now: impl FnOnce() -> OffsetDateTime) -> Result<(), DomainError> {
         if self.title.0.is_empty() {
             return Err(DomainError::PostTitleIsEmpty);
         }
@@ -103,7 +105,7 @@ impl Post {
             PostState::Published => Ok(()),
             PostState::Draft | PostState::Archived => {
                 self.state = PostState::Published;
-                self.published_at = Some(now);
+                self.published_at = Some(now());
                 Ok(())
             }
         }

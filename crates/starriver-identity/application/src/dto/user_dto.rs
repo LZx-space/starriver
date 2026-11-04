@@ -101,8 +101,8 @@ pub mod input {
     #[serde(rename_all = "snake_case")]
     pub enum SecurityEventType {
         LoginSucceeded,
-        TryLoginWithBadPwd,
-        UserUnlocked,
+        LoginWithBadPassword,
+        UserLocked,
         PasswordChanged,
         PasswordReset,
     }
@@ -111,8 +111,8 @@ pub mod input {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 SecurityEventType::LoginSucceeded => write!(f, "LoginSucceeded")?,
-                SecurityEventType::TryLoginWithBadPwd => write!(f, "TryLoginWithBadPwd")?,
-                SecurityEventType::UserUnlocked => write!(f, "UserUnlocked")?,
+                SecurityEventType::LoginWithBadPassword => write!(f, "LoginWithBadPassword")?,
+                SecurityEventType::UserLocked => write!(f, "UserLocked")?,
                 SecurityEventType::PasswordChanged => write!(f, "PasswordChanged")?,
                 SecurityEventType::PasswordReset => write!(f, "PasswordReset")?,
             }

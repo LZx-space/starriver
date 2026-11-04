@@ -87,7 +87,7 @@ where
 
         let original = user.clone();
         let auth_result = self.password_service.authenticate(&mut user, password);
-        let user_unlocked = !user.is_locked() && original.is_locked();
+        let just_locked = !original.is_locked() && user.is_locked();
         let user = self
             .user_repo
             .update(&self.conn, Revision::new(original, user))
@@ -98,36 +98,36 @@ where
         let username = user.username().as_str();
         match auth_result {
             Ok(_) => {
-                let mut events = vec![SecurityEventCmd::new(
-                    *user_id,
-                    username,
-                    SecurityEventType::LoginSucceeded,
-                    "login succeeded",
-                )];
-                if user_unlocked {
-                    events.push(SecurityEventCmd::new(
-                        *user_id,
-                        username,
-                        SecurityEventType::UserUnlocked,
-                        "password lock expired",
-                    ));
-                }
-                self.security_event_port
-                    .insert_many(&self.conn, events)
-                    .await;
-                Ok(into_user_detail(user))
-            }
-            Err(AuthenticationError::BadPassword) => {
                 self.security_event_port
                     .insert_many(
                         &self.conn,
                         vec![SecurityEventCmd::new(
                             *user_id,
                             username,
-                            SecurityEventType::TryLoginWithBadPwd,
-                            "bad password",
+                            SecurityEventType::LoginSucceeded,
+                            "login succeeded",
                         )],
                     )
+                    .await;
+                Ok(into_user_detail(user))
+            }
+            Err(AuthenticationError::BadPassword) => {
+                let mut events = vec![SecurityEventCmd::new(
+                    *user_id,
+                    username,
+                    SecurityEventType::LoginWithBadPassword,
+                    "bad password",
+                )];
+                if just_locked {
+                    events.push(SecurityEventCmd::new(
+                        *user_id,
+                        username,
+                        SecurityEventType::UserLocked,
+                        "user locked",
+                    ));
+                }
+                self.security_event_port
+                    .insert_many(&self.conn, events)
                     .await;
                 Err(AuthenticationError::BadPassword)
             }

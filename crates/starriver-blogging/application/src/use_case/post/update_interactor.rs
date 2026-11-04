@@ -93,8 +93,10 @@ where
             let title = Title::new(cmd.title)?;
             let content = Content::new(cmd.content)?;
             found.update(title, content, cmd.category_id, cmd.attachments);
-            if cmd.publish {
-                found.publish(OffsetDateTime::now_utc())?;
+            if !cmd.publish {
+                found.draft();
+            } else {
+                found.publish(OffsetDateTime::now_utc)?;
             }
             self.post_repo
                 .update(&tx, Revision::new(original, found))

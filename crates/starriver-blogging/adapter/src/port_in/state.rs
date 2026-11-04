@@ -6,7 +6,7 @@ use starriver_blogging_application::{
         post_dto::output::{PostDetailDto, PostExcerptDto},
     },
     port::{category_cache::CategoryListKey, post_cache::PostPageKey},
-    use_case::{attachment_interactor, category_interactor, post_interactor},
+    use_case::{attachment_interactor, category_interactor, post},
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_base::{dto::OffsetPage, random::duration_with_jitter};
@@ -31,14 +31,45 @@ use crate::{
     },
 };
 
-type PostInteractor = post_interactor::PostInteractor<
+type PostCreateInteractor = post::create_interactor::CreateInteractor<
     DefaultConnection,
     DefaultPostQuery,
     DefaultPostRepository,
     DefaultCategoryRepository,
     DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
+>;
+
+type PostDeleteInteractor = post::delete_interactor::DeleteInteractor<
+    DefaultConnection,
+    DefaultPostRepository,
+    DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
+
+type PostFindInteractor = post::find_interactor::FindInteractor<
+    DefaultConnection,
+    DefaultPostQuery,
+    DefaultCache<Uuid, Option<PostDetailDto>>,
+>;
+
+type PostPaginateInteractor = post::paginate_interactor::PaginateInteractor<
+    DefaultConnection,
+    DefaultPostQuery,
+    DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
+>;
+
+type PostSearchInteractor =
+    post::search_interactor::SearchInteractor<DefaultConnection, DefaultPostQuery>;
+
+type PostUpdateInteractor = post::update_interactor::UpdateInteractor<
+    DefaultConnection,
+    DefaultPostRepository,
+    DefaultCategoryRepository,
+    DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
+    DefaultCache<Uuid, Option<PostDetailDto>>,
+>;
+
+///////////////////////////////////////////////////////////////////////////////
 
 type CategoryInteractor = category_interactor::CategoryInteractor<
     DefaultConnection,
@@ -62,8 +93,16 @@ pub struct BloggingState {
     pub auth: Arc<Auth>,
     pub uploads: Arc<Uploads>,
     pub upload_file_url_builder: DefaultUploadLocationResolver,
-    pub post_interactor: Arc<PostInteractor>,
+    /////////////////////////////////////////////////////////////////
+    pub post_create_interactor: Arc<PostCreateInteractor>,
+    pub post_delete_interactor: Arc<PostDeleteInteractor>,
+    pub post_find_interactor: Arc<PostFindInteractor>,
+    pub post_paginate_interactor: Arc<PostPaginateInteractor>,
+    pub post_search_interactor: Arc<PostSearchInteractor>,
+    pub post_update_interactor: Arc<PostUpdateInteractor>,
+    /////////////////////////////////////////////////////////////////
     pub category_interactor: Arc<CategoryInteractor>,
+    /////////////////////////////////////////////////////////////////
     pub attachment_interactor: Arc<AttachmentInteractor>,
 }
 
@@ -84,15 +123,52 @@ impl BloggingState {
         );
         let post_item_cache = DefaultCache::new(100, cache_jitter_ttl(cache_cfg));
 
-        let post_interactor = PostInteractor::new(
+        let post_create_interactor = PostCreateInteractor::new(
             conn.clone(),
             DefaultPostQuery::new(upload_file_url_builder.clone()),
+            DefaultPostRepository,
+            DefaultCategoryRepository,
+            post_page_cache.clone(),
+        )
+        .into();
+
+        let post_delete_interactor = PostDeleteInteractor::new(
+            conn.clone(),
+            DefaultPostRepository,
+            post_page_cache.clone(),
+            post_item_cache.clone(),
+        )
+        .into();
+
+        let post_find_interactor = PostFindInteractor::new(
+            conn.clone(),
+            DefaultPostQuery::new(upload_file_url_builder.clone()),
+            post_item_cache.clone(),
+        )
+        .into();
+
+        let post_paginate_interactor = PostPaginateInteractor::new(
+            conn.clone(),
+            DefaultPostQuery::new(upload_file_url_builder.clone()),
+            post_page_cache.clone(),
+        )
+        .into();
+
+        let post_search_interactor = PostSearchInteractor::new(
+            conn.clone(),
+            DefaultPostQuery::new(upload_file_url_builder.clone()),
+        )
+        .into();
+
+        let post_update_interactor = PostUpdateInteractor::new(
+            conn.clone(),
             DefaultPostRepository,
             DefaultCategoryRepository,
             post_page_cache.clone(),
             post_item_cache.clone(),
         )
         .into();
+        /////////////////////////////////////////////////////////////////
 
         let category_interactor = CategoryInteractor::new(
             conn.clone(),
@@ -116,7 +192,12 @@ impl BloggingState {
             auth,
             uploads,
             upload_file_url_builder,
-            post_interactor,
+            post_create_interactor,
+            post_delete_interactor,
+            post_find_interactor,
+            post_paginate_interactor,
+            post_search_interactor,
+            post_update_interactor,
             category_interactor,
             attachment_interactor,
         })

@@ -6,7 +6,11 @@ use starriver_blogging_application::{
         post_dto::output::{PostDetailDto, PostExcerptDto},
     },
     port::{category_cache::CategoryListKey, post_cache::PostPageKey},
-    use_case::{attachment_interactor, category_interactor, post},
+    use_case::{
+        attachment_interactor,
+        category::{self},
+        post,
+    },
 };
 use starriver_blogging_domain::attachment::factory::AttachmentFactory;
 use starriver_shared_base::{dto::OffsetPage, random::duration_with_jitter};
@@ -68,17 +72,37 @@ type PostUpdateInteractor = post::update_interactor::UpdateInteractor<
     DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
-
 ///////////////////////////////////////////////////////////////////////////////
 
-type CategoryInteractor = category_interactor::CategoryInteractor<
+type CategoryCreateInteractor = category::create_interactor::CreateInteractor<
+    DefaultConnection,
+    DefaultCategoryRepository,
+    DefaultCache<CategoryListKey, Vec<CategoryDetailDto>>,
+>;
+
+type CategoryDeleteInteractor = category::delete_interactor::DeleteInteractor<
+    DefaultConnection,
+    DefaultCategoryRepository,
+    DefaultCache<CategoryListKey, Vec<CategoryDetailDto>>,
+>;
+
+type CategoryFindInteractor =
+    category::find_interactor::FindInteractor<DefaultConnection, DefaultCategoryRepository>;
+
+type CategoryListInteractor = category::list_interactor::ListInteractor<
     DefaultConnection,
     DefaultCategoryQuery,
+    DefaultCache<CategoryListKey, Vec<CategoryDetailDto>>,
+>;
+
+type CategoryUpdateInteractor = category::update_interactor::UpdateInteractor<
+    DefaultConnection,
     DefaultCategoryRepository,
     DefaultCache<CategoryListKey, Vec<CategoryDetailDto>>,
     DefaultCache<PostPageKey, OffsetPage<PostExcerptDto>>,
     DefaultCache<Uuid, Option<PostDetailDto>>,
 >;
+//////////////////////////////////////////////////////////////////////////////
 
 type AttachmentInteractor = attachment_interactor::AttachmentInteractor<
     DefaultConnection,
@@ -101,7 +125,11 @@ pub struct BloggingState {
     pub post_search_interactor: Arc<PostSearchInteractor>,
     pub post_update_interactor: Arc<PostUpdateInteractor>,
     /////////////////////////////////////////////////////////////////
-    pub category_interactor: Arc<CategoryInteractor>,
+    pub category_create_interactor: Arc<CategoryCreateInteractor>,
+    pub category_delete_interactor: Arc<CategoryDeleteInteractor>,
+    pub category_find_interactor: Arc<CategoryFindInteractor>,
+    pub category_list_interactor: Arc<CategoryListInteractor>,
+    pub category_update_interactor: Arc<CategoryUpdateInteractor>,
     /////////////////////////////////////////////////////////////////
     pub attachment_interactor: Arc<AttachmentInteractor>,
 }
@@ -117,6 +145,8 @@ impl BloggingState {
         let conn = DefaultConnection::new(conn);
 
         let cache_cfg = &cfg.cache;
+        ///////////////////////////////////////////////////////////////////////
+
         let post_page_cache = DefaultCache::new(
             cache_cfg.post_page_cache_max_capacity,
             cache_jitter_ttl(cache_cfg),
@@ -170,15 +200,41 @@ impl BloggingState {
         .into();
         /////////////////////////////////////////////////////////////////
 
-        let category_interactor = CategoryInteractor::new(
+        let category_list_cache = DefaultCache::new(1, cache_jitter_ttl(cache_cfg));
+
+        let category_create_interactor = CategoryCreateInteractor::new(
             conn.clone(),
-            DefaultCategoryQuery,
             DefaultCategoryRepository,
-            DefaultCache::new(1, cache_jitter_ttl(cache_cfg)),
-            post_page_cache,
-            post_item_cache,
+            category_list_cache.clone(),
         )
         .into();
+
+        let category_delete_interactor = CategoryDeleteInteractor::new(
+            conn.clone(),
+            DefaultCategoryRepository,
+            category_list_cache.clone(),
+        )
+        .into();
+
+        let category_find_interactor =
+            CategoryFindInteractor::new(conn.clone(), DefaultCategoryRepository).into();
+
+        let category_list_interactor = CategoryListInteractor::new(
+            conn.clone(),
+            DefaultCategoryQuery,
+            category_list_cache.clone(),
+        )
+        .into();
+
+        let category_update_interactor = CategoryUpdateInteractor::new(
+            conn.clone(),
+            DefaultCategoryRepository,
+            category_list_cache.clone(),
+            post_page_cache.clone(),
+            post_item_cache.clone(),
+        )
+        .into();
+        /////////////////////////////////////////////////////////////////
 
         let attachment_interactor = AttachmentInteractor::new(
             conn.clone(),
@@ -198,7 +254,11 @@ impl BloggingState {
             post_paginate_interactor,
             post_search_interactor,
             post_update_interactor,
-            category_interactor,
+            category_create_interactor,
+            category_delete_interactor,
+            category_find_interactor,
+            category_list_interactor,
+            category_update_interactor,
             attachment_interactor,
         })
     }

@@ -16,7 +16,7 @@ use crate::api_error::ApiError;
 use crate::port_in::state::BloggingState;
 
 #[axum::debug_handler]
-pub async fn upload_attachment(
+pub async fn upload(
     state: State<BloggingState>,
     _: AuthenticatedJwtClaims,
     mut multipart: Multipart,

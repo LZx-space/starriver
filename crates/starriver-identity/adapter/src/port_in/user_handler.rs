@@ -14,7 +14,6 @@ use crate::port_in::state::IdentityState;
 pub async fn me(user: AuthenticatedJwtClaims) -> Result<impl IntoResponse, ApiError> {
     Ok(Json(user))
 }
-
 ////////////////////////////////////////////////////////////////////
 
 pub async fn paginate(
@@ -25,10 +24,9 @@ pub async fn paginate(
     let page = state.paginate_interactor.paginate(q.0).await?;
     Ok(Json(page))
 }
-
 ////////////////////////////////////////////////////////////////////
 
-pub async fn send_email_verification_code(
+pub async fn send_register_email(
     state: State<IdentityState>,
     cmd: Json<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -41,7 +39,7 @@ pub async fn send_email_verification_code(
 }
 
 // #[axum::debug_handler]
-pub async fn register_user(
+pub async fn register(
     state: State<IdentityState>,
     cmd: Json<UserRegisterCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -49,7 +47,6 @@ pub async fn register_user(
     state.register_interactor.register_user(cmd).await?;
     Ok(())
 }
-
 ////////////////////////////////////////////////////////////////////
 
 pub async fn change_my_password(
@@ -65,15 +62,14 @@ pub async fn change_my_password(
     Ok(())
 }
 
-pub async fn send_reset_password_verification_code(
+pub async fn send_reset_password_code(
     state: State<IdentityState>,
     cmd: Json<SendVerificationCodeCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // 不会失败：错误已记录在用例内部（防枚举）
-    let _ = state
+    state
         .reset_password_interactor
         .send_verification_code(&cmd.0.email)
-        .await;
+        .await?;
     Ok(())
 }
 

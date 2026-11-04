@@ -26,7 +26,7 @@ pub async fn search(
     Ok(Json(results))
 }
 
-pub async fn show(
+pub async fn find(
     state: State<BloggingState>,
     id: Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {

@@ -8,16 +8,16 @@ use uuid::Uuid;
 
 use crate::{api_error::ApiError, port_in::state::BloggingState};
 
-pub async fn list_all(state: State<BloggingState>) -> Result<impl IntoResponse, ApiError> {
-    let categories = state.category_interactor.list_all().await?;
+pub async fn list(state: State<BloggingState>) -> Result<impl IntoResponse, ApiError> {
+    let categories = state.category_list_interactor.list().await?;
     Ok(Json(categories))
 }
 
-pub async fn show(
+pub async fn find(
     state: State<BloggingState>,
     id: Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let category = state.category_interactor.find(id.0).await?;
+    let category = state.category_find_interactor.find(id.0).await?;
     Ok(Json(category))
 }
 
@@ -27,7 +27,7 @@ pub async fn create(
     cmd: Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     let created = state
-        .category_interactor
+        .category_create_interactor
         .create(user.into(), cmd.0.name)
         .await?;
     Ok(Json(created))
@@ -40,7 +40,7 @@ pub async fn update(
     Json(cmd): Json<CreateOrUpdateCategoryCmd>,
 ) -> Result<impl IntoResponse, ApiError> {
     let updated = state
-        .category_interactor
+        .category_update_interactor
         .update(user.into(), id, cmd.name)
         .await?;
     Ok(Json(updated))
@@ -51,6 +51,9 @@ pub async fn delete(
     user: AuthenticatedJwtClaims,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    state.category_interactor.delete(user.into(), id).await?;
+    state
+        .category_delete_interactor
+        .delete(user.into(), id)
+        .await?;
     Ok(Json(()))
 }

@@ -20,9 +20,9 @@ pub enum AsyncReaderError {
 impl Display for AsyncReaderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AsyncReaderError::IO(e) => write!(f, "IO error: {e}"),
-            AsyncReaderError::TooLarge => write!(f, "Payload too large"),
-            AsyncReaderError::Other(e) => write!(f, "Other error: {e}"),
+            Self::IO(e) => write!(f, "IO error: {e}"),
+            Self::TooLarge => write!(f, "Payload too large"),
+            Self::Other(e) => write!(f, "Other error: {e}"),
         }
     }
 }
@@ -72,8 +72,8 @@ pub enum AsyncWriterError {
 impl Display for AsyncWriterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AsyncWriterError::IO(e) => write!(f, "IO error: {e}"),
-            AsyncWriterError::Other(e) => write!(f, "Other error: {e}"),
+            Self::IO(e) => write!(f, "IO error: {e}"),
+            Self::Other(e) => write!(f, "Other error: {e}"),
         }
     }
 }

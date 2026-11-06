@@ -23,7 +23,7 @@ impl ApiError {
     pub fn new(status: StatusCode, message: String) -> Self {
         Self {
             status,
-            message: capitalize_first(message),
+            message,
             details: None,
         }
     }
@@ -32,24 +32,10 @@ impl ApiError {
     pub fn with_details(status: StatusCode, message: String, details: serde_json::Value) -> Self {
         Self {
             status,
-            message: capitalize_first(message),
+            message,
             details: Some(details),
         }
     }
-}
-
-/// 英文文案按 sentence case 返回；中文/数字/符号开头原样保留。
-fn capitalize_first(value: String) -> String {
-    let Some(first) = value.chars().next() else {
-        return value;
-    };
-    if !first.is_ascii_lowercase() {
-        return value;
-    }
-    let mut result = String::with_capacity(value.len());
-    result.push(first.to_ascii_uppercase());
-    result.push_str(&value[first.len_utf8()..]);
-    result
 }
 
 impl IntoResponse for ApiError {
@@ -119,16 +105,5 @@ mod tests {
         assert_eq!(json["message"], "Validation failed");
         assert_eq!(json["details"]["email"][0]["code"], "invalid_email");
         assert!(json.get("status").is_none());
-    }
-
-    #[test]
-    fn capitalizes_first_ascii_letter() {
-        assert_eq!(
-            capitalize_first("failed to read stream".to_string()),
-            "Failed to read stream"
-        );
-        assert_eq!(capitalize_first("Already".to_string()), "Already");
-        assert_eq!(capitalize_first("中文".to_string()), "中文");
-        assert_eq!(capitalize_first(String::new()), "");
     }
 }

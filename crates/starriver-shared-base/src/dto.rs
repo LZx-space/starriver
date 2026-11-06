@@ -33,7 +33,7 @@ pub struct OffsetPageQuery {
 
 /// 偏移分页数据结果
 #[derive(Clone, Debug, Serialize)]
-pub struct OffsetPage<T: Serialize> {
+pub struct OffsetPage<T> {
     page: u64,
     page_size: u64,
     total_pages: u64,
@@ -47,7 +47,7 @@ impl<T: Serialize> OffsetPage<T> {
         if !total_items.is_multiple_of(page_size) {
             total_pages += 1;
         }
-        OffsetPage {
+        Self {
             page,
             page_size,
             total_pages,
@@ -92,7 +92,7 @@ impl<T: DeserializeOwned> Cursor<T> {
         let (payload, sig) = self
             .encoded
             .split_once('.')
-            .ok_or(CursorError::Malformed("without signature".to_string()))?;
+            .ok_or_else(|| CursorError::Malformed("without signature".to_string()))?;
         let payload = URL_SAFE_NO_PAD
             .decode(payload)
             .map_err(|e| CursorError::Malformed(e.to_string()))?;
@@ -130,7 +130,7 @@ impl<T: DeserializeOwned> CursorPageQuery<T> {
 /// - C: 被编码为游标字符串的类型
 /// - T: 数据类型
 #[derive(Serialize)]
-pub struct CursorPage<C: Serialize, T: Serialize> {
+pub struct CursorPage<C, T> {
     /// `Some(cursor)` if there is a next page
     pub next_cursor: Option<Cursor<C>>,
     pub items: Vec<T>,
@@ -160,7 +160,7 @@ where
     s.parse().map_err(serde::de::Error::custom)
 }
 
-fn default_limit() -> u64 {
+const fn default_limit() -> u64 {
     10
 }
 

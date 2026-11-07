@@ -86,7 +86,6 @@ where
     pub async fn register_user(&self, cmd: UserRegisterCmd) -> Result<(), CtxError> {
         let username = Username::new(&cmd.username, &self.username_spec)?;
         let password = RawPassword::new(&cmd.password, &self.password_spec)?;
-        let hashed_password = HashedPassword::from_raw(&password, self.password_encoder.as_ref())?;
         let email = &Email::new(&cmd.email, &self.email_spec)?;
 
         let verification_code = cmd.verification_code.as_str();
@@ -100,6 +99,8 @@ where
                 "Invalid verification code".to_string(),
             ));
         }
+
+        let hashed_password = HashedPassword::from_raw(&password, self.password_encoder.as_ref())?;
         let user = User::new(username, hashed_password, email.clone());
         self.user_repo
             .insert(&self.conn, user)

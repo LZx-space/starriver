@@ -15,11 +15,12 @@ use starriver_shared_base::{
     db::{Connection, Revision},
     error::RepositoryError,
 };
+use time::OffsetDateTime;
 use tracing::{error, info};
 
 use crate::{
     dto::user_dto::{
-        input::{SecurityEventCmd, SecurityEventType},
+        input::{SecurityEventCmd, SecurityEventKind},
         output::UserDetail,
     },
     port::{security_event_port::SecurityEventPort, user_repository::UserRepository},
@@ -93,37 +94,36 @@ where
             .update(&self.conn, Revision::new(original, user))
             .await
             .map_err(mapping_repo_error())?;
-
-        let user_id = user.id();
-        let username = user.username().as_str();
         match auth_result {
             Ok(_) => {
                 self.security_event_port
                     .insert_many(
                         &self.conn,
                         vec![SecurityEventCmd::new(
-                            *user_id,
-                            username,
-                            SecurityEventType::LoginSucceeded,
-                            "login succeeded",
+                            &user,
+                            SecurityEventKind::LoginSucceeded,
+                            OffsetDateTime::now_utc(),
+                            None,
                         )],
                     )
                     .await;
                 Ok(into_user_detail(user))
             }
             Err(AuthenticationError::BadPassword) => {
+                let user_ref = &user;
+                let now = OffsetDateTime::now_utc();
                 let mut events = vec![SecurityEventCmd::new(
-                    *user_id,
-                    username,
-                    SecurityEventType::LoginWithBadPassword,
-                    "bad password",
+                    user_ref,
+                    SecurityEventKind::LoginWithBadPassword,
+                    now,
+                    None,
                 )];
                 if just_locked {
                     events.push(SecurityEventCmd::new(
-                        *user_id,
-                        username,
-                        SecurityEventType::UserLocked,
-                        "user locked",
+                        user_ref,
+                        SecurityEventKind::UserLocked,
+                        now,
+                        None,
                     ));
                 }
                 self.security_event_port

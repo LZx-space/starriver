@@ -12,9 +12,10 @@ use starriver_shared_base::{
     db::{Connection, Revision},
     error::RepositoryError,
 };
+use time::OffsetDateTime;
 
 use crate::{
-    dto::user_dto::input::{ChangeMyPasswordCmd, SecurityEventCmd, SecurityEventType},
+    dto::user_dto::input::{ChangeMyPasswordCmd, SecurityEventCmd, SecurityEventKind},
     error::CtxError,
     port::{security_event_port::SecurityEventPort, user_repository::UserRepository},
 };
@@ -74,15 +75,14 @@ where
             .await?
             .ok_or(RepositoryError::NotFound("User not found".to_string()))?;
 
-        let user_id = *user.id();
         let original = user.clone();
-
         let changed = self.password_service.change_password(
             &mut user,
             cmd.cur_password.as_str(),
             new_password,
         );
-        self.user_repo
+        let user = self
+            .user_repo
             .update(&self.conn, Revision::new(original, user))
             .await?;
         match changed {
@@ -91,10 +91,10 @@ where
                     .insert_many(
                         &self.conn,
                         vec![SecurityEventCmd::new(
-                            user_id,
-                            username.as_str(),
-                            SecurityEventType::PasswordChanged,
-                            "password changed",
+                            &user,
+                            SecurityEventKind::PasswordChanged,
+                            OffsetDateTime::now_utc(),
+                            None,
                         )],
                     )
                     .await;

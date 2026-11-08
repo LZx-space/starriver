@@ -9,10 +9,11 @@ use starriver_identity_domain::{
     },
 };
 use starriver_shared_base::db::{Connection, Revision};
+use time::OffsetDateTime;
 use tracing::{error, warn};
 
 use crate::{
-    dto::user_dto::input::{ResetPasswordCmd, SecurityEventCmd, SecurityEventType},
+    dto::user_dto::input::{ResetPasswordCmd, SecurityEventCmd, SecurityEventKind},
     error::CtxError,
     port::{
         email_verification_service::EmailVerificationService,
@@ -141,15 +142,14 @@ where
 
         match updated {
             Ok(user) => {
-                let (id, username, ..) = user.into_parts();
                 self.security_event_port
                     .insert_many(
                         &self.conn,
                         vec![SecurityEventCmd::new(
-                            id,
-                            username.into_inner(),
-                            SecurityEventType::PasswordReset,
-                            "password reset with verification code",
+                            &user,
+                            SecurityEventKind::PasswordReset,
+                            OffsetDateTime::now_utc(),
+                            None,
                         )],
                     )
                     .await;

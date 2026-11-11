@@ -11,12 +11,9 @@ use starriver_identity_application::use_case::{
         reset_password_interactor::ResetPasswordInteractor,
     },
 };
-use starriver_identity_domain::{
-    password_service::PasswordDomainService,
-    user::{
-        policy::BadPasswordPolicy,
-        specification::{EmailSpec, PasswordSpec, UsernameSpec},
-    },
+use starriver_identity_domain::user::{
+    policy::BadPasswordPolicy,
+    specification::{EmailSpec, PasswordSpec, UsernameSpec},
 };
 use starriver_shared_base::regex_patterns::Patterns;
 use starriver_shared_infra::{config::Auth, db::DefaultConnection};
@@ -103,18 +100,16 @@ impl IdentityState {
         let password_spec: Arc<_> = PasswordSpec::new(patterns.password).into();
 
         let password_encoder: Arc<Argon2PasswordEncoder> = Argon2PasswordEncoder::default().into();
+        let password_policy: Arc<_> = BadPasswordPolicy {
+            window_minutes: cfg.bad_password.window_minutes,
+            max_attempts: cfg.bad_password.max_attempts,
+            lockout_minutes: cfg.bad_password.lockout_minutes,
+        }
+        .into();
         ////////////////////////////////////////////////////////
 
         let verification_code_service =
             SmtpVerificationService::new(&cfg.email_smtp).map_err(|e| e.to_string())?;
-
-        let bad_password_policy = BadPasswordPolicy {
-            window_minutes: cfg.bad_password.window_minutes,
-            max_attempts: cfg.bad_password.max_attempts,
-            lockout_minutes: cfg.bad_password.lockout_minutes,
-        };
-
-        let pwd_service = PasswordDomainService::new(bad_password_policy, password_encoder.clone());
 
         let conn = DefaultConnection::new(conn.clone());
         ///////////////////////////////////////////////////////
@@ -123,7 +118,8 @@ impl IdentityState {
             conn.clone(),
             DefaultUserRepository,
             DefaultSecurityEventPort,
-            pwd_service.clone(),
+            password_policy.clone(),
+            password_encoder.clone(),
             username_spec.clone(),
             password_spec.clone(),
         )
@@ -134,10 +130,10 @@ impl IdentityState {
             DefaultUserQuery,
             DefaultUserRepository,
             verification_code_service.clone(),
+            password_encoder.clone(),
             email_spec.clone(),
             username_spec.clone(),
             password_spec.clone(),
-            password_encoder.clone(),
         )
         .into();
         let reset_password_interactor = ResetPasswordInteractor::new(
@@ -146,7 +142,7 @@ impl IdentityState {
             DefaultUserRepository,
             DefaultSecurityEventPort,
             verification_code_service.clone(),
-            pwd_service.clone(),
+            password_encoder.clone(),
             password_spec.clone(),
             email_spec.clone(),
         )
@@ -156,7 +152,8 @@ impl IdentityState {
             conn.clone(),
             DefaultUserRepository,
             DefaultSecurityEventPort,
-            pwd_service.clone(),
+            password_policy.clone(),
+            password_encoder.clone(),
             email_spec.clone(),
             username_spec.clone(),
         )

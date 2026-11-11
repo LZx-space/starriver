@@ -18,7 +18,7 @@ CREATE TABLE public."user"
 COMMENT ON TABLE public."user" IS '用户';
 
 -- Column comments
-COMMENT ON COLUMN public."user".life_cycle IS '生命周期';
+COMMENT ON COLUMN public."user".status IS '账户状态';
 COMMENT ON COLUMN public."user".password_locked_until IS '密码锁定截至时间';
 COMMENT ON COLUMN public."user".password_window_start IS '密码错误计数窗口开始时间';
 COMMENT ON COLUMN public."user".password_attempts IS '窗口内密码错误尝试次数';

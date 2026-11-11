@@ -1,5 +1,5 @@
 use sea_orm::entity::prelude::*;
-use starriver_identity_application::dto::user_dto::input::SecurityEventType;
+use starriver_identity_domain::user::event::UserSecurityEventKind;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,8 +10,8 @@ pub struct Model {
     pub id: Uuid,
     pub user_id: Uuid,
     pub username: String,
-    pub event_type: SecurityEventTypePo,
-    pub message: String,
+    pub kind: SecurityEventKindDb,
+    pub payload: Option<serde_json::Value>,
     pub occurred_at: OffsetDateTime,
     pub created_at: OffsetDateTime,
 }
@@ -24,7 +24,7 @@ pub enum Relation {}
 /////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
-pub enum SecurityEventTypePo {
+pub enum SecurityEventKindDb {
     #[sea_orm(num_value = 0)]
     LoginSucceeded,
     #[sea_orm(num_value = 1)]
@@ -37,26 +37,26 @@ pub enum SecurityEventTypePo {
     PasswordReset,
 }
 
-impl From<SecurityEventTypePo> for SecurityEventType {
-    fn from(event_type: SecurityEventTypePo) -> Self {
+impl From<SecurityEventKindDb> for UserSecurityEventKind {
+    fn from(event_type: SecurityEventKindDb) -> Self {
         match event_type {
-            SecurityEventTypePo::LoginSucceeded => Self::LoginSucceeded,
-            SecurityEventTypePo::LoginWithBadPassword => Self::LoginWithBadPassword,
-            SecurityEventTypePo::Userlocked => Self::UserLocked,
-            SecurityEventTypePo::PasswordChanged => Self::PasswordChanged,
-            SecurityEventTypePo::PasswordReset => Self::PasswordReset,
+            SecurityEventKindDb::LoginSucceeded => Self::LoginSucceeded,
+            SecurityEventKindDb::LoginWithBadPassword => Self::LoginWithBadPassword,
+            SecurityEventKindDb::Userlocked => Self::UserLocked,
+            SecurityEventKindDb::PasswordChanged => Self::PasswordChanged,
+            SecurityEventKindDb::PasswordReset => Self::PasswordReset,
         }
     }
 }
 
-impl From<SecurityEventType> for SecurityEventTypePo {
-    fn from(event_type: SecurityEventType) -> Self {
+impl From<UserSecurityEventKind> for SecurityEventKindDb {
+    fn from(event_type: UserSecurityEventKind) -> Self {
         match event_type {
-            SecurityEventType::LoginSucceeded => Self::LoginSucceeded,
-            SecurityEventType::LoginWithBadPassword => Self::LoginWithBadPassword,
-            SecurityEventType::UserLocked => Self::Userlocked,
-            SecurityEventType::PasswordChanged => Self::PasswordChanged,
-            SecurityEventType::PasswordReset => SecurityEventTypePo::PasswordReset,
+            UserSecurityEventKind::LoginSucceeded => Self::LoginSucceeded,
+            UserSecurityEventKind::LoginWithBadPassword => Self::LoginWithBadPassword,
+            UserSecurityEventKind::UserLocked => Self::Userlocked,
+            UserSecurityEventKind::PasswordChanged => Self::PasswordChanged,
+            UserSecurityEventKind::PasswordReset => SecurityEventKindDb::PasswordReset,
         }
     }
 }

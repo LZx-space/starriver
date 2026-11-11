@@ -62,9 +62,10 @@ impl From<DomainError> for CtxError {
             | DomainError::SamePassword => CtxError::InvalidInput(e.to_string()),
 
             // 认证类 → AuthenticationFailed
-            DomainError::BadPassword | DomainError::UserLocked | DomainError::UserDisabled => {
-                CtxError::AuthenticationFailed(e.to_string())
-            }
+            DomainError::BadPassword
+            | DomainError::UserLocked
+            | DomainError::UserDisabled
+            | DomainError::UserDeleted => CtxError::AuthenticationFailed(e.to_string()),
             // 密码编码/校验是内部问题
             DomainError::PasswordEncoding(_) | DomainError::PasswordVerification(_) => {
                 error!(error=%e, "password encoding error");

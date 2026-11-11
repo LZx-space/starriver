@@ -1,10 +1,8 @@
 pub mod input {
-    use std::{borrow::Cow, fmt::Display};
-
     use serde::{Deserialize, Serialize};
+    use starriver_identity_domain::user::event::UserSecurityEventKind;
     use starriver_shared_base::dto::CursorPageQuery;
     use time::OffsetDateTime;
-    use tracing::warn;
     use uuid::Uuid;
     use validator::Validate;
 
@@ -37,89 +35,6 @@ pub mod input {
         pub new_password: String,
         pub new_password_confirm: String,
     }
-
-    /// 与 `security_event.message` 列宽 `varchar(100)` 保持一致
-    const MAX_PAYLOAD_CHARS: usize = 100;
-
-    pub struct SecurityEventCmd {
-        user_id: Uuid,
-        username: String,
-        event_type: SecurityEventType,
-        payload: Cow<'static, str>,
-        occurred_at: OffsetDateTime,
-    }
-
-    impl SecurityEventCmd {
-        /// 构造安全事件；payload 超长时按字符截断，避免 `varchar(100)` 写库失败。
-        pub fn new(
-            user_id: Uuid,
-            username: impl Into<String>,
-            event_type: SecurityEventType,
-            payload: impl Into<Cow<'static, str>>,
-        ) -> Self {
-            let payload = payload.into();
-            let original_len = payload.chars().count();
-            let payload = if original_len > MAX_PAYLOAD_CHARS {
-                warn!(
-                    max = MAX_PAYLOAD_CHARS,
-                    original = original_len,
-                    "security event payload truncated"
-                );
-                Cow::Owned(payload.chars().take(MAX_PAYLOAD_CHARS).collect())
-            } else {
-                payload
-            };
-            Self {
-                user_id,
-                username: username.into(),
-                event_type,
-                payload,
-                occurred_at: OffsetDateTime::now_utc(),
-            }
-        }
-
-        pub fn into_parts(
-            self,
-        ) -> (
-            Uuid,
-            String,
-            SecurityEventType,
-            Cow<'static, str>,
-            OffsetDateTime,
-        ) {
-            (
-                self.user_id,
-                self.username,
-                self.event_type,
-                self.payload,
-                self.occurred_at,
-            )
-        }
-    }
-
-    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "snake_case")]
-    pub enum SecurityEventType {
-        LoginSucceeded,
-        LoginWithBadPassword,
-        UserLocked,
-        PasswordChanged,
-        PasswordReset,
-    }
-
-    impl Display for SecurityEventType {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                SecurityEventType::LoginSucceeded => write!(f, "LoginSucceeded")?,
-                SecurityEventType::LoginWithBadPassword => write!(f, "LoginWithBadPassword")?,
-                SecurityEventType::UserLocked => write!(f, "UserLocked")?,
-                SecurityEventType::PasswordChanged => write!(f, "PasswordChanged")?,
-                SecurityEventType::PasswordReset => write!(f, "PasswordReset")?,
-            }
-            Ok(())
-        }
-    }
-
     //////////////////////////////////////////////////////////////////////////////////////
 
     /// 安全事件列表查询（游标分页）
@@ -129,7 +44,7 @@ pub mod input {
         #[validate(nested)]
         pub pagination: CursorPageQuery<SecurityEventCursor>,
         pub user_id: Option<Uuid>,
-        pub event_type: Option<SecurityEventType>,
+        pub kind: Option<UserSecurityEventKind>,
         /// example: 2026-11-01T05:49:04.3137462Z
         #[serde(with = "time::serde::rfc3339::option", default)]
         pub from: Option<OffsetDateTime>,
@@ -143,39 +58,13 @@ pub mod input {
         pub occurred_at: OffsetDateTime,
         pub id: Uuid,
     }
-
-    //////////////////////////////////////////////////////////////////////////////////////
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-
-        #[test]
-        fn password_reset_displays_its_name() {
-            assert_eq!(
-                SecurityEventType::PasswordReset.to_string(),
-                "PasswordReset"
-            );
-        }
-
-        #[test]
-        fn payload_is_truncated_to_message_column_width() {
-            let cmd = SecurityEventCmd::new(
-                Uuid::now_v7(),
-                "test_user",
-                SecurityEventType::PasswordChanged,
-                "x".repeat(150),
-            );
-            let (_, _, _, payload, _) = cmd.into_parts();
-            assert_eq!(payload.chars().count(), MAX_PAYLOAD_CHARS);
-        }
-    }
 }
 
 pub mod output {
-    use super::input::SecurityEventType;
     use serde::Serialize;
-    use starriver_identity_domain::user::value_object::AccountStatus;
+    use starriver_identity_domain::user::{
+        event::UserSecurityEventKind, value_object::AccountStatus,
+    };
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -202,7 +91,7 @@ pub mod output {
         pub id: Uuid,
         pub user_id: Uuid,
         pub username: String,
-        pub event_type: SecurityEventType,
+        pub kind: UserSecurityEventKind,
         pub occurred_at: OffsetDateTime,
     }
 }

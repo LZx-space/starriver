@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use starriver_identity_domain::{
     password_encoder::PasswordEncoder,
-    password_service::PasswordDomainService,
     user::{
         specification::{EmailSpec, PasswordSpec},
         value_object::{Email, RawPassword},
@@ -12,7 +11,7 @@ use starriver_shared_base::db::{Connection, Revision};
 use tracing::{error, warn};
 
 use crate::{
-    dto::user_dto::input::{ResetPasswordCmd, SecurityEventCmd, SecurityEventType},
+    dto::user_dto::input::ResetPasswordCmd,
     error::CtxError,
     port::{
         email_verification_service::EmailVerificationService,
@@ -27,7 +26,7 @@ pub struct ResetPasswordInteractor<Conn, UQ, UR, SEP, VCS, PE> {
     user_repo: UR,
     security_event_port: SEP,
     verification_code_service: VCS,
-    password_service: PasswordDomainService<PE>,
+    password_encoder: Arc<PE>,
     password_spec: Arc<PasswordSpec>,
     email_spec: Arc<EmailSpec>,
 }
@@ -49,7 +48,7 @@ where
         user_repo: UR,
         security_event_port: SEP,
         verification_code_service: VCS,
-        password_service: PasswordDomainService<PE>,
+        password_encoder: Arc<PE>,
         password_spec: Arc<PasswordSpec>,
         email_spec: Arc<EmailSpec>,
     ) -> Self {
@@ -59,7 +58,7 @@ where
             user_repo,
             security_event_port,
             verification_code_service,
-            password_service,
+            password_encoder,
             password_spec,
             email_spec,
         }
@@ -77,17 +76,17 @@ where
         let email = match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(true) => email,
             Ok(false) => {
-                warn!(email = %email, "account not found, skip sending code");
+                warn!(email = %email.as_str(), "account not found, skip sending code");
                 return Ok(());
             }
             Err(e) => {
-                error!(email = %email, error = %e, "find user by email failed");
+                error!(email = %email.as_str(), error = %e, "find user by email failed");
                 return Ok(());
             }
         };
 
         if let Err(e) = self.verification_code_service.send_code(email).await {
-            error!(to = %email, error = %e, "send verification email failed");
+            error!(to = %email.as_str(), error = %e, "send verification email failed");
         }
         Ok(())
     }
@@ -124,43 +123,34 @@ where
 
         let Some(mut user) = self.user_repo.find_by_email(&self.conn, email).await? else {
             // 验证码有效却找不到账号：发码后账号被删除/更换邮箱
-            warn!(email = %email, "account not found after code validation");
+            warn!(email = %email.as_str(), "account not found after code validation");
             return Err(CtxError::InvalidInput(
                 "Invalid verification code".to_owned(),
             ));
         };
 
         let origin = user.clone();
-        self.password_service
-            .reset_password(&mut user, raw_password)?;
-
+        user.reset_password(raw_password, self.password_encoder.as_ref())?;
+        let events = user.take_events();
         let updated = self
             .user_repo
             .update(&self.conn, Revision::new(origin, user))
             .await;
+        if !events.is_empty() {
+            self.security_event_port
+                .insert_many(&self.conn, events)
+                .await;
+        }
 
         match updated {
-            Ok(user) => {
-                let (id, username, ..) = user.into_parts();
-                self.security_event_port
-                    .insert_many(
-                        &self.conn,
-                        vec![SecurityEventCmd::new(
-                            id,
-                            username.into_inner(),
-                            SecurityEventType::PasswordReset,
-                            "password reset with verification code",
-                        )],
-                    )
-                    .await;
-
+            Ok(_) => {
                 // 业务提交成功后再消费验证码；消费失败只记日志
                 if let Err(e) = self
                     .verification_code_service
                     .consume_code(email, &cmd.verification_code)
                     .await
                 {
-                    error!(email=%email, error=%e, "consume verification code failed");
+                    error!(email=%email.as_str(), error=%e, "consume verification code failed");
                 }
                 Ok(())
             }

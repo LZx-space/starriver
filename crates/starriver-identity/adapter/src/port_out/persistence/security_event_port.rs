@@ -6,11 +6,12 @@ use sea_orm::{
 };
 use starriver_identity_application::{
     dto::user_dto::{
-        input::{SecurityEventCmd, SecurityEventCursor, SecurityEventQuery},
+        input::{SecurityEventCursor, SecurityEventQuery},
         output::SecurityEventDto,
     },
     port::security_event_port::SecurityEventPort,
 };
+use starriver_identity_domain::user::event::UserSecurityEvent;
 use starriver_shared_base::{
     db::Executor,
     dto::{Cursor, CursorPage},
@@ -22,7 +23,7 @@ use uuid::Uuid;
 
 use crate::port_out::persistence::{
     dto::security_event_row::SecurityEventRow,
-    po::security_event_po::{ActiveModel, Column, Entity, SecurityEventTypePo},
+    po::security_event_po::{ActiveModel, Column, Entity, SecurityEventKindDb},
 };
 
 pub struct DefaultSecurityEventPort;
@@ -48,8 +49,8 @@ where
         if let Some(user_id) = query.user_id {
             cond = cond.add(Column::UserId.eq(user_id));
         }
-        if let Some(event_type) = query.event_type {
-            cond = cond.add(Column::EventType.eq(SecurityEventTypePo::from(event_type)));
+        if let Some(event_type) = query.kind {
+            cond = cond.add(Column::Kind.eq(SecurityEventKindDb::from(event_type)));
         }
         if let Some(from) = query.from {
             cond = cond.add(Column::OccurredAt.gte(from));
@@ -74,7 +75,7 @@ where
             .column(Column::Id)
             .column(Column::UserId)
             .column(Column::Username)
-            .column(Column::EventType)
+            .column(Column::Kind)
             .column(Column::OccurredAt)
             .filter(cond)
             .order_by_desc(Column::OccurredAt)
@@ -113,17 +114,21 @@ where
         Ok(CursorPage { items, next_cursor })
     }
 
-    async fn insert_many(&self, conn: &T, events: Vec<SecurityEventCmd>) -> Result<(), Infallible> {
+    async fn insert_many(
+        &self,
+        conn: &T,
+        events: Vec<UserSecurityEvent>,
+    ) -> Result<(), Infallible> {
         let models: Vec<ActiveModel> = events
             .into_iter()
             .map(|event| {
-                let (user_id, username, event_type, payload, occurred_at) = event.into_parts();
+                let (user_id, username, kind, occurred_at, payload) = event.into_parts();
                 ActiveModel {
                     id: Set(Uuid::now_v7()),
                     user_id: Set(user_id),
                     username: Set(username),
-                    event_type: Set(event_type.into()),
-                    message: Set(payload.into_owned()),
+                    kind: Set(kind.into()),
+                    payload: Set(payload),
                     occurred_at: Set(occurred_at),
                     created_at: Set(OffsetDateTime::now_utc()),
                 }

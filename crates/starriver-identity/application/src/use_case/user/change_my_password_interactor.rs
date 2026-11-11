@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use starriver_identity_domain::{
     password_encoder::PasswordEncoder,
-    password_service::PasswordDomainService,
     user::{
+        policy::BadPasswordPolicy,
         specification::{PasswordSpec, UsernameSpec},
         value_object::{RawPassword, Username},
     },
@@ -14,7 +14,7 @@ use starriver_shared_base::{
 };
 
 use crate::{
-    dto::user_dto::input::{ChangeMyPasswordCmd, SecurityEventCmd, SecurityEventType},
+    dto::user_dto::input::ChangeMyPasswordCmd,
     error::CtxError,
     port::{security_event_port::SecurityEventPort, user_repository::UserRepository},
 };
@@ -23,7 +23,8 @@ pub struct ChangeMyPasswordInteractor<Conn, UR, SEP, PE> {
     conn: Conn,
     user_repo: UR,
     security_event_port: SEP,
-    password_service: PasswordDomainService<PE>,
+    password_policy: Arc<BadPasswordPolicy>,
+    password_encoder: Arc<PE>,
     username_spec: Arc<UsernameSpec>,
     password_spec: Arc<PasswordSpec>,
 }
@@ -40,7 +41,8 @@ where
         conn: Conn,
         user_repo: UR,
         security_event_port: SEP,
-        password_service: PasswordDomainService<PE>,
+        password_policy: Arc<BadPasswordPolicy>,
+        password_encoder: Arc<PE>,
         username_spec: Arc<UsernameSpec>,
         password_spec: Arc<PasswordSpec>,
     ) -> Self {
@@ -48,7 +50,8 @@ where
             conn,
             user_repo,
             security_event_port,
-            password_service,
+            password_policy,
+            password_encoder,
             username_spec,
             password_spec,
         }
@@ -74,33 +77,23 @@ where
             .await?
             .ok_or(RepositoryError::NotFound("User not found".to_string()))?;
 
-        let user_id = *user.id();
         let original = user.clone();
-
-        let changed = self.password_service.change_password(
-            &mut user,
+        let result = user.change_my_password(
             cmd.cur_password.as_str(),
             new_password,
+            self.password_policy.as_ref(),
+            self.password_encoder.as_ref(),
         );
+        let events = user.take_events();
         self.user_repo
             .update(&self.conn, Revision::new(original, user))
             .await?;
-        match changed {
-            Ok(_) => {
-                self.security_event_port
-                    .insert_many(
-                        &self.conn,
-                        vec![SecurityEventCmd::new(
-                            user_id,
-                            username.as_str(),
-                            SecurityEventType::PasswordChanged,
-                            "password changed",
-                        )],
-                    )
-                    .await;
-                Ok(())
-            }
-            Err(e) => Err(CtxError::from(e)),
+        if !events.is_empty() {
+            self.security_event_port
+                .insert_many(&self.conn, events)
+                .await;
         }
+
+        result.map_err(CtxError::from)
     }
 }

@@ -6,11 +6,12 @@ use sea_orm::{
 };
 use starriver_identity_application::{
     dto::user_dto::{
-        input::{SecurityEventCmd, SecurityEventCursor, SecurityEventQuery},
+        input::{SecurityEventCursor, SecurityEventQuery},
         output::SecurityEventDto,
     },
     port::security_event_port::SecurityEventPort,
 };
+use starriver_identity_domain::user::event::UserSecurityEvent;
 use starriver_shared_base::{
     db::Executor,
     dto::{Cursor, CursorPage},
@@ -113,7 +114,11 @@ where
         Ok(CursorPage { items, next_cursor })
     }
 
-    async fn insert_many(&self, conn: &T, events: Vec<SecurityEventCmd>) -> Result<(), Infallible> {
+    async fn insert_many(
+        &self,
+        conn: &T,
+        events: Vec<UserSecurityEvent>,
+    ) -> Result<(), Infallible> {
         let models: Vec<ActiveModel> = events
             .into_iter()
             .map(|event| {

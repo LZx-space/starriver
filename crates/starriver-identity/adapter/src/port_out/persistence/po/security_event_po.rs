@@ -1,5 +1,5 @@
 use sea_orm::entity::prelude::*;
-use starriver_identity_application::dto::user_dto::input::SecurityEventKind;
+use starriver_identity_domain::user::event::UserSecurityEventKind;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -37,7 +37,7 @@ pub enum SecurityEventKindDb {
     PasswordReset,
 }
 
-impl From<SecurityEventKindDb> for SecurityEventKind {
+impl From<SecurityEventKindDb> for UserSecurityEventKind {
     fn from(event_type: SecurityEventKindDb) -> Self {
         match event_type {
             SecurityEventKindDb::LoginSucceeded => Self::LoginSucceeded,
@@ -49,14 +49,14 @@ impl From<SecurityEventKindDb> for SecurityEventKind {
     }
 }
 
-impl From<SecurityEventKind> for SecurityEventKindDb {
-    fn from(event_type: SecurityEventKind) -> Self {
+impl From<UserSecurityEventKind> for SecurityEventKindDb {
+    fn from(event_type: UserSecurityEventKind) -> Self {
         match event_type {
-            SecurityEventKind::LoginSucceeded => Self::LoginSucceeded,
-            SecurityEventKind::LoginWithBadPassword => Self::LoginWithBadPassword,
-            SecurityEventKind::UserLocked => Self::Userlocked,
-            SecurityEventKind::PasswordChanged => Self::PasswordChanged,
-            SecurityEventKind::PasswordReset => SecurityEventKindDb::PasswordReset,
+            UserSecurityEventKind::LoginSucceeded => Self::LoginSucceeded,
+            UserSecurityEventKind::LoginWithBadPassword => Self::LoginWithBadPassword,
+            UserSecurityEventKind::UserLocked => Self::Userlocked,
+            UserSecurityEventKind::PasswordChanged => Self::PasswordChanged,
+            UserSecurityEventKind::PasswordReset => SecurityEventKindDb::PasswordReset,
         }
     }
 }

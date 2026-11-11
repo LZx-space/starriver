@@ -1,6 +1,6 @@
 pub mod input {
     use serde::{Deserialize, Serialize};
-    use starriver_identity_domain::user::entity::User;
+    use starriver_identity_domain::user::event::UserSecurityEventKind;
     use starriver_shared_base::dto::CursorPageQuery;
     use time::OffsetDateTime;
     use uuid::Uuid;
@@ -35,60 +35,6 @@ pub mod input {
         pub new_password: String,
         pub new_password_confirm: String,
     }
-
-    pub struct SecurityEventCmd {
-        user_id: Uuid,
-        username: String,
-        kind: SecurityEventKind,
-        occurred_at: OffsetDateTime,
-        payload: Option<serde_json::Value>,
-    }
-
-    impl SecurityEventCmd {
-        /// 构造安全事件；payload 超长时按字符截断，避免 `varchar(100)` 写库失败。
-        pub fn new(
-            user: &User,
-            kind: SecurityEventKind,
-            occurred_at: OffsetDateTime,
-            payload: Option<serde_json::Value>,
-        ) -> Self {
-            Self {
-                user_id: *user.id(),
-                username: user.username().as_str().to_string(),
-                kind,
-                occurred_at,
-                payload,
-            }
-        }
-
-        pub fn into_parts(
-            self,
-        ) -> (
-            Uuid,
-            String,
-            SecurityEventKind,
-            OffsetDateTime,
-            Option<serde_json::Value>,
-        ) {
-            (
-                self.user_id,
-                self.username,
-                self.kind,
-                self.occurred_at,
-                self.payload,
-            )
-        }
-    }
-
-    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "snake_case")]
-    pub enum SecurityEventKind {
-        LoginSucceeded,
-        LoginWithBadPassword,
-        UserLocked,
-        PasswordChanged,
-        PasswordReset,
-    }
     //////////////////////////////////////////////////////////////////////////////////////
 
     /// 安全事件列表查询（游标分页）
@@ -98,7 +44,7 @@ pub mod input {
         #[validate(nested)]
         pub pagination: CursorPageQuery<SecurityEventCursor>,
         pub user_id: Option<Uuid>,
-        pub kind: Option<SecurityEventKind>,
+        pub kind: Option<UserSecurityEventKind>,
         /// example: 2026-11-01T05:49:04.3137462Z
         #[serde(with = "time::serde::rfc3339::option", default)]
         pub from: Option<OffsetDateTime>,
@@ -115,9 +61,10 @@ pub mod input {
 }
 
 pub mod output {
-    use super::input::SecurityEventKind;
     use serde::Serialize;
-    use starriver_identity_domain::user::value_object::AccountStatus;
+    use starriver_identity_domain::user::{
+        event::UserSecurityEventKind, value_object::AccountStatus,
+    };
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -144,7 +91,7 @@ pub mod output {
         pub id: Uuid,
         pub user_id: Uuid,
         pub username: String,
-        pub kind: SecurityEventKind,
+        pub kind: UserSecurityEventKind,
         pub occurred_at: OffsetDateTime,
     }
 }

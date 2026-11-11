@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use derive_getters::Dissolve;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
@@ -44,16 +42,8 @@ impl LoginAttemptState {
 
     ///// 业务方法必须只能是实体才能访问 ///////////////////////////////////////////////////////////////
 
-    pub(crate) fn is_locked(&self) -> bool {
-        self.password_locked_until
-            .is_some_and(|time| time > OffsetDateTime::now_utc())
-    }
-
-    /// 是否存在待清理的密码失败状态（失败计数/计数窗口/锁定）
-    pub(crate) fn has_password_attempts(&self) -> bool {
-        self.password_attempts != 0
-            || self.password_window_start.is_some()
-            || self.password_locked_until.is_some()
+    pub(crate) fn is_locked_at(&self, now: OffsetDateTime) -> bool {
+        self.password_locked_until.is_some_and(|time| time > now)
     }
 
     pub(crate) fn reset_password_attempts(&mut self) {
@@ -67,7 +57,7 @@ impl LoginAttemptState {
         policy: &BadPasswordPolicy,
         now: OffsetDateTime,
     ) {
-        if self.is_locked() {
+        if self.is_locked_at(now) {
             return;
         }
 
@@ -117,12 +107,6 @@ impl Username {
     }
 }
 
-impl Display for Username {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 /////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -145,14 +129,14 @@ pub struct HashedPassword(String);
 impl HashedPassword {
     /// # returns
     ///  - `Ok(Self)`
-    ///  - `Err(DomainError::InvalidPasswordFormat)`
+    ///  - `Err(DomainError::PasswordEncoding)`
     pub fn from_raw(
         raw: &RawPassword,
         encoder: &impl PasswordEncoder,
     ) -> Result<Self, DomainError> {
         let hashed_password = encoder
             .encode(&raw.0)
-            .map_err(|_e| DomainError::InvalidPasswordFormat)?;
+            .map_err(DomainError::PasswordEncoding)?;
         Ok(Self(hashed_password))
     }
 
@@ -177,7 +161,7 @@ impl HashedPassword {
     /// # returns
     ///  - `Ok(true)` - 明文密码与密码匹配
     ///  - `Ok(false)` - 明文密码与密码不匹配（**不是** `Err`，调用方必须检查布尔值）
-    ///  - `Err(DomainError::BadPassword)` - 密码编码器故障，无法完成校验
+    ///  - `Err(DomainError::PasswordVerification)` - 密码编码器故障，无法完成校验
     pub(crate) fn verify(
         &self,
         raw: &str,
@@ -185,13 +169,7 @@ impl HashedPassword {
     ) -> Result<bool, DomainError> {
         encoder
             .verify(raw, &self.0)
-            .map_err(|_e| DomainError::BadPassword)
-    }
-}
-
-impl Display for HashedPassword {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+            .map_err(DomainError::PasswordVerification)
     }
 }
 
@@ -251,12 +229,6 @@ impl Email {
 
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-}
-
-impl Display for Email {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 

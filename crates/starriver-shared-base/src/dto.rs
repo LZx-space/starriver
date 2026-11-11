@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use validator::{Validate, ValidationError, ValidationErrors};
 
-use crate::siganature::{sign, verify};
+use crate::signature::{sign, verify};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IdName<T> {

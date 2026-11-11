@@ -11,6 +11,9 @@ pub enum AuthenticationError {
     #[error("Invalid username format")]
     InvalidUsernameFormat,
 
+    #[error("Invalid password format")]
+    InvalidPasswordFormat,
+
     #[error("Invalid email format")]
     InvalidEmailFormat,
 

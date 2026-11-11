@@ -1,7 +1,6 @@
 use sea_orm::FromQueryResult;
-use starriver_identity_application::dto::user_dto::{
-    input::SecurityEventKind, output::SecurityEventDto,
-};
+use starriver_identity_application::dto::user_dto::output::SecurityEventDto;
+use starriver_identity_domain::user::event::UserSecurityEventKind;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -22,7 +21,7 @@ impl From<SecurityEventRow> for SecurityEventDto {
             id: e.id,
             user_id: e.user_id,
             username: e.username,
-            kind: SecurityEventKind::from(e.kind),
+            kind: UserSecurityEventKind::from(e.kind),
             occurred_at: e.occurred_at,
         }
     }

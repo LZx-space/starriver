@@ -89,7 +89,7 @@ where
     }
 
     async fn insert(&self, conn: &T, user: User) -> Result<User, RepositoryError> {
-        let (id, username, password, email, status, login_attempt_state) = user.into_parts();
+        let (id, username, password, email, status, login_attempt_state, ..) = user.into_parts();
         let (password_locked_until, password_window_start, password_attempts) =
             login_attempt_state.into_parts();
 
@@ -138,13 +138,20 @@ where
         }
 
         let (original, modified) = user.into_parts();
-        let (user_id, username, password, email, status, login_attempt_state) =
+        let (user_id, username, password, email, status, login_attempt_state, ..) =
             original.into_parts();
         let (password_locked_until, password_window_start, password_attempts) =
             login_attempt_state.into_parts();
 
-        let (_user_id, new_username, new_password, new_email, new_status, new_login_attempt_state) =
-            modified.into_parts();
+        let (
+            _user_id,
+            new_username,
+            new_password,
+            new_email,
+            new_status,
+            new_login_attempt_state,
+            ..,
+        ) = modified.into_parts();
         let (new_password_locked_until, new_password_window_start, new_password_attempts) =
             new_login_attempt_state.into_parts();
 

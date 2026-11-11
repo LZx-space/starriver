@@ -18,5 +18,5 @@ COMMENT ON COLUMN public.security_event.occurred_at IS '事件发生时间';
 COMMENT ON COLUMN public.security_event.created_at IS '记录创建时间';
 
 -- Index
-CREATE INDEX idx_security_event_user_type_created ON public.security_event (user_id, event_type, occurred_at DESC, id DESC);
+CREATE INDEX idx_security_event_user_type_created ON public.security_event (user_id, kind, occurred_at DESC, id DESC);
 CREATE INDEX idx_security_event_created_id ON public.security_event (occurred_at DESC, id DESC);

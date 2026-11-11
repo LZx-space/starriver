@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use starriver_identity_domain::{
     password_encoder::PasswordEncoder,
-    password_service::PasswordDomainService,
     user::{
         entity::User,
+        policy::BadPasswordPolicy,
         specification::{EmailSpec, UsernameSpec},
         value_object::{Email, Username},
     },
@@ -15,14 +15,10 @@ use starriver_shared_base::{
     db::{Connection, Revision},
     error::RepositoryError,
 };
-use time::OffsetDateTime;
 use tracing::{error, info};
 
 use crate::{
-    dto::user_dto::{
-        input::{SecurityEventCmd, SecurityEventKind},
-        output::UserDetail,
-    },
+    dto::user_dto::output::UserDetail,
     port::{security_event_port::SecurityEventPort, user_repository::UserRepository},
 };
 
@@ -30,7 +26,8 @@ pub struct AuthenticationInteractor<Conn, UR, SEP, PE> {
     conn: Conn,
     user_repo: UR,
     security_event_port: SEP,
-    password_service: PasswordDomainService<PE>,
+    password_policy: Arc<BadPasswordPolicy>,
+    password_encoder: Arc<PE>,
     email_spec: Arc<EmailSpec>,
     username_spec: Arc<UsernameSpec>,
 }
@@ -47,7 +44,8 @@ where
         conn: Conn,
         user_repo: UR,
         security_event_port: SEP,
-        password_service: PasswordDomainService<PE>,
+        password_policy: Arc<BadPasswordPolicy>,
+        password_encoder: Arc<PE>,
         email_spec: Arc<EmailSpec>,
         username_spec: Arc<UsernameSpec>,
     ) -> Self {
@@ -55,7 +53,8 @@ where
             conn,
             user_repo,
             security_event_port,
-            password_service,
+            password_policy,
+            password_encoder,
             email_spec,
             username_spec,
         }
@@ -87,51 +86,26 @@ where
         })?;
 
         let original = user.clone();
-        let auth_result = self.password_service.authenticate(&mut user, password);
-        let just_locked = !original.is_locked() && user.is_locked();
+        let auth_result = user.authenticate(
+            password,
+            self.password_policy.as_ref(),
+            self.password_encoder.as_ref(),
+        );
+        let events = user.take_events();
         let user = self
             .user_repo
             .update(&self.conn, Revision::new(original, user))
             .await
             .map_err(mapping_repo_error())?;
+        if !events.is_empty() {
+            self.security_event_port
+                .insert_many(&self.conn, events)
+                .await;
+        }
+
         match auth_result {
-            Ok(_) => {
-                self.security_event_port
-                    .insert_many(
-                        &self.conn,
-                        vec![SecurityEventCmd::new(
-                            &user,
-                            SecurityEventKind::LoginSucceeded,
-                            OffsetDateTime::now_utc(),
-                            None,
-                        )],
-                    )
-                    .await;
-                Ok(into_user_detail(user))
-            }
-            Err(AuthenticationError::BadPassword) => {
-                let user_ref = &user;
-                let now = OffsetDateTime::now_utc();
-                let mut events = vec![SecurityEventCmd::new(
-                    user_ref,
-                    SecurityEventKind::LoginWithBadPassword,
-                    now,
-                    None,
-                )];
-                if just_locked {
-                    events.push(SecurityEventCmd::new(
-                        user_ref,
-                        SecurityEventKind::UserLocked,
-                        now,
-                        None,
-                    ));
-                }
-                self.security_event_port
-                    .insert_many(&self.conn, events)
-                    .await;
-                Err(AuthenticationError::BadPassword)
-            }
-            Err(e) => Err(e),
+            Ok(_) => Ok(into_user_detail(user)),
+            Err(e) => Err(e.into()),
         }
     }
 }

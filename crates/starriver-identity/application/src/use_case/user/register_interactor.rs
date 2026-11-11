@@ -25,10 +25,10 @@ pub struct RegisterInteractor<Conn, UQ, UR, VCS, PE> {
     user_query: UQ,
     user_repo: UR,
     verification_code_service: VCS,
+    password_encoder: Arc<PE>,
     email_spec: Arc<EmailSpec>,
     username_spec: Arc<UsernameSpec>,
     password_spec: Arc<PasswordSpec>,
-    password_encoder: Arc<PE>,
 }
 
 impl<Conn, UQ, UR, VCS, PE> RegisterInteractor<Conn, UQ, UR, VCS, PE>
@@ -45,20 +45,20 @@ where
         user_query: UQ,
         user_repo: UR,
         verification_code_service: VCS,
+        password_encoder: Arc<PE>,
         email_spec: Arc<EmailSpec>,
         username_spec: Arc<UsernameSpec>,
         password_spec: Arc<PasswordSpec>,
-        password_encoder: Arc<PE>,
     ) -> Self {
         Self {
             conn,
             user_query,
             user_repo,
             verification_code_service,
+            password_encoder,
             email_spec,
             username_spec,
             password_spec,
-            password_encoder,
         }
     }
 
@@ -67,17 +67,17 @@ where
         let email = &Email::new(email, &self.email_spec)?;
         match self.user_query.exists_by_email(&self.conn, email).await {
             Ok(true) => {
-                warn!(to=%email, "email already registered, skipping verification");
+                warn!(to=%email.as_str(), "email already registered, skipping verification");
                 Ok(())
             }
             Ok(false) => {
                 if let Err(e) = self.verification_code_service.send_code(email).await {
-                    error!(to=%email, error=%e, "send verification email failed");
+                    error!(to=%email.as_str(), error=%e, "send verification email failed");
                 }
                 Ok(())
             }
             Err(e) => {
-                error!(to=%email, error=%e, "find user by email failed");
+                error!(to=%email.as_str(), error=%e, "find user by email failed");
                 Ok(())
             }
         }
@@ -93,7 +93,9 @@ where
             .verification_code_service
             .check_code(email, verification_code)
             .await
-            .inspect_err(|e| info!(email=%email, error=%e, "register user check code failed"))?;
+            .inspect_err(
+                |e| info!(email=%email.as_str(), error=%e, "register user check code failed"),
+            )?;
         if !matches {
             return Err(CtxError::InvalidInput(
                 "Invalid verification code".to_string(),
@@ -113,7 +115,7 @@ where
             .consume_code(email, verification_code)
             .await
         {
-            error!(email=%email, error=%e, "consume verification code failed");
+            error!(email=%email.as_str(), error=%e, "consume verification code failed");
         }
         Ok(())
     }

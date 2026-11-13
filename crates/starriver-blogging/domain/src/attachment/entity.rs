@@ -35,7 +35,7 @@ impl Attachment {
     }
 
     pub fn file_name(&self) -> String {
-        Attachment::generate_file_name(&self.id, &self.extension)
+        Self::generate_file_name(&self.id, &self.extension)
     }
 
     pub fn file_size(&self) -> i64 {

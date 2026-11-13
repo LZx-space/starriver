@@ -40,8 +40,7 @@ impl Extension {
         let normalized = extension.to_ascii_lowercase();
         if !Self::ALLOWED_EXTENSIONS.contains(&normalized.as_str()) {
             return Err(DomainError::AttachmentExtensionInvalid(format!(
-                "不允许的文件类型：{}",
-                extension
+                "不允许的文件类型：{extension}",
             )));
         }
         Ok(Self(normalized))

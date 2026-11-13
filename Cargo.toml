@@ -27,7 +27,6 @@ axum = { version = "^0", features = ["macros", "multipart"] }
 axum-extra = { version = "^0", features = ["cookie", "form"] }
 argon2 = "^0"
 base64 = "^0"
-chrono = "^0"
 config = "^0"
 derive-getters = "^0"
 equivalent = "^1"

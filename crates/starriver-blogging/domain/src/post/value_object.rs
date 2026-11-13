@@ -7,7 +7,7 @@ use striptags::strip_tags;
 
 use crate::shared_error::DomainError;
 
-#[derive(Clone, Default, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Default, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PostState {
     #[default]
@@ -19,16 +19,16 @@ pub enum PostState {
 impl Display for PostState {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
-            PostState::Draft => f.write_str("draft"),
-            PostState::Published => f.write_str("published"),
-            PostState::Archived => f.write_str("archived"),
+            Self::Draft => f.write_str("draft"),
+            Self::Published => f.write_str("published"),
+            Self::Archived => f.write_str("archived"),
         }
     }
 }
 
 //////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Title(pub(crate) String);
 
 impl Title {
@@ -56,7 +56,7 @@ impl Display for Title {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Content(pub(crate) String);
 
 impl Content {
@@ -80,6 +80,10 @@ impl Content {
     ///// 业务方法必须只能是实体才能访问 ///////////////////////////////////////////////////////////////
 
     pub(crate) fn excerpt(&self) -> String {
+        const TARGET_LEN: usize = 200;
+        const MAX_EXCERPT_LEN: usize = 250; // 与 post.excerpt 列宽 varchar(250) 保持一致
+        const ELLIPSIS: &str = "...";
+
         // 先解码实体：
         // 实体化的标签（如 &lt;script&gt;）必须先还原成标签，才能被下一步剥掉。
         // 若先剥标签，实体化的标签会逃过正则、解码后又还原成可执行标签（存储型 XSS）。
@@ -90,11 +94,6 @@ impl Content {
         // 防止解码残留（如双重编码 &amp;lt;）被浏览器二次解析成标签
         let escaped = encode_text(&no_tags);
         let len = escaped.chars().count();
-
-        const TARGET_LEN: usize = 200;
-        const MAX_EXCERPT_LEN: usize = 250; // 与 post.excerpt 列宽 varchar(250) 保持一致
-        const ELLIPSIS: &str = "...";
-
         if len <= TARGET_LEN {
             return escaped.into_owned();
         }

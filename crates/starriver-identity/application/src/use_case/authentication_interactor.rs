@@ -6,11 +6,10 @@ use starriver_identity_domain::{
         entity::User,
         policy::BadPasswordPolicy,
         specification::{EmailSpec, UsernameSpec},
-        value_object::{Email, Username},
     },
 };
 use starriver_shared_base::{
-    authentication::authentication_request::{IdentifierPasswordRequest, UserIdentifier},
+    authentication::authentication_request::IdentifierPasswordRequest,
     authentication::core::error::AuthenticationError,
     db::{Connection, Revision},
     error::RepositoryError,
@@ -18,7 +17,7 @@ use starriver_shared_base::{
 use tracing::{error, info};
 
 use crate::{
-    dto::user_dto::output::UserDetail,
+    dto::user_dto::{input::UserIdentifier, output::UserDetail},
     port::{security_event_port::SecurityEventPort, user_repository::UserRepository},
 };
 
@@ -67,23 +66,20 @@ where
         let identifier = req.identifier.as_str();
         let password = req.password.as_str();
 
-        // 读用户与密码校验（Argon2）都在事务外完成，避免长时间占用连接
-        let user_result = match UserIdentifier::new(identifier) {
-            UserIdentifier::Username(username) => {
-                let username = &Username::new(username, &self.username_spec)
-                    .map_err(|_| AuthenticationError::InvalidUsernameFormat)?;
-                self.user_repo.find_by_username(&self.conn, username).await
+        let mut user =
+            match UserIdentifier::parse(identifier, &self.username_spec, &self.email_spec)? {
+                UserIdentifier::Username(username) => {
+                    self.user_repo.find_by_username(&self.conn, &username).await
+                }
+                UserIdentifier::Email(email) => {
+                    self.user_repo.find_by_email(&self.conn, &email).await
+                }
             }
-            UserIdentifier::Email(email) => {
-                let email = &Email::new(email, &self.email_spec)
-                    .map_err(|_| AuthenticationError::InvalidEmailFormat)?;
-                self.user_repo.find_by_email(&self.conn, email).await
-            }
-        };
-        let mut user = user_result.map_err(mapping_repo_error())?.ok_or_else(|| {
-            info!(identifier = %identifier, "user not found");
-            AuthenticationError::IdentifierNotFound
-        })?;
+            .map_err(mapping_repo_error())?
+            .ok_or_else(|| {
+                info!(identifier = %identifier, "user not found");
+                AuthenticationError::IdentifierNotFound
+            })?;
 
         let original = user.clone();
         let auth_result = user.authenticate(

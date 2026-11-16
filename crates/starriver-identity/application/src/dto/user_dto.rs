@@ -1,6 +1,13 @@
 pub mod input {
     use serde::{Deserialize, Serialize};
-    use starriver_identity_domain::user::event::UserSecurityEventKind;
+    use starriver_identity_domain::{
+        error::DomainError,
+        user::{
+            event::UserSecurityEventKind,
+            specification::{EmailSpec, UsernameSpec},
+            value_object::{Email, Username},
+        },
+    };
     use starriver_shared_base::dto::CursorPageQuery;
     use time::OffsetDateTime;
     use uuid::Uuid;
@@ -34,6 +41,32 @@ pub mod input {
         pub verification_code: String,
         pub new_password: String,
         pub new_password_confirm: String,
+    }
+
+    pub enum UserIdentifier {
+        Username(Username),
+        Email(Email),
+    }
+
+    impl UserIdentifier {
+        pub fn parse(
+            identifier: &str,
+            username_spec: &UsernameSpec,
+            email_spec: &EmailSpec,
+        ) -> Result<UserIdentifier, DomainError> {
+            const EMAIL_MARKER: char = '@';
+            let trimmed = identifier.trim();
+            if trimmed.matches(EMAIL_MARKER).count() == 1
+                && !trimmed.starts_with(EMAIL_MARKER)
+                && !trimmed.ends_with(EMAIL_MARKER)
+            {
+                let email = Email::new(trimmed, email_spec)?;
+                Ok(Self::Email(email))
+            } else {
+                let username = Username::new(trimmed, username_spec)?;
+                Ok(Self::Username(username))
+            }
+        }
     }
     //////////////////////////////////////////////////////////////////////////////////////
 

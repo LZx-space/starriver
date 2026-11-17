@@ -13,7 +13,7 @@ pub struct FindInteractor<Conn, R> {
 impl<Conn, R> FindInteractor<Conn, R>
 where
     Conn: Connection,
-    R: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
+    R: CategoryRepository<Conn>,
 {
     pub fn new(conn: Conn, repo: R) -> Self {
         Self { conn, repo }

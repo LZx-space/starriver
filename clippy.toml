@@ -10,5 +10,5 @@ disallowed-types = [
 ]
 
 disallowed-methods = [
-    { path = "uuid::Uuid::new_v4", reason = "避免使用v4", replacement = "uuid::Uuid::now_v7" },
+    { path = "uuid::v4::Uuid::new_v4", reason = "避免使用v4", replacement = "uuid::v7::Uuid::now_v7" },
 ]

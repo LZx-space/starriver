@@ -19,7 +19,7 @@ pub struct DeleteInteractor<Conn, R, C> {
 impl<Conn, R, C> DeleteInteractor<Conn, R, C>
 where
     Conn: Connection,
-    R: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
+    R: CategoryRepository<Conn>,
     C: Cache<CategoryListKey, Vec<CategoryDetailDto>>,
 {
     pub fn new(conn: Conn, repo: R, cache: C) -> Self {

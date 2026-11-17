@@ -34,11 +34,11 @@ pub struct ResetPasswordInteractor<Conn, UQ, UR, SEP, VCS, PE> {
 impl<Conn, UQ, UR, SEP, VCS, PE> ResetPasswordInteractor<Conn, UQ, UR, SEP, VCS, PE>
 where
     Conn: Connection,
-    UQ: UserQuery<Conn> + Sync,
-    UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
-    SEP: SecurityEventPort<Conn> + Sync,
-    VCS: EmailVerificationService + Send + Sync,
-    PE: PasswordEncoder + Send + Sync,
+    UQ: UserQuery<Conn>,
+    UR: UserRepository<Conn>,
+    SEP: SecurityEventPort<Conn>,
+    VCS: EmailVerificationService,
+    PE: PasswordEncoder,
 {
     /// 新建
     #[allow(clippy::too_many_arguments)]
@@ -136,11 +136,14 @@ where
             .user_repo
             .update(&self.conn, Revision::new(origin, user))
             .await;
-        if !events.is_empty() {
-            self.security_event_port
+        if !events.is_empty()
+            && let Err(e) = self
+                .security_event_port
                 .insert_many(&self.conn, events)
-                .await;
-        }
+                .await
+        {
+            warn!(email = %email.as_str(), err = %e, "insert user security events failed");
+        };
 
         match updated {
             Ok(_) => {

@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-
 use sea_orm::{
     ActiveValue::Set, ColumnTrait, Condition, ConnectionTrait, EntityTrait, QueryFilter,
     QueryOrder, QuerySelect,
@@ -18,7 +16,6 @@ use starriver_shared_base::{
     error::QueryError,
 };
 use time::OffsetDateTime;
-use tracing::error;
 use uuid::Uuid;
 
 use crate::port_out::persistence::{
@@ -118,7 +115,7 @@ where
         &self,
         conn: &T,
         events: Vec<UserSecurityEvent>,
-    ) -> Result<(), Infallible> {
+    ) -> Result<(), QueryError> {
         let models: Vec<ActiveModel> = events
             .into_iter()
             .map(|event| {
@@ -135,9 +132,10 @@ where
             })
             .collect();
 
-        if let Err(e) = Entity::insert_many(models).exec(conn).await {
-            error!(error=%e, "insert security event failed");
-        }
+        Entity::insert_many(models)
+            .exec(conn)
+            .await
+            .map_err(|e| QueryError::DbError(e.to_string()))?;
         Ok(())
     }
 }

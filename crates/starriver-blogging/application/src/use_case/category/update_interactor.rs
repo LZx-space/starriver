@@ -22,7 +22,7 @@ pub struct UpdateInteractor<Conn, R, C, PPI, PII> {
 impl<Conn, R, C, PPI, PII> UpdateInteractor<Conn, R, C, PPI, PII>
 where
     Conn: Connection,
-    R: CategoryRepository<Conn> + CategoryRepository<<Conn as Connection>::Transaction>,
+    R: CategoryRepository<Conn>,
     C: Cache<CategoryListKey, Vec<CategoryDetailDto>>,
     PPI: Invalidator<PostPageKey>,
     PII: Invalidator<Uuid>,

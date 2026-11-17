@@ -14,7 +14,7 @@ use starriver_shared_base::{
     db::{Connection, Revision},
     error::RepositoryError,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::{
     dto::user_dto::{input::UserIdentifier, output::UserDetail},
@@ -93,11 +93,14 @@ where
             .update(&self.conn, Revision::new(original, user))
             .await
             .map_err(mapping_repo_error())?;
-        if !events.is_empty() {
-            self.security_event_port
+        if !events.is_empty()
+            && let Err(e) = self
+                .security_event_port
                 .insert_many(&self.conn, events)
-                .await;
-        }
+                .await
+        {
+            warn!(identifier = %identifier, err = %e, "insert user security events failed");
+        };
 
         match auth_result {
             Ok(_) => Ok(into_user_detail(user)),

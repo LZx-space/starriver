@@ -12,6 +12,7 @@ use starriver_shared_base::{
     db::{Connection, Revision},
     error::RepositoryError,
 };
+use tracing::warn;
 
 use crate::{
     dto::user_dto::input::ChangeMyPasswordCmd,
@@ -32,7 +33,7 @@ pub struct ChangeMyPasswordInteractor<Conn, UR, SEP, PE> {
 impl<Conn, UR, SEP, PE> ChangeMyPasswordInteractor<Conn, UR, SEP, PE>
 where
     Conn: Connection,
-    UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
+    UR: UserRepository<Conn>,
     SEP: SecurityEventPort<Conn> + Sync,
     PE: PasswordEncoder + Send + Sync,
 {
@@ -88,11 +89,14 @@ where
         self.user_repo
             .update(&self.conn, Revision::new(original, user))
             .await?;
-        if !events.is_empty() {
-            self.security_event_port
+        if !events.is_empty()
+            && let Err(e) = self
+                .security_event_port
                 .insert_many(&self.conn, events)
-                .await;
-        }
+                .await
+        {
+            warn!(username = %username.as_str(), err = %e, "insert user security events failed");
+        };
 
         result.map_err(CtxError::from)
     }

@@ -108,7 +108,7 @@ where
         match result {
             Ok(_) => {
                 tx.commit().await.map_err(|e| {
-                    error!(user_id=%operator.id, error=%e, "commit transaction failed");
+                    error!(user_id=%operator.id, error=%e, "commit failed");
                     CtxError::Internal
                 })?;
                 // 更新帖子后，清除所有帖子缓存
@@ -117,10 +117,9 @@ where
                 Ok(())
             }
             Err(e) => {
-                tx.rollback().await.map_err(|e| {
-                    error!(user_id=%operator.id, error=%e, "rollback transaction failed");
-                    CtxError::Internal
-                })?;
+                if let Err(rb_err) = tx.rollback().await {
+                    error!(error = %rb_err, "rollback failed");
+                }
                 Err(e)
             }
         }

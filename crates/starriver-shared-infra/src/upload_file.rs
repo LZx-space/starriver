@@ -1,9 +1,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use starriver_shared_base::upload_file::UploadLocationResolver;
-
 use crate::config::Uploads;
+use starriver_shared_base::upload_file::UploadLocationResolver;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct DefaultUploadLocationResolver {
@@ -31,7 +31,12 @@ impl UploadLocationResolver for DefaultUploadLocationResolver {
         format!("{}/{}", self.uploads.proxy_prefix, safe_name)
     }
 
-    fn save_path(&self, file_name: &str) -> std::path::PathBuf {
+    fn file_path(&self, file_name: &str) -> std::path::PathBuf {
         Path::new(&self.uploads.storage_dir).join(self.safe_file_name(file_name))
+    }
+
+    fn temp_file_path(&self, upload_id: &Uuid) -> std::path::PathBuf {
+        let temp_name = format!("{upload_id}.part");
+        Path::new(&self.uploads.storage_dir).join(self.safe_file_name(&temp_name))
     }
 }

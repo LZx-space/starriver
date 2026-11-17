@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-
 use starriver_identity_domain::user::event::UserSecurityEvent;
 use starriver_shared_base::{db::Executor, dto::CursorPage, error::QueryError};
 
@@ -20,5 +18,5 @@ pub trait SecurityEventPort<T: Executor> {
         &self,
         conn: &T,
         events: Vec<UserSecurityEvent>,
-    ) -> impl Future<Output = Result<(), Infallible>> + Send;
+    ) -> impl Future<Output = Result<(), QueryError>> + Send;
 }

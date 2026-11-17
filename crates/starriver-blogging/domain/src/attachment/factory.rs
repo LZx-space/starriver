@@ -1,10 +1,8 @@
-use uuid::Uuid;
-
 use crate::{
     attachment::{
         entity::Attachment,
         file_type_checker::FileTypeChecker,
-        value_object::{Extension, FileSize},
+        value_object::{ClaimedExtension, Extension, FileSize},
     },
     shared_error::DomainError,
 };
@@ -20,20 +18,19 @@ impl<T: FileTypeChecker> AttachmentFactory<T> {
         Self { file_type_checker }
     }
 
-    pub fn create_attachment(
+    pub fn create(
         &self,
-        attachment_id: Uuid,
-        bytes: &[u8],
-        extension: Extension,
+        header: &[u8],
+        claimed_ext: ClaimedExtension,
         file_size: FileSize,
     ) -> Result<Attachment, DomainError> {
-        let checked = self.file_type_checker.check(bytes, extension.as_str())?;
+        let checked = self.file_type_checker.check(header, &claimed_ext)?;
         if !checked {
             return Err(DomainError::AttachmentExtensionInvalid(
-                extension.as_str().to_string(),
+                claimed_ext.as_str().to_string(),
             ));
         }
-
-        Ok(Attachment::new(attachment_id, extension, file_size))
+        let ext = Extension::from_claimed(claimed_ext);
+        Ok(Attachment::new(ext, file_size))
     }
 }

@@ -1,4 +1,4 @@
-use std::{fmt::Display, io};
+use std::{fmt::Display, io, path::Path};
 
 pub trait AsyncReader {
     /// Reads data into the given buffer, returning the number of bytes read.
@@ -25,6 +25,10 @@ impl Display for AsyncReaderError {
             Self::Other(e) => write!(f, "Other error: {e}"),
         }
     }
+}
+
+pub trait NamedAsyncReader: AsyncReader {
+    fn file_name(&self) -> &str; // 或 Option<&str>
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +82,14 @@ impl Display for AsyncWriterError {
     }
 }
 
+pub trait FileAsyncWriter: AsyncWriter {
+    fn rename(
+        &mut self,
+        to: impl AsRef<Path>,
+    ) -> impl Future<Output = Result<(), AsyncWriterError>>;
+
+    fn remove(&self) -> impl Future<Output = Result<(), AsyncWriterError>>;
+}
 ////////////////////////////////////////////////////////////////////////////////
 
 /// 带逐块钩子的复制。
@@ -158,4 +170,13 @@ pub enum CopyStreamError<E = std::convert::Infallible> {
     Writer(AsyncWriterError),
     /// 钩子返回的错误；此时当前块没有被写入
     Hook(E),
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+pub trait FileWriterFactory: Send + Sync {
+    type Writer: FileAsyncWriter;
+
+    /// 在 `path` 处创建文件并返回可写的 writer。
+    fn create(&self, path: &Path) -> impl Future<Output = Result<Self::Writer, AsyncWriterError>>;
 }

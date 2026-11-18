@@ -16,10 +16,13 @@ use starriver_blogging_application::{
 use starriver_blogging_domain::post::value_object::PostState;
 use starriver_shared_base::{
     dto::{IdName, OffsetPage},
-    error::QueryError,
+    error::RepositoryError,
     upload_file::UploadLocationResolver,
 };
-use starriver_shared_infra::{db::DefaultConnection, upload_file::DefaultUploadLocationResolver};
+use starriver_shared_infra::{
+    db::DefaultConnection, error_mapping::db_2_repo_error,
+    upload_file::DefaultUploadLocationResolver,
+};
 use uuid::Uuid;
 
 use crate::port_out::persistence::{
@@ -45,7 +48,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         &self,
         conn: &DefaultConnection,
         q: PageQuery,
-    ) -> Result<OffsetPage<PostExcerptDto>, QueryError> {
+    ) -> Result<OffsetPage<PostExcerptDto>, RepositoryError> {
         let mut select = Entity::find()
             .select_only()
             .columns([
@@ -81,14 +84,11 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         let posts = paginator
             .fetch_page(q.pagination.page)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?
+            .map_err(db_2_repo_error)?
             .into_iter()
             .map(|e| e.into())
             .collect::<Vec<_>>();
-        let total_items = paginator
-            .num_items()
-            .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?;
+        let total_items = paginator.num_items().await.map_err(db_2_repo_error)?;
         Ok(OffsetPage::from_query(&q.pagination, total_items, posts))
     }
 
@@ -96,7 +96,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         &self,
         conn: &DefaultConnection,
         id: Uuid,
-    ) -> Result<Option<PostDetailDto>, QueryError> {
+    ) -> Result<Option<PostDetailDto>, RepositoryError> {
         let post = Entity::find_by_id(id)
             .select_only()
             .columns([
@@ -115,7 +115,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .into_model::<PostDetailRow>()
             .one(conn)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?;
+            .map_err(db_2_repo_error)?;
 
         let Some(post) = post else {
             return Ok(None);
@@ -126,7 +126,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
             .find_with_related(attachment_po::Entity)
             .all(conn)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?
+            .map_err(db_2_repo_error)?
             .into_iter()
             .flat_map(|(_, attachments)| attachments)
             .map(|a| AttachmentDto {
@@ -156,7 +156,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         &self,
         conn: &DefaultConnection,
         q: SearchQuery,
-    ) -> Result<OffsetPage<PostSearchDto>, QueryError> {
+    ) -> Result<OffsetPage<PostSearchDto>, RepositoryError> {
         if q.q.is_empty() {
             return Ok(OffsetPage::from_query(&q.pagination, 0, vec![]));
         }
@@ -246,7 +246,7 @@ impl PostQuery<DefaultConnection> for DefaultPostQuery {
         ))
         .all(conn)
         .await
-        .map_err(|e| QueryError::DbError(e.to_string()))?;
+        .map_err(db_2_repo_error)?;
 
         if rows.is_empty() {
             return Ok(OffsetPage::from_query(&q.pagination, 0, vec![]));

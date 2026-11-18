@@ -86,6 +86,7 @@ pub mod input {
         pub to: Option<OffsetDateTime>,
     }
 
+    /// field are order by columns
     #[derive(Debug, Deserialize, Serialize)]
     pub struct SecurityEventCursor {
         pub occurred_at: OffsetDateTime,

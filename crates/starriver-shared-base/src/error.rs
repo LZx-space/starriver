@@ -2,63 +2,32 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum RepositoryError {
-    /// 实体未找到（业务可预期的错误）
     #[error("实体不存在：{0}")]
     NotFound(String),
 
-    /// 唯一约束冲突，例如重复插入唯一键
-    #[error("唯一约束冲突：{0}")]
-    UniqueViolation(String),
+    #[error("违反唯一约束：{0}")]
+    Conflict(String),
 
-    /// 外键约束失败（例如删除仍被引用的父记录）
-    #[error("外键约束失败：{0}")]
-    ForeignKeyViolation(String),
+    #[error("违反引用完整性：{0}")]
+    ReferenceViolation(String),
 
-    /// 数据完整性错误（如字段过长、非空违反、类型不匹配）
-    /// 注：最好由领域层提前校验，但数据库可能仍有触发
-    #[error("数据完整性错误：{detail}")]
-    DataIntegrity { detail: String },
+    #[error("数据不满足约束：{detail}")]
+    InvalidData { detail: String },
 
-    /// 乐观锁冲突（版本号或时间戳不匹配，需重试整个事务）
-    #[error("乐观锁冲突，实体已被修改：{entity}（id={id}）")]
-    OptimisticLock { entity: &'static str, id: String },
+    #[error("并发修改冲突：{entity}(id={id}, expected={expected}, actual={actual})")]
+    ConcurrencyConflict {
+        entity: String,
+        id: String,
+        expected: u64,
+        actual: u64,
+    },
 
-    /// 死锁，通常是事务间资源竞争
-    #[error("数据库死锁，事务需要重试")]
-    Deadlock,
+    #[error("仓储暂时不可用")]
+    Unavailable(#[source] Box<dyn std::error::Error + Send + Sync>),
 
-    /// 连接失败（网络、数据库宕机等可重试错误）
-    #[error("数据库连接失败：{0}")]
-    ConnectionFailed(String),
-
-    /// 查询超时
-    #[error("查询超时：{statement}")]
-    Timeout { statement: String },
-
-    /// 事务错误（如已经开始、提交失败）
-    #[error("事务错误：{reason}")]
-    Transaction { reason: String },
-
-    /// 其他基础设施错误，保留底层细节但不泄露具体库（如`sqlx::Error`）
-    #[error("基础设施错误：{0}")]
-    Infrastructure(String),
-
-    /// 数据格式错误（如无效的日期、字符串等）
-    #[error("数据格式错误：{0}")]
-    BadData(String),
+    #[error("仓储内部错误")]
+    Internal(#[source] Box<dyn std::error::Error + Send + Sync>),
 
     #[error("权限拒绝：{0}")]
     PermissionDenied(String),
-
-    /// 未知或未分类的错误
-    #[error("未知数据库错误：{message}")]
-    Unexpected { message: String },
-}
-
-#[derive(Debug, Error)]
-pub enum QueryError {
-    #[error("数据库查询失败：{0}")]
-    DbError(String),
-    #[error("其他错误：{0}")]
-    Other(String),
 }

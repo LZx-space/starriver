@@ -1,7 +1,6 @@
 use starriver_shared_base::authentication::principal::DefaultUser;
 use starriver_shared_base::cache::Cache;
 use starriver_shared_base::db::Connection;
-use starriver_shared_base::error::RepositoryError;
 use tracing::info;
 use uuid::Uuid;
 
@@ -39,10 +38,6 @@ where
                 Ok(())
             }
             Ok(false) => Err(CtxError::NotFound(format!("Category [{}] not found", id))),
-            Err(RepositoryError::ForeignKeyViolation(_)) => Err(CtxError::Conflict(format!(
-                "Category [{}] is still referenced by posts and cannot be deleted",
-                id
-            ))),
             Err(e) => Err(e.into()),
         }
     }

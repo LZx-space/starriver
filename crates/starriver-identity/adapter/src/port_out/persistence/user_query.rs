@@ -8,9 +8,9 @@ use starriver_identity_application::{
 use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::{
     dto::{OffsetPage, OffsetPageQuery},
-    error::QueryError,
+    error::RepositoryError,
 };
-use starriver_shared_infra::db::DefaultConnection;
+use starriver_shared_infra::{db::DefaultConnection, error_mapping::db_2_repo_error};
 
 use crate::port_out::persistence::po::user_po::{self, Column, Entity};
 
@@ -21,14 +21,14 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
         &self,
         conn: &DefaultConnection,
         q: OffsetPageQuery,
-    ) -> Result<OffsetPage<UserDetailDto>, QueryError> {
+    ) -> Result<OffsetPage<UserDetailDto>, RepositoryError> {
         let paginator = Entity::find()
             .order_by_with_nulls(Column::UpdatedAt, Order::Desc, NullOrdering::Last)
             .paginate(conn, q.page_size);
         let users = paginator
             .fetch_page(q.page)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?
+            .map_err(db_2_repo_error)?
             .into_iter()
             .map(|e| UserDetailDto {
                 id: e.id,
@@ -40,10 +40,7 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
                 password_attempts: e.password_attempts,
             })
             .collect::<Vec<_>>();
-        let total_items = paginator
-            .num_items()
-            .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?;
+        let total_items = paginator.num_items().await.map_err(db_2_repo_error)?;
         Ok(OffsetPage::new(q.page, q.page_size, total_items, users))
     }
 
@@ -51,11 +48,11 @@ impl UserQuery<DefaultConnection> for DefaultUserQuery {
         &self,
         conn: &DefaultConnection,
         email: &Email,
-    ) -> Result<bool, QueryError> {
+    ) -> Result<bool, RepositoryError> {
         Entity::find()
             .filter(user_po::Column::Email.eq(email.as_str()))
             .exists(conn)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))
+            .map_err(db_2_repo_error)
     }
 }

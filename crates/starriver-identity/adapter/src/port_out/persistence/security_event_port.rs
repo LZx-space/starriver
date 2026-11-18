@@ -13,8 +13,9 @@ use starriver_identity_domain::user::event::UserSecurityEvent;
 use starriver_shared_base::{
     db::Executor,
     dto::{Cursor, CursorPage},
-    error::QueryError,
+    error::RepositoryError,
 };
+use starriver_shared_infra::error_mapping::db_2_repo_error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -33,14 +34,12 @@ where
         &self,
         conn: &T,
         query: SecurityEventQuery,
-    ) -> Result<CursorPage<SecurityEventCursor, SecurityEventDto>, QueryError> {
+    ) -> Result<CursorPage<SecurityEventCursor, SecurityEventDto>, RepositoryError> {
         const SIGNATURE_KEY: &[u8] = b"tmp";
 
         let pagination = query.pagination;
         let limit = pagination.limit as usize;
-        let cursor = pagination
-            .decode_cursor(SIGNATURE_KEY)
-            .map_err(|e| QueryError::Other(e.to_string()))?;
+        let cursor = pagination.decode_cursor(SIGNATURE_KEY)?;
 
         let mut cond = Condition::all();
         if let Some(user_id) = query.user_id {
@@ -81,23 +80,19 @@ where
             .into_model::<SecurityEventRow>()
             .all(conn)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?;
-
+            .map_err(db_2_repo_error)?;
         let has_more = rows.len() > limit;
         let next_cursor = if has_more {
-            let last = rows.get(limit - 1).ok_or_else(|| {
-                QueryError::Other("has_more=true but rows shorter than limit".into())
-            })?;
-
+            // 目标页最后一条，非数据行最后一条
+            let page_last = &rows.get(limit - 1).expect("返回行数大于limit时一定非空");
             Cursor::encode(
                 SIGNATURE_KEY,
                 &SecurityEventCursor {
-                    occurred_at: last.occurred_at,
-                    id: last.id,
+                    occurred_at: page_last.occurred_at,
+                    id: page_last.id,
                 },
             )
-            .map(Some)
-            .map_err(|e| QueryError::Other(e.to_string()))?
+            .map(Some)?
         } else {
             None
         };
@@ -106,8 +101,7 @@ where
             .into_iter()
             .take(limit)
             .map(Into::into)
-            .collect::<Vec<_>>();
-
+            .collect::<Vec<SecurityEventDto>>();
         Ok(CursorPage { items, next_cursor })
     }
 
@@ -115,7 +109,7 @@ where
         &self,
         conn: &T,
         events: Vec<UserSecurityEvent>,
-    ) -> Result<(), QueryError> {
+    ) -> Result<(), RepositoryError> {
         let models: Vec<ActiveModel> = events
             .into_iter()
             .map(|event| {
@@ -135,7 +129,7 @@ where
         Entity::insert_many(models)
             .exec(conn)
             .await
-            .map_err(|e| QueryError::DbError(e.to_string()))?;
+            .map_err(db_2_repo_error)?;
         Ok(())
     }
 }

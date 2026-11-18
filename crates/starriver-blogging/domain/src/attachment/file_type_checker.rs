@@ -1,4 +1,4 @@
-use crate::shared_error::DomainError;
+use crate::{attachment::value_object::ClaimedExtension, shared_error::DomainError};
 
 pub trait FileTypeChecker {
     const MAGIC_HEADER_MAX_BYTES: usize = 32;
@@ -11,5 +11,9 @@ pub trait FileTypeChecker {
     /// - `Ok(true)` if the file type matches the claimed extension
     /// - `Ok(false)` if the file type does not match the claimed extension
     /// - `Err` if an error occurs during the check
-    fn check(&self, header: &[u8], claimed_extension: &str) -> Result<bool, DomainError>;
+    fn check(
+        &self,
+        header: &[u8],
+        claimed_extension: &ClaimedExtension,
+    ) -> Result<bool, DomainError>;
 }

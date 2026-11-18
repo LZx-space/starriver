@@ -34,10 +34,10 @@ pub struct RegisterInteractor<Conn, UQ, UR, VCS, PE> {
 impl<Conn, UQ, UR, VCS, PE> RegisterInteractor<Conn, UQ, UR, VCS, PE>
 where
     Conn: Connection,
-    UQ: UserQuery<Conn> + Sync,
-    UR: UserRepository<Conn> + UserRepository<<Conn as Connection>::Transaction> + Sync,
-    VCS: EmailVerificationService + Send + Sync,
-    PE: PasswordEncoder + Send + Sync,
+    UQ: UserQuery<Conn>,
+    UR: UserRepository<Conn>,
+    VCS: EmailVerificationService,
+    PE: PasswordEncoder,
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(

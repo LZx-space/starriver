@@ -2,7 +2,7 @@ use starriver_identity_domain::user::value_object::Email;
 use starriver_shared_base::{
     db::Executor,
     dto::{OffsetPage, OffsetPageQuery},
-    error::QueryError,
+    error::RepositoryError,
 };
 
 use crate::dto::user_dto::output::UserDetailDto;
@@ -13,11 +13,11 @@ pub trait UserQuery<T: Executor> {
         &self,
         conn: &T,
         q: OffsetPageQuery,
-    ) -> impl Future<Output = Result<OffsetPage<UserDetailDto>, QueryError>> + Send;
+    ) -> impl Future<Output = Result<OffsetPage<UserDetailDto>, RepositoryError>> + Send;
 
     fn exists_by_email(
         &self,
         conn: &T,
         email: &Email,
-    ) -> impl Future<Output = Result<bool, QueryError>>;
+    ) -> impl Future<Output = Result<bool, RepositoryError>>;
 }

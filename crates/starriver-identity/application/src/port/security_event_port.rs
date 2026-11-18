@@ -1,7 +1,5 @@
-use std::convert::Infallible;
-
 use starriver_identity_domain::user::event::UserSecurityEvent;
-use starriver_shared_base::{db::Executor, dto::CursorPage, error::QueryError};
+use starriver_shared_base::{db::Executor, dto::CursorPage, error::RepositoryError};
 
 use crate::dto::user_dto::{
     input::{SecurityEventCursor, SecurityEventQuery},
@@ -14,11 +12,13 @@ pub trait SecurityEventPort<T: Executor> {
         &self,
         conn: &T,
         query: SecurityEventQuery,
-    ) -> impl Future<Output = Result<CursorPage<SecurityEventCursor, SecurityEventDto>, QueryError>> + Send;
+    ) -> impl Future<
+        Output = Result<CursorPage<SecurityEventCursor, SecurityEventDto>, RepositoryError>,
+    > + Send;
 
     fn insert_many(
         &self,
         conn: &T,
         events: Vec<UserSecurityEvent>,
-    ) -> impl Future<Output = Result<(), Infallible>> + Send;
+    ) -> impl Future<Output = Result<(), RepositoryError>> + Send;
 }

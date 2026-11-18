@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use validator::{Validate, ValidationError, ValidationErrors};
 
-use crate::signature::{sign, verify};
+use crate::{
+    error::RepositoryError,
+    signature::{sign, verify},
+};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IdName<T> {
@@ -63,7 +66,12 @@ impl<T: Serialize> OffsetPage<T> {
 
 ///// Cursor Pagination /////////////////////////////////////////////////////////////////
 
-/// 分页查询的游标
+/// Pagination Cursor
+/// # Type parameter
+///
+/// `T` is the **sort key type**,For example:
+/// - `ORDER BY occurred_at DESC` → `T = OffsetDateTime`
+/// - `ORDER BY occurred_at DESC, id DESC` → `T = (OffsetDateTime, Uuid)`
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(transparent)]
 pub struct Cursor<T> {
@@ -120,6 +128,7 @@ pub struct CursorPageQuery<T> {
 }
 
 impl<T: DeserializeOwned> CursorPageQuery<T> {
+    /// decode cursor to target Type instance
     pub fn decode_cursor(&self, key: &[u8]) -> Result<Option<T>, CursorError> {
         self.cursor.as_ref().map(|c| c.decode(key)).transpose()
     }
@@ -150,6 +159,13 @@ pub enum CursorError {
     SignatureVerificationError,
 }
 
+impl From<CursorError> for RepositoryError {
+    fn from(value: CursorError) -> Self {
+        RepositoryError::InvalidData {
+            detail: value.to_string(),
+        }
+    }
+}
 ///// Pagination Common ////////////////////////////////////////////////////////////////////////////
 
 fn deserialize_u64_from_str<'de, D>(deserializer: D) -> Result<u64, D::Error>

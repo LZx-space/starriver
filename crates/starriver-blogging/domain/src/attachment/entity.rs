@@ -14,9 +14,9 @@ pub struct Attachment {
 
 impl Attachment {
     /// 虽然和`from_persisted`一样，但是还是都保留以提示开发注意重建和新建的概念
-    pub(crate) fn new(id: Uuid, extension: Extension, file_size: FileSize) -> Self {
+    pub(crate) fn new(extension: Extension, file_size: FileSize) -> Self {
         Self {
-            id,
+            id: Uuid::now_v7(),
             extension,
             file_size,
         }
@@ -35,15 +35,10 @@ impl Attachment {
     }
 
     pub fn file_name(&self) -> String {
-        Attachment::generate_file_name(&self.id, &self.extension)
+        format!("{}.{}", self.id, self.extension.as_str())
     }
 
     pub fn file_size(&self) -> i64 {
         self.file_size.size()
-    }
-
-    /// 命名规则的单点来源：`{id}.{extension}`
-    pub fn generate_file_name(id: &Uuid, extension: &Extension) -> String {
-        format!("{}.{}", id, extension.as_str())
     }
 }

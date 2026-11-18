@@ -56,7 +56,6 @@ impl From<DomainError> for AuthenticationError {
             DomainError::UserDisabled => AuthenticationError::UserDisabled,
             DomainError::UserLocked => AuthenticationError::UserLocked,
             DomainError::InvalidUsernameFormat => AuthenticationError::InvalidUsernameFormat,
-            DomainError::InvalidEmailFormat => AuthenticationError::InvalidEmailFormat,
             DomainError::InvalidPasswordFormat => AuthenticationError::InvalidPasswordFormat,
             DomainError::SamePassword => AuthenticationError::MalformedRequest,
             DomainError::BadPassword => AuthenticationError::BadPassword,
@@ -66,6 +65,7 @@ impl From<DomainError> for AuthenticationError {
             DomainError::PasswordVerification(verify_error) => AuthenticationError::InnerError {
                 message: verify_error.to_string(),
             },
+            DomainError::InvalidEmailFormat => AuthenticationError::InvalidEmailFormat,
         }
     }
 }

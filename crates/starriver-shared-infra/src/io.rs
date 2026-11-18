@@ -1,8 +1,15 @@
-use std::io;
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 use axum::{body::Bytes, extract::multipart::Field, http::StatusCode};
-use starriver_shared_base::io::{AsyncReader, AsyncReaderError, AsyncWriter, AsyncWriterError};
+use starriver_shared_base::io::{
+    AsyncReader, AsyncReaderError, AsyncWriter, AsyncWriterError, FileAsyncWriter,
+    FileWriterFactory, NamedAsyncReader,
+};
 use tokio::{fs::File, io::AsyncWriteExt};
+use tracing::info;
 
 /// axum multipart field async reader
 pub struct MultipartFieldAsyncReader<'a> {
@@ -50,16 +57,24 @@ impl<'a> AsyncReader for MultipartFieldAsyncReader<'a> {
     }
 }
 
+impl<'a> NamedAsyncReader for MultipartFieldAsyncReader<'a> {
+    fn file_name(&self) -> &str {
+        self.field.file_name().unwrap_or_default()
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 pub struct TokioFileAsyncWriter {
     file: File,
+    path: PathBuf,
 }
 
 impl TokioFileAsyncWriter {
     /// 创建文件
-    pub async fn new(path: impl AsRef<std::path::Path>) -> io::Result<Self> {
+    pub async fn new(path: impl AsRef<Path>) -> io::Result<Self> {
         Ok(Self {
+            path: path.as_ref().to_path_buf(),
             file: File::create(path).await?,
         })
     }
@@ -72,5 +87,35 @@ impl AsyncWriter for TokioFileAsyncWriter {
 
     async fn flush(&mut self) -> Result<(), AsyncWriterError> {
         self.file.flush().await.map_err(AsyncWriterError::IO)
+    }
+}
+
+impl FileAsyncWriter for TokioFileAsyncWriter {
+    async fn rename(&mut self, to: impl AsRef<std::path::Path>) -> Result<(), AsyncWriterError> {
+        tokio::fs::rename(&self.path, to.as_ref())
+            .await
+            .map_err(AsyncWriterError::IO)?;
+        self.path = to.as_ref().to_path_buf();
+        Ok(())
+    }
+
+    async fn remove(&self) -> Result<(), AsyncWriterError> {
+        tokio::fs::remove_file(&self.path)
+            .await
+            .map_err(AsyncWriterError::IO)
+    }
+}
+
+pub struct DefaultFileWriterFactory;
+
+impl FileWriterFactory for DefaultFileWriterFactory {
+    type Writer = TokioFileAsyncWriter;
+
+    async fn create(&self, path: &std::path::Path) -> Result<Self::Writer, AsyncWriterError> {
+        info!("new async writer");
+        let writer = TokioFileAsyncWriter::new(path)
+            .await
+            .map_err(AsyncWriterError::IO)?;
+        Ok(writer)
     }
 }

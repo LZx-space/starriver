@@ -83,7 +83,7 @@ where
         match result {
             Ok(created) => {
                 tx.commit().await.map_err(|e| {
-                    error!(error = %e, "commit transaction failed");
+                    error!(error = %e, "commit failed");
                     CtxError::Internal
                 })?;
                 // 提交成功后，清除帖子分页缓存
@@ -96,10 +96,9 @@ where
                     .ok_or_else(|| CtxError::NotFound(format!("Post [{}] not found", id)))
             }
             Err(e) => {
-                tx.rollback().await.map_err(|e| {
-                    error!(error = %e, "rollback transaction failed");
-                    CtxError::Internal
-                })?;
+                if let Err(rb_err) = tx.rollback().await {
+                    error!(error = %rb_err, "rollback failed");
+                }
                 Err(e)
             }
         }

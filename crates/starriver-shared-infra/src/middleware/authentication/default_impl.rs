@@ -123,19 +123,22 @@ where
             ..Default::default()
         };
 
-        decode::<AuthenticatedJwtClaims>(
-            jws,
-            &DecodingKey::from_secret(cfg.jws_secret_as_ref()),
-            &validator,
-        )
-        .map(|data| data.claims)
-        .map_err(|e| {
-            error!(error = %e, "JWS token decode failed");
+        let decoding_key = DecodingKey::from_secret(cfg.jws_secret_as_ref()).map_err(|e| {
+            error!(error = %e, "JWS decoding with invalid secret");
             ApiError::new(
                 StatusCode::UNAUTHORIZED,
                 "Authentication required".to_string(),
             )
-        })
+        })?;
+        decode::<AuthenticatedJwtClaims>(jws, &decoding_key, &validator)
+            .map(|data| data.claims)
+            .map_err(|e| {
+                error!(error = %e, "JWS token decode failed");
+                ApiError::new(
+                    StatusCode::UNAUTHORIZED,
+                    "Authentication required".to_string(),
+                )
+            })
     }
 }
 
@@ -177,12 +180,15 @@ impl AuthenticationSuccessHandler for DefaultAuthenticationSuccessHandler {
         );
 
         // 编码为JWS
-        let jws = encode(
-            &Header::default(),
-            &principal_claims,
-            &EncodingKey::from_secret(self.cfg.jws_secret_as_ref()),
-        );
-        let jws = match jws {
+        let encoding_key = match EncodingKey::from_secret(self.cfg.jws_secret_as_ref()) {
+            Ok(key) => key,
+            Err(err) => {
+                error!(error = %err, "JWS encoding with invalid secret");
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+                    .into_response();
+            }
+        };
+        let jws = match encode(&Header::default(), &principal_claims, &encoding_key) {
             Ok(token) => token,
             Err(err) => {
                 error!(error = %err, "failed to serialize JWS principal claims");

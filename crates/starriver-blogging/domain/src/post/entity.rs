@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// The post aggregate
-#[derive(Clone, Debug, Getters, Dissolve, PartialEq)]
+#[derive(Clone, Debug, Getters, Dissolve, PartialEq, Eq)]
 #[dissolve(rename = "into_parts")]
 pub struct Post {
     id: Uuid,

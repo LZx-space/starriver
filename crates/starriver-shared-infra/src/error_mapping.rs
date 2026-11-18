@@ -1,66 +1,73 @@
 use sea_orm::{DbErr, SqlErr};
-use starriver_shared_base::error::{QueryError, RepositoryError};
+use starriver_shared_base::error::RepositoryError;
 use tracing::warn;
 
 pub fn db_2_repo_error(err: DbErr) -> RepositoryError {
     warn!(error=%err, "db error");
 
-    match err.sql_err() {
-        Some(SqlErr::UniqueConstraintViolation(detail)) => {
-            return RepositoryError::UniqueViolation(detail);
-        }
-        Some(SqlErr::ForeignKeyConstraintViolation(detail)) => {
-            return RepositoryError::ForeignKeyViolation(detail);
-        }
-        _ => {}
+    // 1. 先尝试 sqlx 归类的 SQL 语义错误
+    if let Some(sql_err) = err.sql_err() {
+        return match sql_err {
+            SqlErr::UniqueConstraintViolation(_) => RepositoryError::Conflict(format_sql_err(&err)),
+            SqlErr::ForeignKeyConstraintViolation(_) => {
+                RepositoryError::ReferenceViolation(format_sql_err(&err))
+            }
+            _ => RepositoryError::Internal(Box::new(err)),
+        };
     }
+
+    // 2. 再按 DbErr 变体分流，注意每个变体的字段类型
     match err {
-        DbErr::ConnectionAcquire(e) => RepositoryError::ConnectionFailed(e.to_string()),
-        DbErr::TryIntoErr { from, into, source } => RepositoryError::BadData(format!(
-            "TryIntoErr: from={from:?} into={into:?} source={source:?}"
-        )),
-        DbErr::Conn(e) => RepositoryError::ConnectionFailed(e.to_string()),
-        DbErr::Exec(e) => RepositoryError::Infrastructure(e.to_string()),
-        DbErr::Query(e) => RepositoryError::Infrastructure(e.to_string()),
-        DbErr::ConvertFromU64(e) => RepositoryError::BadData(e.to_string()),
-        DbErr::UnpackInsertId => RepositoryError::BadData("unpack insert id".to_string()),
-        DbErr::UpdateGetPrimaryKey => {
-            RepositoryError::BadData("update get primary key".to_string())
+        // ConnectionAcquire(DbErr 的内部字段) -> Unavailable(Box<dyn Error>)
+        DbErr::ConnectionAcquire(_) | DbErr::Conn(_) => RepositoryError::Unavailable(Box::new(err)),
+
+        // RecordNotFound(String) -> NotFound(String)，直接搬运字段
+        DbErr::RecordNotFound(msg) => RepositoryError::NotFound(msg),
+
+        // RecordNotInserted / RecordNotUpdated 是单元变体，无字段
+        // 它们语义更接近冲突，而非不存在
+        DbErr::RecordNotInserted => {
+            RepositoryError::Conflict("插入失败：记录与已有数据冲突".into())
         }
-        DbErr::RecordNotFound(e) => RepositoryError::NotFound(e),
-        DbErr::AttrNotSet(e) => RepositoryError::BadData(e),
-        DbErr::Custom(e) => RepositoryError::BadData(e),
-        DbErr::Type(e) => RepositoryError::BadData(e),
-        DbErr::Json(e) => RepositoryError::BadData(e),
-        DbErr::Migration(e) => RepositoryError::BadData(e),
-        DbErr::RecordNotInserted => RepositoryError::BadData("RecordNotInserted".to_string()),
-        DbErr::RecordNotUpdated => RepositoryError::BadData("RecordNotUpdated".to_string()),
-        DbErr::BackendNotSupported { db, ctx } => {
-            RepositoryError::Infrastructure(format!("db {} not supported, {}", db, ctx))
-        }
-        DbErr::KeyArityMismatch { expected, received } => RepositoryError::BadData(format!(
-            "key arity mismatch, expected {} received {}",
-            expected, received
-        )),
-        DbErr::PrimaryKeyNotSet { ctx } => {
-            RepositoryError::BadData(format!("primary key not set {}", ctx))
-        }
-        DbErr::RbacError(e) => RepositoryError::PermissionDenied(e),
+        DbErr::RecordNotUpdated => RepositoryError::NotFound("更新失败：目标记录不存在".into()),
+
+        // Type(String) -> InvalidData { detail }
+        DbErr::Type(detail) => RepositoryError::InvalidData { detail },
+
+        // Json(String) -> InvalidData { detail }
+        DbErr::Json(detail) => RepositoryError::InvalidData { detail },
+
+        // ConvertFromU64(String) -> InvalidData { detail }
+        DbErr::ConvertFromU64(detail) => RepositoryError::InvalidData {
+            detail: detail.to_string(),
+        },
+
+        // TryIntoErr { source: Arc<dyn Error>, .. } -> Internal(Box<dyn Error>)
+        // 需要把 Arc 转成 Box，或保留 source 链
+        DbErr::TryIntoErr { source, .. } => RepositoryError::InvalidData {
+            detail: source.to_string(),
+        },
+
+        // AccessDenied { permission, resource } -> PermissionDenied(String)
         DbErr::AccessDenied {
             permission,
             resource,
-        } => RepositoryError::PermissionDenied(format!(
-            "access denied, permission {} resource {}",
-            permission, resource
-        )),
-        DbErr::MutexPoisonError => RepositoryError::Infrastructure("Mutex poisoned".to_string()),
-        _ => RepositoryError::Unexpected {
-            message: err.to_string(),
-        },
+        } => RepositoryError::PermissionDenied(format!("{permission} @ {resource}")),
+
+        // 统一归 Internal，保留 DbErr 作为 source
+        DbErr::RbacError(_)
+        | DbErr::PrimaryKeyNotSet { .. }
+        | DbErr::BackendNotSupported { .. }
+        | DbErr::KeyArityMismatch { .. }
+        | DbErr::MutexPoisonError => RepositoryError::Internal(Box::new(err)),
+
+        // 其余（Exec/Query/Migration/AttrNotSet/UnpackInsertId/UpdateGetPrimaryKey/Custom 等）
+        _ => RepositoryError::Internal(Box::new(err)),
     }
 }
 
-pub fn db_2_query_error(err: DbErr) -> QueryError {
-    warn!(error=%err, "db error");
-    QueryError::DbError(err.to_string())
+/// 从 DbErr 中提取尽量简洁的结构化描述，避免整条 SQL 泄露
+fn format_sql_err(err: &DbErr) -> String {
+    // DbErr::Exec(RuntimeErr::SqlxError(e)) 等结构可进一步拆分，
+    err.to_string()
 }

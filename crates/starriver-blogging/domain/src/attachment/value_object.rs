@@ -32,23 +32,40 @@ impl FileSize {
 pub struct Extension(String);
 
 impl Extension {
-    /// 允许的文件扩展名白名单
-    const ALLOWED_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif"];
-
-    pub fn new(extension: &str) -> Result<Self, DomainError> {
-        // 统一小写后再与白名单比较，避免 "PNG"/"JpEg" 这类大小写变体被误拒
-        let normalized = extension.to_ascii_lowercase();
-        if !Self::ALLOWED_EXTENSIONS.contains(&normalized.as_str()) {
-            return Err(DomainError::AttachmentExtensionInvalid(format!(
-                "不允许的文件类型：{}",
-                extension
-            )));
-        }
-        Ok(Self(normalized))
+    pub fn from_claimed(extension: ClaimedExtension) -> Self {
+        Self(extension.0)
     }
 
     pub fn from_persisted(extension: String) -> Self {
         Self(extension)
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClaimedExtension(String);
+
+impl ClaimedExtension {
+    /// 允许的文件扩展名白名单
+    const ALLOWED_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif"];
+
+    pub fn new(extension: &str) -> Result<Self, DomainError> {
+        if extension.is_empty() {
+            return Err(DomainError::AttachmentExtensionInvalid(
+                "缺少扩展名".to_string(),
+            ));
+        }
+        // 统一小写后再与白名单比较，避免 "PNG"/"JpEg" 这类大小写变体被误拒
+        let normalized = extension.to_ascii_lowercase();
+        if !Self::ALLOWED_EXTENSIONS.contains(&normalized.as_str()) {
+            return Err(DomainError::AttachmentExtensionInvalid(format!(
+                "不允许的文件类型：{extension}",
+            )));
+        }
+        Ok(Self(normalized))
     }
 
     pub fn as_str(&self) -> &str {

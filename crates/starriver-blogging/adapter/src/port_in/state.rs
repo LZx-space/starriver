@@ -18,6 +18,7 @@ use starriver_shared_infra::{
     cache::DefaultCache,
     config::{Auth, Uploads},
     db::DefaultConnection,
+    io::DefaultFileWriterFactory,
     upload_file::DefaultUploadLocationResolver,
 };
 use std::{sync::Arc, time::Duration};
@@ -108,6 +109,7 @@ type AttachmentInteractor = attachment_interactor::AttachmentInteractor<
     DefaultConnection,
     DefaultAttachmentRepository,
     DefaultFileTypeChecker,
+    DefaultFileWriterFactory,
     DefaultUploadLocationResolver,
 >;
 
@@ -116,7 +118,7 @@ type AttachmentInteractor = attachment_interactor::AttachmentInteractor<
 pub struct BloggingState {
     pub auth: Arc<Auth>,
     pub uploads: Arc<Uploads>,
-    pub upload_file_url_builder: DefaultUploadLocationResolver,
+    pub upload_location_resolver: DefaultUploadLocationResolver,
     /////////////////////////////////////////////////////////////////
     pub post_create_interactor: Arc<PostCreateInteractor>,
     pub post_delete_interactor: Arc<PostDeleteInteractor>,
@@ -141,7 +143,7 @@ impl BloggingState {
         uploads: Arc<Uploads>,
         cfg: &BloggingConfig,
     ) -> Result<Self, String> {
-        let upload_file_url_builder = DefaultUploadLocationResolver::new(uploads.clone());
+        let upload_location_resolver = DefaultUploadLocationResolver::new(uploads.clone());
         let conn = DefaultConnection::new(conn);
 
         let cache_cfg = &cfg.cache;
@@ -155,7 +157,7 @@ impl BloggingState {
 
         let post_create_interactor = PostCreateInteractor::new(
             conn.clone(),
-            DefaultPostQuery::new(upload_file_url_builder.clone()),
+            DefaultPostQuery::new(upload_location_resolver.clone()),
             DefaultPostRepository,
             DefaultCategoryRepository,
             post_page_cache.clone(),
@@ -172,21 +174,21 @@ impl BloggingState {
 
         let post_find_interactor = PostFindInteractor::new(
             conn.clone(),
-            DefaultPostQuery::new(upload_file_url_builder.clone()),
+            DefaultPostQuery::new(upload_location_resolver.clone()),
             post_item_cache.clone(),
         )
         .into();
 
         let post_paginate_interactor = PostPaginateInteractor::new(
             conn.clone(),
-            DefaultPostQuery::new(upload_file_url_builder.clone()),
+            DefaultPostQuery::new(upload_location_resolver.clone()),
             post_page_cache.clone(),
         )
         .into();
 
         let post_search_interactor = PostSearchInteractor::new(
             conn.clone(),
-            DefaultPostQuery::new(upload_file_url_builder.clone()),
+            DefaultPostQuery::new(upload_location_resolver.clone()),
         )
         .into();
 
@@ -240,14 +242,15 @@ impl BloggingState {
             conn.clone(),
             DefaultAttachmentRepository,
             AttachmentFactory::new(DefaultFileTypeChecker {}),
-            upload_file_url_builder.clone(),
+            DefaultFileWriterFactory,
+            upload_location_resolver.clone(),
         )
         .into();
 
         Ok(BloggingState {
             auth,
             uploads,
-            upload_file_url_builder,
+            upload_location_resolver,
             post_create_interactor,
             post_delete_interactor,
             post_find_interactor,
